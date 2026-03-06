@@ -1,29 +1,27 @@
-import type { Metadata } from "next";
-import { GeistSans } from "geist/font/sans";
+import type { Metadata } from 'next';
+import { GeistSans } from 'geist/font/sans';
 
-import "./globals.css";
+import { QueryProvider } from './providers/QueryProvider';
+import { AuthProvider } from './providers/AuthProvider';
 
-import { Providers } from "@/components/layout/Providers";
-import { BottomBar } from "@/components/layout/BottomBar";
-import { AuthGuard } from "@/auth/AuthGuard";
+import './globals.css';
 
 export const metadata: Metadata = {
-  title: "All AI",
-  description: "AI Platform",
+  title: 'Sibneuro',
+  description: 'AI Platform',
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
     <html lang="ru" className="dark">
       <body className={GeistSans.className}>
-        <Providers>
-          <AuthGuard>
-            <div className="app-shell">
-              <main className="page-content">{children}</main>
-              <BottomBar />
-            </div>
-          </AuthGuard>
-        </Providers>
+        <AuthProvider>
+          <QueryProvider>{children}</QueryProvider>
+        </AuthProvider>
       </body>
     </html>
   );
