@@ -14,7 +14,7 @@ export const Login = () => {
 
   const handleTelegramAuth = async (user: any) => {
     try {
-      const { data } = await api.post('/auth/telegram/widget', user);
+      const { data } = await api.post('/auth/telegram', user);
       queryClient.setQueryData(['auth', 'me'], data.data.user);
       toast.success('Logged in with Telegram!');
       router.push('/');
