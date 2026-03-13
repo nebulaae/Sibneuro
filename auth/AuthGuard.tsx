@@ -44,7 +44,7 @@ export const AuthGuard = ({ children }: { children: React.ReactNode }) => {
     );
   }
 
-  if (!user) {
+  if (!isLoading && !user) {
     router.push('/login');
   }
 

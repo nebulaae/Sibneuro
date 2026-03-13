@@ -21,6 +21,7 @@ export const Login = () => {
 
       router.push('/');
       queryClient.setQueryData(['auth', 'me'], data.data.user);
+      
       toast.success('Logged in with Telegram!');
       router.push('/');
     } catch (e: any) {
