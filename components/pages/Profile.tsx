@@ -3,7 +3,7 @@
 import { useUser } from '@/hooks/useUser';
 import { useRequests } from '@/hooks/useRequests';
 import { useAuth } from '@/hooks/useAuth';
-
+import { useReferrals } from '@/hooks/useApiExtras';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -28,6 +28,7 @@ function timeAgo(dateStr: string) {
 export const Profile = () => {
   const { user: tgUser, logout } = useAuth();
   const { data: userData, isLoading: userLoading } = useUser();
+  const { data: refData } = useReferrals();
   const {
     data: reqData,
     isLoading: reqLoading,
@@ -39,6 +40,7 @@ export const Profile = () => {
   const tokens = userData?.user?.tokens ?? 0;
   const isPremium = userData?.user?.premium ?? false;
   const requests = reqData?.pages.flatMap((p) => p) ?? [];
+  const refStats = refData?.stats;
 
   const name = tgUser
     ? `${tgUser.first_name} ${tgUser.last_name || ''}`.trim()
@@ -59,7 +61,6 @@ export const Profile = () => {
         </Button>
       </div>
 
-      {/* Profile Header */}
       <div className="flex items-center gap-4 p-5">
         <Avatar className="size-16 border-2 border-border shadow-sm">
           <AvatarImage src={tgUser?.photo_url} />
@@ -80,7 +81,6 @@ export const Profile = () => {
       <Separator />
 
       <div className="p-4 flex flex-col gap-3">
-        {/* Balance Card */}
         <div className="flex items-center justify-between p-4 bg-secondary/50 border border-border rounded-xl">
           <div>
             <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">
@@ -97,15 +97,16 @@ export const Profile = () => {
           <Button size="sm">Пополнить</Button>
         </div>
 
-        {/* Action Buttons */}
         <button className="flex items-center gap-3 p-3 w-full border border-border rounded-xl hover:bg-secondary transition-colors text-left">
           <div className="size-10 bg-primary/10 text-primary rounded-lg flex items-center justify-center shrink-0">
             <Users className="size-5" />
           </div>
           <div className="flex-1">
-            <div className="text-sm font-medium">Зарабатывай с друзьями</div>
+            <div className="text-sm font-medium">
+              Заработано токенов: {refStats?.total_tokens || 0}
+            </div>
             <div className="text-xs text-muted-foreground">
-              Реферальная программа
+              Рефералов: {refStats?.unique_referrals || 0}
             </div>
           </div>
         </button>
@@ -127,7 +128,6 @@ export const Profile = () => {
 
       <Separator />
 
-      {/* Generations List */}
       <div className="px-4 py-4">
         <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">
           Мои генерации
@@ -189,7 +189,6 @@ export const Profile = () => {
                 </div>
               );
             })}
-
             {hasNextPage && (
               <div className="p-4">
                 <Button
@@ -209,4 +208,4 @@ export const Profile = () => {
   );
 };
 
-export { Profile as default }
+export { Profile as default };

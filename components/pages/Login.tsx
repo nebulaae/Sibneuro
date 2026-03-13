@@ -104,7 +104,7 @@ export const Login = () => {
             onAuthCallback={(user) =>
               handleTelegramAuth({
                 ...user,
-                bot_id: process.env.NEXT_PUBLIC_BOT_ID
+                bot_id: process.env.NEXT_PUBLIC_BOT_ID,
               })
             }
             showAvatar={false}
@@ -122,4 +122,4 @@ export const Login = () => {
   );
 };
 
-export { Login as default }
+export { Login as default };

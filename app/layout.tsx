@@ -30,9 +30,7 @@ export default function RootLayout({
       <body className={GeistSans.className}>
         <AuthProvider>
           <TelegramProvider>
-            <QueryProvider>
-              {children}
-            </QueryProvider>
+            <QueryProvider>{children}</QueryProvider>
           </TelegramProvider>
         </AuthProvider>
       </body>

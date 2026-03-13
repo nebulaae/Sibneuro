@@ -62,7 +62,7 @@ export function AppSidebar() {
   const router = useRouter();
 
   useEffect(() => {
-    const token = localStorage.getItem('admin_token');
+    const token = localStorage.getItem('auth_token');
     if (!token) router.replace('/login');
   }, [router]);
 

@@ -1,8 +1,8 @@
 'use client';
 
-import { useRouter } from "next/navigation";
-import { useAuth } from "@/hooks/useAuth";
-import { useEffect } from "react";
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/hooks/useAuth';
+import { useEffect } from 'react';
 
 export const AuthGuard = ({ children }: { children: React.ReactNode }) => {
   const { user, isLoading } = useAuth();
@@ -10,7 +10,7 @@ export const AuthGuard = ({ children }: { children: React.ReactNode }) => {
 
   useEffect(() => {
     if (!isLoading && !user) {
-      router.replace("/login");
+      router.replace('/login');
     }
   }, [user, isLoading, router]);
 

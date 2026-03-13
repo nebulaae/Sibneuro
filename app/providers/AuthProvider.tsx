@@ -1,7 +1,7 @@
 'use client';
 
-import { ReactNode, useState, useEffect } from "react";
-import { AuthContext, TelegramUser } from "@/hooks/useAuth";
+import { ReactNode, useState, useEffect } from 'react';
+import { AuthContext, TelegramUser } from '@/hooks/useAuth';
 
 function parseJwt(token: string) {
   try {
@@ -14,21 +14,21 @@ function parseJwt(token: string) {
 }
 
 function getInitialUser(): TelegramUser | null {
-  if (typeof window === "undefined") return null;
+  if (typeof window === 'undefined') return null;
 
   try {
-    const stored = sessionStorage.getItem("tg_user");
+    const stored = sessionStorage.getItem('tg_user');
     if (stored) return JSON.parse(stored);
 
-    const token = localStorage.getItem("auth_token");
+    const token = localStorage.getItem('auth_token');
     if (!token) return null;
 
     const decoded = parseJwt(token);
     if (decoded?.user) {
-      sessionStorage.setItem("tg_user", JSON.stringify(decoded.user));
+      sessionStorage.setItem('tg_user', JSON.stringify(decoded.user));
       return decoded.user;
     }
-  } catch { }
+  } catch {}
 
   return null;
 }
@@ -43,13 +43,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const login = (userData: TelegramUser) => {
     setUser(userData);
-    sessionStorage.setItem("tg_user", JSON.stringify(userData));
+    sessionStorage.setItem('tg_user', JSON.stringify(userData));
   };
 
   const logout = () => {
     setUser(null);
-    sessionStorage.removeItem("tg_user");
-    localStorage.removeItem("auth_token");
+    sessionStorage.removeItem('tg_user');
+    localStorage.removeItem('auth_token');
   };
 
   if (isLoading) return null;

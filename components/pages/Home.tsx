@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ErrorComponent } from '@/components/states/Error';
+import { useUI } from '@/hooks/useApiExtras';
 
 const TRENDING_ITEMS = [
   { icon: '🎨', title: 'Создай свой 2D-аватар' },
@@ -30,6 +31,7 @@ export const Home = () => {
     isError: modelsError,
     refetch: refetchModels,
   } = useAIModels();
+  const { data: trends, isLoading: trendsLoading } = useUI('trends');
   const { data: roles, isLoading: rolesLoading } = useRoles();
   const { data: userData } = useUser();
 
@@ -153,30 +155,32 @@ export const Home = () => {
           В тренде
         </p>
         <div className="flex flex-col gap-1">
-          {TRENDING_ITEMS.map((item, i) => (
-            <button
-              key={i}
-              className="flex items-center gap-3 py-2.5 px-3 rounded-xl w-full text-left text-foreground hover:bg-secondary transition-colors"
-            >
-              <div className="size-8 rounded-lg bg-secondary border flex items-center justify-center shrink-0 text-sm">
-                {item.icon}
-              </div>
-              <span className="text-sm font-medium flex-1">{item.title}</span>
-              <svg
-                width="14"
-                height="14"
-                viewBox="0 0 20 20"
-                fill="currentColor"
-                className="text-muted-foreground shrink-0"
+          {trendsLoading ? (
+            <Skeleton className="w-full h-12 rounded-xl" />
+          ) : (
+            (trends || []).map((item: any, i: number) => (
+              <button
+                key={i}
+                className="flex items-center gap-3 py-2.5 px-3 rounded-xl w-full text-left text-foreground hover:bg-secondary transition-colors"
               >
-                <path d="M7.293 4.707L12.586 10l-5.293 5.293 1.414 1.414L15.414 10 8.707 3.293 7.293 4.707z" />
-              </svg>
-            </button>
-          ))}
+                {item.image && (
+                  <img
+                    src={item.image}
+                    alt=""
+                    className="size-8 rounded-lg object-cover shrink-0"
+                  />
+                )}
+                <span className="text-sm font-medium flex-1">
+                  {localize(item.title)}
+                </span>
+                {/* Иконка стрелки */}
+              </button>
+            ))
+          )}
         </div>
       </section>
     </div>
   );
 };
 
-export { Home as default }
+export { Home as default };

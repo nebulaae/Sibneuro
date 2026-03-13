@@ -108,4 +108,4 @@ export const Chats = () => {
   );
 };
 
-export { Chats as default }
+export { Chats as default };

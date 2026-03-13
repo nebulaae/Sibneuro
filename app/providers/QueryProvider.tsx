@@ -1,7 +1,7 @@
-"use client";
+'use client';
 
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { useState } from "react";
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { useState } from 'react';
 
 export const QueryProvider = ({ children }: any) => {
   const [client] = useState(
@@ -10,9 +10,9 @@ export const QueryProvider = ({ children }: any) => {
         defaultOptions: {
           queries: {
             retry: 1,
-            refetchOnWindowFocus: false
-          }
-        }
+            refetchOnWindowFocus: false,
+          },
+        },
       })
   );
 
