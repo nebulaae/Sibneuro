@@ -7,21 +7,20 @@ import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { LoginButton } from '@telegram-auth/react';
+import { useAuth } from '@/hooks/useAuth';
 
 export const Login = () => {
   const router = useRouter();
   const queryClient = useQueryClient();
+  const { login } = useAuth();
 
   const handleTelegramAuth = async (user: any) => {
     try {
       const { data } = await api.post('/api/auth/telegram', user);
 
       localStorage.setItem('auth_token', data.token);
-      queryClient.setQueryData(['auth', 'me'], data.data.user);
+      login(data.user);
 
-      router.push('/');
-      queryClient.setQueryData(['auth', 'me'], data.data.user);
-      
       toast.success('Logged in with Telegram!');
       router.push('/');
     } catch (e: any) {
