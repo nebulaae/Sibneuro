@@ -2,7 +2,7 @@ import api from '@/lib/api';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '@/lib/queryKeys';
 
-// POST /api/upload — загрузка файла (кастомный эндпоинт бэкенда)
+// POST /api/upload — загрузка файла
 export const useUpload = () => {
   return useMutation({
     mutationFn: async (file: File) => {
@@ -41,7 +41,11 @@ export const useChatHistory = (dialogueId: string | null) => {
 };
 
 // GET /chats/history — polling последнего сообщения для Generate страницы
-export const useGenerationStatus = (dialogueId: string | null, enabled: boolean) => {
+// Используется когда бэкенд вернул status: "processing" (асинхронная генерация)
+export const useGenerationStatus = (
+  dialogueId: string | null,
+  enabled: boolean
+) => {
   const queryClient = useQueryClient();
 
   return useQuery({
@@ -57,15 +61,18 @@ export const useGenerationStatus = (dialogueId: string | null, enabled: boolean)
     refetchInterval: (query) => {
       const last = query.state.data;
       if (!last || last.status === 'processing') return 2000;
+      // Когда завершилось — инвалидируем связанные запросы
       queryClient.invalidateQueries({ queryKey: queryKeys.user });
       queryClient.invalidateQueries({ queryKey: queryKeys.requests });
-      queryClient.invalidateQueries({ queryKey: queryKeys.chatHistory(dialogueId!) });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.chatHistory(dialogueId!),
+      });
       return false;
     },
   });
 };
 
-// GET /api/ui/:blockName — UI-блоки (кастомный эндпоинт)
+// GET /api/ui/:blockName
 export const useUI = (blockName: string) => {
   return useQuery({
     queryKey: queryKeys.ui(blockName),
@@ -89,7 +96,7 @@ export const useDashboard = () => {
   });
 };
 
-// GET /api/referrals — реферальная статистика
+// GET /api/referrals
 export const useReferrals = (period = 'all', level = 'all') => {
   return useQuery({
     queryKey: queryKeys.referrals(period, level),
@@ -102,7 +109,7 @@ export const useReferrals = (period = 'all', level = 'all') => {
   });
 };
 
-// GET /api/payment-link — ссылка на оплату
+// GET /api/payment-link
 export const usePaymentLink = () => {
   return useQuery({
     queryKey: queryKeys.paymentLink,
@@ -190,12 +197,16 @@ export const useAddComment = () => {
       message: { text: string };
       replyId?: number | null;
     }) => {
-      const { data } = await api.post('/api/posts/comment', {
-        message,
-        reply_id: replyId ?? null,
-      }, {
-        params: { post_id: postId },
-      });
+      const { data } = await api.post(
+        '/api/posts/comment',
+        {
+          message,
+          reply_id: replyId ?? null,
+        },
+        {
+          params: { post_id: postId },
+        }
+      );
       if (!data.success) throw new Error(data.error);
       return data as { success: true; id: number };
     },
@@ -221,7 +232,7 @@ export const usePinComment = () => {
   });
 };
 
-// GET /posts/likes — список лайкнувших пост
+// GET /posts/likes
 export const usePostLikes = (postId: number | null) => {
   return useQuery({
     queryKey: queryKeys.postLikes(postId!),
@@ -259,14 +270,23 @@ export const useSetChatAvatar = () => {
   });
 };
 
+// ============================================================
 // GET /tokens — список API-токенов пользователя
+// ФИКС: /api/tokens требует bot_id + user_id в query.
+// Interceptor добавляет их автоматически, но только если
+// user_id доступен из sessionStorage/localStorage.
+// ============================================================
 export const useApiTokens = () => {
   return useQuery({
     queryKey: queryKeys.apiTokens,
     queryFn: async () => {
       const { data } = await api.get('/api/tokens');
+      if (!data.success)
+        throw new Error(data.error || 'Failed to fetch tokens');
       return data.items || [];
     },
+    // Не делаем запрос если нет авторизации
+    retry: 1,
   });
 };
 
@@ -310,7 +330,11 @@ export const useAuthSession = () => {
         },
       });
       if (!data.success) throw new Error(data.error);
-      return data as { success: true; session_hash: string; session_data: { id: number; time: number } };
+      return data as {
+        success: true;
+        session_hash: string;
+        session_data: { id: number; time: number };
+      };
     },
   });
 };
@@ -348,7 +372,7 @@ export const useRemoveAuthMethod = () => {
   });
 };
 
-// GET /auth/method/link — получить ссылку для привязки Telegram/MAX
+// GET /auth/method/link — ссылка для привязки Telegram/MAX
 export const useAuthMethodLink = () => {
   return useMutation({
     mutationFn: async (method: 'telegram' | 'max') => {
@@ -372,6 +396,30 @@ export const useAddAuthMethod = () => {
       const { data } = await api.post('/api/auth/method', payload);
       if (!data.success) throw new Error(data.error);
       return data as { success: true; method: string };
+    },
+  });
+};
+
+// POST /auth/create/email — регистрация нового пользователя по email
+export const useCreateEmailAccount = () => {
+  return useMutation({
+    mutationFn: async (payload: {
+      email: string;
+      password: string;
+      name: string;
+      lang?: string;
+      avatar?: string;
+    }) => {
+      const { data } = await api.post('/api/auth/create/email', {
+        ...payload,
+        lang: payload.lang ?? 'ru',
+      });
+      if (!data.success) throw new Error(data.error);
+      return data as {
+        success: true;
+        session_hash: string;
+        session_data: { id: number; time: number };
+      };
     },
   });
 };

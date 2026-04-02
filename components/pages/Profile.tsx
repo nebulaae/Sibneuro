@@ -17,7 +17,16 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
-import { LogOut, Users, Star, Loader2, ExternalLink, Key, Copy, Check } from 'lucide-react';
+import {
+  LogOut,
+  Users,
+  Star,
+  Loader2,
+  ExternalLink,
+  Key,
+  Copy,
+  Check,
+} from 'lucide-react';
 import { GenerationsEmpty } from '@/components/states/Empty';
 import { timeAgo } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -152,7 +161,9 @@ export const Profile = () => {
         {/* Referrals */}
         <div className="flex flex-col gap-1 p-4 rounded-2xl bg-secondary/50 border border-border/50 text-left">
           <div className="flex items-center justify-between">
-            <p className="text-xs font-medium text-muted-foreground">Рефералы</p>
+            <p className="text-xs font-medium text-muted-foreground">
+              Рефералы
+            </p>
             <Users className="size-3.5 text-muted-foreground/50" />
           </div>
           {!refStats ? (
@@ -181,15 +192,19 @@ export const Profile = () => {
             onClick={handleGenerateToken}
             disabled={generateToken.isPending}
           >
-            {generateToken.isPending
-              ? <Loader2 className="size-3 animate-spin" />
-              : <Key className="size-3" />}
+            {generateToken.isPending ? (
+              <Loader2 className="size-3 animate-spin" />
+            ) : (
+              <Key className="size-3" />
+            )}
             Создать
           </Button>
         </div>
 
         {!apiTokens || apiTokens.length === 0 ? (
-          <p className="text-xs text-muted-foreground">Нет токенов. Создайте для доступа к API.</p>
+          <p className="text-xs text-muted-foreground">
+            Нет токенов. Создайте для доступа к API.
+          </p>
         ) : (
           <div className="space-y-2">
             {apiTokens.map((t: any) => (
@@ -207,9 +222,11 @@ export const Profile = () => {
                   onClick={() => handleCopyToken(t.token)}
                   className="shrink-0 p-1 rounded-lg hover:bg-secondary/80 transition-colors"
                 >
-                  {copiedToken === t.token
-                    ? <Check className="size-3.5 text-emerald-500" />
-                    : <Copy className="size-3.5 text-muted-foreground" />}
+                  {copiedToken === t.token ? (
+                    <Check className="size-3.5 text-emerald-500" />
+                  ) : (
+                    <Copy className="size-3.5 text-muted-foreground" />
+                  )}
                 </button>
               </div>
             ))}
@@ -255,11 +272,17 @@ export const Profile = () => {
                   >
                     <div className="size-9 rounded-xl bg-secondary/60 border border-border/40 flex items-center justify-center shrink-0">
                       <span className="text-base">
-                        {req.status === 'completed' ? '✅' : req.status === 'error' ? '❌' : '⏳'}
+                        {req.status === 'completed'
+                          ? '✅'
+                          : req.status === 'error'
+                            ? '❌'
+                            : '⏳'}
                       </span>
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">{req.model}</p>
+                      <p className="text-sm font-medium truncate">
+                        {req.model}
+                      </p>
                       <p className="text-xs text-muted-foreground mt-0.5">
                         {req.version} · {timeAgo(req.created_at)}
                       </p>
@@ -286,8 +309,13 @@ export const Profile = () => {
                   disabled={isFetchingNextPage}
                 >
                   {isFetchingNextPage ? (
-                    <><Loader2 className="size-4 mr-2 animate-spin" />Загрузка...</>
-                  ) : 'Загрузить ещё'}
+                    <>
+                      <Loader2 className="size-4 mr-2 animate-spin" />
+                      Загрузка...
+                    </>
+                  ) : (
+                    'Загрузить ещё'
+                  )}
                 </Button>
               </div>
             )}

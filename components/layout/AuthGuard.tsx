@@ -25,7 +25,9 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     // Если мы внутри WebApp — даём 1.5с провайдерам залогинить до редиректа
     if (isInsideWebApp()) {
-      const t = setTimeout(() => { graceRef.current = false; }, 1500);
+      const t = setTimeout(() => {
+        graceRef.current = false;
+      }, 1500);
       return () => clearTimeout(t);
     }
     graceRef.current = false;

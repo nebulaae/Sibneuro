@@ -1,24 +1,42 @@
 import axios from 'axios';
 
+// Получаем user_id из всех возможных источников авторизации
 function getUserId(): number | null {
   if (typeof window === 'undefined') return null;
   try {
-    const stored = sessionStorage.getItem('tg_user');
-    if (stored) {
-      const user = JSON.parse(stored);
-      return user?.id ?? null;
+    // 1. Telegram WebApp user
+    const tgUser = sessionStorage.getItem('tg_user');
+    if (tgUser) {
+      const user = JSON.parse(tgUser);
+      if (user?.id) return user.id;
     }
+
+    // 2. JWT Bearer token
     const token = localStorage.getItem('auth_token');
     if (token) {
-      const base64 = token.split('.')[1];
-      if (base64) {
-        const json = atob(base64.replace(/-/g, '+').replace(/_/g, '/'));
+      const parts = token.split('.');
+      if (parts.length === 3) {
+        const base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+        const json = atob(base64);
         const decoded = JSON.parse(json);
-        return decoded?.user?.id ?? null;
+        // Поддерживаем разные структуры JWT: { user: { id } } или { id } или { user_id }
+        const id = decoded?.user?.id ?? decoded?.id ?? decoded?.user_id ?? null;
+        if (id) return id;
       }
     }
-  } catch { }
+
+    // 3. Session-based auth (email/MAX login)
+    const sessionData = localStorage.getItem('session_data');
+    if (sessionData) {
+      const parsed = JSON.parse(sessionData);
+      if (parsed?.id) return parsed.id;
+    }
+  } catch {}
   return null;
+}
+
+function getBotId(): string | undefined {
+  return process.env.NEXT_PUBLIC_BOT_ID;
 }
 
 const api = axios.create({
@@ -36,17 +54,19 @@ api.interceptors.request.use((config) => {
       config.headers.Authorization = `Bearer ${token}`;
     }
 
+    // X-Init-Data для TMA авторизации (если нет Bearer)
     const tg = (window as any)?.Telegram?.WebApp;
     if (!token && tg?.initData) {
       config.headers['X-Init-Data'] = tg.initData;
     }
 
-    const botId = process.env.NEXT_PUBLIC_BOT_ID;
+    const botId = getBotId();
     const userId = getUserId();
 
+    // Всегда добавляем bot_id и user_id в params — бэкенд их требует
     config.params = {
       ...config.params,
-      bot_id: botId,
+      ...(botId ? { bot_id: botId } : {}),
       ...(userId ? { user_id: userId } : {}),
     };
   }
@@ -58,6 +78,7 @@ api.interceptors.response.use(
   (error) => {
     if (error.response?.status === 401) {
       localStorage.removeItem('auth_token');
+      localStorage.removeItem('session_data');
       sessionStorage.removeItem('tg_user');
       if (
         typeof window !== 'undefined' &&

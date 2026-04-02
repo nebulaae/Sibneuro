@@ -14,13 +14,23 @@ export const metadata: Metadata = {
   description: 'AI Platform',
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
     <html lang="ru" className="dark">
       <head>
         {/* Telegram WebApp SDK */}
-        <Script src="https://telegram.org/js/telegram-web-app.js" strategy="beforeInteractive" />
-        <Script src="https://mini-apps.max.ru/sdk.js" strategy="beforeInteractive" />
+        <Script
+          src="https://telegram.org/js/telegram-web-app.js"
+          strategy="beforeInteractive"
+        />
+        <Script
+          src="https://mini-apps.max.ru/sdk.js"
+          strategy="beforeInteractive"
+        />
       </head>
       <body className={GeistSans.className}>
         <AuthProvider>

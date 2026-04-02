@@ -7,7 +7,7 @@ import { queryKeys } from '@/lib/queryKeys';
 // По документации inputs принимает массивы строк, а не объекты
 export interface GenerateInputs {
   text?: string | null;
-  image?: string[];   // массив URL или base64
+  image?: string[]; // массив URL или base64
   video?: string[];
   audio?: string[];
 }

@@ -21,7 +21,15 @@ export const Chats = () => {
   const modelParam = searchParams.get('model');
   const roleParam = searchParams.get('role');
 
-  const { data, isLoading, isError, fetchNextPage, hasNextPage, isFetchingNextPage, refetch } = useChats();
+  const {
+    data,
+    isLoading,
+    isError,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    refetch,
+  } = useChats();
   const { data: models } = useAIModels();
   const { data: roles } = useRoles();
   const generate = useGenerateAI();
@@ -41,7 +49,9 @@ export const Chats = () => {
     const rolesReady = roleParam ? !!roles : true;
     if (!modelsReady || !rolesReady) return;
 
-    const role = roleParam ? roles?.find((r) => r.id === parseInt(roleParam)) : null;
+    const role = roleParam
+      ? roles?.find((r) => r.id === parseInt(roleParam))
+      : null;
 
     if (roleParam && !role) {
       toast.error('Ассистент не найден');
@@ -69,7 +79,8 @@ export const Chats = () => {
         (m) => m.categories?.includes('text') || m.mainCategory === 'text'
       );
       techName = textModel?.tech_name || null;
-      const def = textModel?.versions?.find((v) => v.default) || textModel?.versions?.[0];
+      const def =
+        textModel?.versions?.find((v) => v.default) || textModel?.versions?.[0];
       version = def?.label;
     }
 
@@ -108,7 +119,11 @@ export const Chats = () => {
   if (isError) {
     return (
       <div className="flex items-center justify-center min-h-screen p-6">
-        <ErrorComponent title="Ошибка" description="Не удалось загрузить чаты." onRetry={refetch} />
+        <ErrorComponent
+          title="Ошибка"
+          description="Не удалось загрузить чаты."
+          onRetry={refetch}
+        />
       </div>
     );
   }
@@ -127,7 +142,13 @@ export const Chats = () => {
       {/* Header */}
       <div className="sticky top-0 z-10 flex items-center justify-between px-4 py-3 bg-background/85 backdrop-blur-xl border-b border-border/50">
         <span className="text-xl font-bold tracking-tight">Чаты</span>
-        <Button variant="ghost" size="icon" className="size-9 rounded-full" onClick={() => router.push('/models')} title="Новый чат">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="size-9 rounded-full"
+          onClick={() => router.push('/models')}
+          title="Новый чат"
+        >
           <MessageSquarePlus className="size-5 text-muted-foreground" />
         </Button>
       </div>
@@ -149,7 +170,10 @@ export const Chats = () => {
               >
                 <Avatar className="size-12 rounded-xl border border-border/50 shrink-0">
                   <AvatarImage
-                    src={chat.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(chat.model || 'AI')}&background=1c1c1c&color=ffffff`}
+                    src={
+                      chat.avatar ||
+                      `https://ui-avatars.com/api/?name=${encodeURIComponent(chat.model || 'AI')}&background=1c1c1c&color=ffffff`
+                    }
                   />
                   <AvatarFallback className="rounded-xl bg-secondary text-xs font-bold">
                     {(chat.model || 'AI').slice(0, 2).toUpperCase()}
@@ -160,14 +184,24 @@ export const Chats = () => {
                   <div className="text-sm font-semibold text-foreground truncate">
                     {chat.title || chat.model || 'Диалог'}
                   </div>
-                  <div className="text-xs text-muted-foreground mt-0.5 truncate">{chat.version}</div>
+                  <div className="text-xs text-muted-foreground mt-0.5 truncate">
+                    {chat.version}
+                  </div>
                 </div>
 
                 <div className="flex flex-col items-end gap-1 shrink-0">
                   <span className="text-xs text-muted-foreground">
                     {timeAgo(chat.last_activity || chat.started_at)}
                   </span>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-muted-foreground/40">
+                  <svg
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    className="text-muted-foreground/40"
+                  >
                     <path d="M9 18l6-6-6-6" />
                   </svg>
                 </div>
@@ -176,10 +210,20 @@ export const Chats = () => {
 
             {hasNextPage && (
               <div className="p-4">
-                <Button variant="outline" className="w-full" onClick={() => fetchNextPage()} disabled={isFetchingNextPage}>
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => fetchNextPage()}
+                  disabled={isFetchingNextPage}
+                >
                   {isFetchingNextPage ? (
-                    <><Loader2 className="size-4 mr-2 animate-spin" />Загрузка...</>
-                  ) : 'Загрузить ещё'}
+                    <>
+                      <Loader2 className="size-4 mr-2 animate-spin" />
+                      Загрузка...
+                    </>
+                  ) : (
+                    'Загрузить ещё'
+                  )}
                 </Button>
               </div>
             )}
