@@ -177,7 +177,7 @@
   }
 
   .page-content {
-    @apply flex-1 min-w-0 overflow-x-hidden;
+    @apply mx-auto w-full max-w-7xl overflow-x-hidden;
   }
 
   .state-center {

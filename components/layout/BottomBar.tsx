@@ -15,6 +15,10 @@ const items = [
 
 export const BottomBar = () => {
   const pathname = usePathname();
+
+  const isChat = /^\/chats\/.+/.test(pathname);
+  if (isChat) return null;
+
   const [visible, setVisible] = useState(true);
 
   useEffect(() => {
@@ -60,7 +64,7 @@ export const BottomBar = () => {
         transition: 'transform 0.3s cubic-bezier(0.4,0,0.2,1)',
       }}
     >
-      <div className="flex items-center justify-evenly w-full max-w-xs rounded-3xl border border-border/40 py-1.5 px-1 backdrop-blur-2xl bg-background/85 shadow-2xl shadow-black/30">
+      <div className="flex items-center justify-evenly w-full max-w-[min(320px,calc(100vw-1rem))] rounded-3xl border border-border/40 py-1.5 px-1 backdrop-blur-2xl bg-background/85 shadow-2xl shadow-black/30">
         {items.map((item) => {
           const active = isActive(item.href);
           const isCreate = item.id === 3;
@@ -68,13 +72,12 @@ export const BottomBar = () => {
             <Link
               key={item.id}
               href={item.href}
-              className={`relative flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-2xl transition-all duration-200 active:scale-90 ${
-                isCreate
-                  ? 'bg-primary/90 text-primary-foreground shadow-lg shadow-primary/30 px-4'
+              className={`relative flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-2xl transition-all duration-200 active:scale-90 ${isCreate
+                  ? 'bg-primary/90 text-primary-foreground shadow-lg shadow-primary/30 px-3'
                   : active
                     ? 'text-foreground'
                     : 'text-muted-foreground hover:text-foreground'
-              }`}
+                }`}
             >
               <item.icon
                 className="size-5"

@@ -4,10 +4,9 @@ import axios from 'axios';
 import api from '@/lib/api';
 import { queryKeys } from '@/lib/queryKeys';
 
-// По документации inputs принимает массивы строк, а не объекты
 export interface GenerateInputs {
   text?: string | null;
-  image?: string[]; // массив URL или base64
+  image?: string[];
   video?: string[];
   audio?: string[];
 }
@@ -22,11 +21,6 @@ export interface GenerateAIParams {
   callback_webhook?: string;
 }
 
-// Нормализует медиа из ответа бэкенда в единый формат { url, type }
-// Бэкенд может вернуть:
-//   { type: "image", format: "url", input: "https://..." }   ← старый формат
-//   { type: "image", url: "https://..." }                    ← новый формат
-//   { type: "image", format: "url", input: "https://..." }   ← смешанный
 export function normalizeResultMedia(
   media: any[]
 ): Array<{ url: string; type: string }> {
@@ -58,7 +52,11 @@ export function convertMediaToInputs(
 
 const generateContent = async (params: GenerateAIParams) => {
   const { data } = await api.post('/api/generate', params);
-  if (!data.success) throw new Error(data.error);
+  if (!data.success) {
+    const err = new Error(data.error || 'Ошибка генерации') as any;
+    err.apiError = data.error;
+    throw err;
+  }
   return data;
 };
 
@@ -79,29 +77,28 @@ export const useGenerateAI = () => {
       }
     },
     onError: (error: any) => {
-      if (axios.isAxiosError(error)) {
-        const errorMsg =
-          error.response?.data?.error ||
-          error.response?.data?.message ||
-          'Ошибка генерации';
+      const apiError: string | undefined = error?.apiError;
+      const msg = apiError || (axios.isAxiosError(error)
+        ? error.response?.data?.error || error.response?.data?.message || 'Ошибка генерации'
+        : error.message || 'Неизвестная ошибка');
 
-        if (
-          errorMsg.toLowerCase().includes('insufficient tokens') ||
-          errorMsg.toLowerCase().includes('недостаточно токенов')
-        ) {
-          toast.error('Недостаточно токенов', {
-            description: 'Пополните баланс для продолжения.',
-          });
-        } else if (errorMsg.toLowerCase().includes('expired')) {
-          toast.error('Подписка истекла', {
-            description: 'Продлите Premium для использования этой модели.',
-          });
-        } else {
-          toast.error('Ошибка', { description: errorMsg });
-        }
-        return;
+      if (
+        msg.toLowerCase().includes('insufficient tokens') ||
+        msg.toLowerCase().includes('недостаточно токенов')
+      ) {
+        toast.error('Недостаточно токенов', {
+          description: 'Пополните баланс для продолжения.',
+        });
+      } else if (
+        msg.toLowerCase().includes('expired') ||
+        msg.toLowerCase().includes('premium')
+      ) {
+        toast.error('Подписка истекла', {
+          description: 'Продлите Premium для использования этой модели.',
+        });
+      } else {
+        toast.error('Ошибка', { description: msg });
       }
-      toast.error('Неизвестная ошибка', { description: error.message });
     },
   });
 };
