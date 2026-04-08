@@ -144,17 +144,28 @@ export const Chats = () => {
   }
 
   return (
-    <div className="flex flex-col h-full pb-24" style={{ paddingBottom: 'calc(80px + max(16px, env(safe-area-inset-bottom)))' }}>
+    <div
+      className="flex flex-col h-full pb-24"
+      style={{
+        paddingBottom: 'calc(80px + max(16px, env(safe-area-inset-bottom)))',
+      }}
+    >
       {/* Header */}
-      <div style={{
-        position: 'sticky', top: 0, zIndex: 40,
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: '14px 20px',
-        backdropFilter: 'var(--blur-chrome) var(--vibrancy)',
-        WebkitBackdropFilter: 'var(--blur-chrome) var(--vibrancy)',
-        borderBottom: 'var(--glass-border-thin)',
-        boxShadow: 'var(--glass-specular)',
-      }}>
+      <div
+        style={{
+          position: 'sticky',
+          top: 0,
+          zIndex: 40,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '14px 20px',
+          backdropFilter: 'var(--blur-chrome) var(--vibrancy)',
+          WebkitBackdropFilter: 'var(--blur-chrome) var(--vibrancy)',
+          borderBottom: 'var(--glass-border-thin)',
+          boxShadow: 'var(--glass-specular)',
+        }}
+      >
         <span className="text-xl font-bold tracking-tight">Чаты</span>
         <Button
           variant="ghost"

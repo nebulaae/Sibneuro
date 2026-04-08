@@ -83,28 +83,36 @@
   --foreground: oklch(0.145 0 0);
 
   /* SF Pro fallback stack */
-  --font-sf: -apple-system, "SF Pro Display", "SF Pro Text", "Helvetica Neue", Inter, system-ui, sans-serif;
+  --font-sf:
+    -apple-system, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', Inter,
+    system-ui, sans-serif;
 
   /* Glass Materials */
   --glass-ultra-thin: rgba(255, 255, 255, 0.08);
   --glass-thin: rgba(255, 255, 255, 0.14);
-  --glass-regular: rgba(255, 255, 255, 0.20);
+  --glass-regular: rgba(255, 255, 255, 0.2);
   --glass-thick: rgba(255, 255, 255, 0.28);
   --glass-chrome: rgba(255, 255, 255, 0.35);
 
   /* Glass Borders */
   --glass-border-thin: 1px solid rgba(255, 255, 255, 0.28);
   --glass-border-regular: 1px solid rgba(255, 255, 255, 0.38);
-  --glass-border-thick: 1px solid rgba(255, 255, 255, 0.50);
+  --glass-border-thick: 1px solid rgba(255, 255, 255, 0.5);
 
   /* Glass Shadows */
-  --glass-shadow-sm: 0 2px 12px rgba(0, 0, 0, 0.12), 0 1px 3px rgba(0, 0, 0, 0.08);
-  --glass-shadow-md: 0 8px 32px rgba(0, 0, 0, 0.20), 0 2px 8px rgba(0, 0, 0, 0.12);
-  --glass-shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.28), 0 4px 16px rgba(0, 0, 0, 0.16);
-  --glass-shadow-xl: 0 24px 64px rgba(0, 0, 0, 0.32), 0 8px 24px rgba(0, 0, 0, 0.20);
+  --glass-shadow-sm:
+    0 2px 12px rgba(0, 0, 0, 0.12), 0 1px 3px rgba(0, 0, 0, 0.08);
+  --glass-shadow-md:
+    0 8px 32px rgba(0, 0, 0, 0.2), 0 2px 8px rgba(0, 0, 0, 0.12);
+  --glass-shadow-lg:
+    0 16px 48px rgba(0, 0, 0, 0.28), 0 4px 16px rgba(0, 0, 0, 0.16);
+  --glass-shadow-xl:
+    0 24px 64px rgba(0, 0, 0, 0.32), 0 8px 24px rgba(0, 0, 0, 0.2);
 
   /* Specular Highlight (inner glow top edge) */
-  --glass-specular: inset 0 1px 0 rgba(255, 255, 255, 0.60), inset 0 -1px 0 rgba(255, 255, 255, 0.08);
+  --glass-specular:
+    inset 0 1px 0 rgba(255, 255, 255, 0.6),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.08);
 
   /* Blur values */
   --blur-ultra-thin: blur(20px);
@@ -132,12 +140,12 @@
 
   /* System Colors (light mode) */
   --sys-bg-primary: rgba(255, 255, 255, 0.75);
-  --sys-bg-secondary: rgba(245, 245, 247, 0.70);
+  --sys-bg-secondary: rgba(245, 245, 247, 0.7);
   --sys-bg-tertiary: rgba(240, 240, 245, 0.65);
 
   --sys-label: rgba(0, 0, 0, 0.85);
-  --sys-label-secondary: rgba(0, 0, 0, 0.50);
-  --sys-label-tertiary: rgba(0, 0, 0, 0.30);
+  --sys-label-secondary: rgba(0, 0, 0, 0.5);
+  --sys-label-tertiary: rgba(0, 0, 0, 0.3);
   --sys-label-quaternary: rgba(0, 0, 0, 0.18);
 
   --sys-separator: rgba(0, 0, 0, 0.12);
@@ -145,15 +153,15 @@
   --sys-fill-secondary: rgba(0, 0, 0, 0.08);
 
   /* Apple System Tints */
-  --tint-blue: #007AFF;
-  --tint-purple: #AF52DE;
-  --tint-pink: #FF2D55;
-  --tint-red: #FF3B30;
-  --tint-orange: #FF9500;
-  --tint-yellow: #FFCC00;
-  --tint-green: #34C759;
-  --tint-teal: #5AC8FA;
-  --tint-indigo: #5856D6;
+  --tint-blue: #007aff;
+  --tint-purple: #af52de;
+  --tint-pink: #ff2d55;
+  --tint-red: #ff3b30;
+  --tint-orange: #ff9500;
+  --tint-yellow: #ffcc00;
+  --tint-green: #34c759;
+  --tint-teal: #5ac8fa;
+  --tint-indigo: #5856d6;
 
   /* Page Background */
   --page-bg: #f2f2f7;
@@ -195,36 +203,41 @@
   --glass-ultra-thin: rgba(28, 28, 30, 0.55);
   --glass-thin: rgba(28, 28, 30, 0.65);
   --glass-regular: rgba(28, 28, 30, 0.72);
-  --glass-thick: rgba(28, 28, 30, 0.80);
+  --glass-thick: rgba(28, 28, 30, 0.8);
   --glass-chrome: rgba(18, 18, 20, 0.88);
 
   /* Dark borders */
-  --glass-border-thin: 1px solid rgba(255, 255, 255, 0.10);
+  --glass-border-thin: 1px solid rgba(255, 255, 255, 0.1);
   --glass-border-regular: 1px solid rgba(255, 255, 255, 0.14);
   --glass-border-thick: 1px solid rgba(255, 255, 255, 0.18);
 
   /* Dark specular */
-  --glass-specular: inset 0 1px 0 rgba(255, 255, 255, 0.14), inset 0 -1px 0 rgba(0, 0, 0, 0.25);
+  --glass-specular:
+    inset 0 1px 0 rgba(255, 255, 255, 0.14), inset 0 -1px 0 rgba(0, 0, 0, 0.25);
 
   /* Dark shadows */
-  --glass-shadow-sm: 0 2px 12px rgba(0, 0, 0, 0.40), 0 1px 3px rgba(0, 0, 0, 0.30);
-  --glass-shadow-md: 0 8px 32px rgba(0, 0, 0, 0.55), 0 2px 8px rgba(0, 0, 0, 0.40);
-  --glass-shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.65), 0 4px 16px rgba(0, 0, 0, 0.50);
-  --glass-shadow-xl: 0 24px 64px rgba(0, 0, 0, 0.75), 0 8px 24px rgba(0, 0, 0, 0.60);
+  --glass-shadow-sm:
+    0 2px 12px rgba(0, 0, 0, 0.4), 0 1px 3px rgba(0, 0, 0, 0.3);
+  --glass-shadow-md:
+    0 8px 32px rgba(0, 0, 0, 0.55), 0 2px 8px rgba(0, 0, 0, 0.4);
+  --glass-shadow-lg:
+    0 16px 48px rgba(0, 0, 0, 0.65), 0 4px 16px rgba(0, 0, 0, 0.5);
+  --glass-shadow-xl:
+    0 24px 64px rgba(0, 0, 0, 0.75), 0 8px 24px rgba(0, 0, 0, 0.6);
 
   /* Dark System Colors */
-  --sys-bg-primary: rgba(28, 28, 30, 0.80);
+  --sys-bg-primary: rgba(28, 28, 30, 0.8);
   --sys-bg-secondary: rgba(22, 22, 24, 0.75);
-  --sys-bg-tertiary: rgba(18, 18, 20, 0.70);
+  --sys-bg-tertiary: rgba(18, 18, 20, 0.7);
 
   --sys-label: rgba(255, 255, 255, 0.92);
   --sys-label-secondary: rgba(255, 255, 255, 0.55);
   --sys-label-tertiary: rgba(255, 255, 255, 0.35);
   --sys-label-quaternary: rgba(255, 255, 255, 0.18);
 
-  --sys-separator: rgba(255, 255, 255, 0.10);
+  --sys-separator: rgba(255, 255, 255, 0.1);
   --sys-fill: rgba(255, 255, 255, 0.06);
-  --sys-fill-secondary: rgba(255, 255, 255, 0.10);
+  --sys-fill-secondary: rgba(255, 255, 255, 0.1);
 
   --page-bg: #000000;
 }
@@ -368,7 +381,9 @@ body {
   backdrop-filter: var(--blur-chrome) var(--vibrancy);
   -webkit-backdrop-filter: var(--blur-chrome) var(--vibrancy);
   border-bottom: var(--glass-border-thin);
-  box-shadow: var(--glass-specular), 0 1px 0 var(--sys-separator);
+  box-shadow:
+    var(--glass-specular),
+    0 1px 0 var(--sys-separator);
   transition: all 0.3s var(--spring-slow);
 }
 
@@ -414,9 +429,7 @@ body {
   backdrop-filter: var(--blur-chrome) var(--vibrancy);
   -webkit-backdrop-filter: var(--blur-chrome) var(--vibrancy);
   border: var(--glass-border-thick);
-  box-shadow:
-    var(--glass-specular),
-    var(--glass-shadow-lg);
+  box-shadow: var(--glass-specular), var(--glass-shadow-lg);
   pointer-events: all;
 }
 
@@ -484,7 +497,7 @@ body {
    SIDEBAR (floatingMaterial)
    ============================================================ */
 
-[data-slot="sidebar-inner"] {
+[data-slot='sidebar-inner'] {
   background: var(--glass-thick) !important;
   backdrop-filter: var(--blur-thick) var(--vibrancy) !important;
   -webkit-backdrop-filter: var(--blur-thick) var(--vibrancy) !important;
@@ -493,20 +506,20 @@ body {
   box-shadow: var(--glass-specular), var(--glass-shadow-xl) !important;
 }
 
-[data-slot="sidebar-menu-button"] {
+[data-slot='sidebar-menu-button'] {
   border-radius: var(--radius-md) !important;
   transition: all 0.22s var(--spring-fast) !important;
   font-weight: 500;
 }
 
-[data-slot="sidebar-menu-button"]:hover {
+[data-slot='sidebar-menu-button']:hover {
   background: var(--glass-regular) !important;
   backdrop-filter: var(--blur-thin) !important;
   -webkit-backdrop-filter: var(--blur-thin) !important;
   box-shadow: var(--glass-specular), var(--glass-shadow-sm) !important;
 }
 
-[data-slot="sidebar-menu-button"][data-active="true"] {
+[data-slot='sidebar-menu-button'][data-active='true'] {
   background: var(--glass-thick) !important;
   backdrop-filter: var(--blur-regular) !important;
   -webkit-backdrop-filter: var(--blur-regular) !important;
@@ -612,7 +625,7 @@ body {
 }
 
 .glass-btn--primary:active {
-  background: rgba(0, 122, 255, 0.70);
+  background: rgba(0, 122, 255, 0.7);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.3),
     0 4px 12px rgba(0, 122, 255, 0.3);
@@ -670,7 +683,9 @@ body {
   -webkit-backdrop-filter: var(--blur-thin);
   border: var(--glass-border-thin);
   border-radius: var(--radius-md);
-  box-shadow: var(--glass-specular), inset 0 1px 3px rgba(0, 0, 0, 0.05);
+  box-shadow:
+    var(--glass-specular),
+    inset 0 1px 3px rgba(0, 0, 0, 0.05);
   outline: none;
   transition: all 0.22s var(--spring-fast);
 }
@@ -868,10 +883,12 @@ body {
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(90deg,
-      transparent 0%,
-      rgba(255, 255, 255, 0.15) 50%,
-      transparent 100%);
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.15) 50%,
+    transparent 100%
+  );
   animation: shimmer 1.6s infinite;
   background-size: 200% 100%;
 }
@@ -1008,7 +1025,6 @@ body {
 
 /* Pulse dots */
 @keyframes pulse-dot {
-
   0%,
   80%,
   100% {
@@ -1017,7 +1033,7 @@ body {
   }
 
   40% {
-    transform: scale(1.0);
+    transform: scale(1);
     opacity: 1;
   }
 }
@@ -1083,21 +1099,23 @@ body {
    ============================================================ */
 
 /* All buttons via Tailwind */
-button[class*="bg-primary"],
-a[class*="bg-primary"] {
-  background: rgba(0, 122, 255, 0.80) !important;
+button[class*='bg-primary'],
+a[class*='bg-primary'] {
+  background: rgba(0, 122, 255, 0.8) !important;
   backdrop-filter: var(--blur-regular) !important;
   -webkit-backdrop-filter: var(--blur-regular) !important;
   border: 1px solid rgba(0, 122, 255, 0.3) !important;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35), 0 6px 20px rgba(0, 122, 255, 0.3) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.35),
+    0 6px 20px rgba(0, 122, 255, 0.3) !important;
   border-radius: var(--radius-pill) !important;
   font-weight: 600 !important;
   transition: all 0.28s var(--spring-fast) !important;
   will-change: transform !important;
 }
 
-button[class*="bg-primary"]:active,
-a[class*="bg-primary"]:active {
+button[class*='bg-primary']:active,
+a[class*='bg-primary']:active {
   transform: scale(0.95) !important;
 }
 
@@ -1128,7 +1146,7 @@ a[class*="bg-primary"]:active {
 
 .dark .border-border\/50,
 .dark .border-border\/40 {
-  border-color: rgba(255, 255, 255, 0.10) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
 }
 
 /* Rounded elements */

@@ -78,9 +78,13 @@ export const useGenerateAI = () => {
     },
     onError: (error: any) => {
       const apiError: string | undefined = error?.apiError;
-      const msg = apiError || (axios.isAxiosError(error)
-        ? error.response?.data?.error || error.response?.data?.message || 'Ошибка генерации'
-        : error.message || 'Неизвестная ошибка');
+      const msg =
+        apiError ||
+        (axios.isAxiosError(error)
+          ? error.response?.data?.error ||
+            error.response?.data?.message ||
+            'Ошибка генерации'
+          : error.message || 'Неизвестная ошибка');
 
       if (
         msg.toLowerCase().includes('insufficient tokens') ||
