@@ -4,16 +4,15 @@ import { useEffect, useRef } from 'react';
 import { usePathname } from 'next/navigation';
 import api from '@/lib/api';
 import { useAuth } from '@/hooks/useAuth';
+import { useBot } from '@/app/providers/BotProvider';
 
-// TelegramProvider больше не делает авто-вход сам —
-// это теперь делает страница Login, чтобы не было двойных запросов.
-// Провайдер только разворачивает WebApp и держит SDK готовым.
 export const TelegramProvider = ({
   children,
 }: {
   children: React.ReactNode;
 }) => {
   const { user, login } = useAuth();
+  const { bot } = useBot(); // 👈 берём bot_id из провайдера
   const pathname = usePathname();
   const expanded = useRef(false);
 
@@ -29,28 +28,27 @@ export const TelegramProvider = ({
       expanded.current = true;
     }
 
-    // Если пользователь уже есть — ничего не делаем
     if (user) return;
-
-    // Если мы не на странице логина — пробуем тихий авто-вход
-    // (на случай если страница открылась не через /login, а напрямую)
     if (pathname?.includes('/login')) return;
 
     const token = localStorage.getItem('auth_token');
-    if (token) return; // токен есть — AuthProvider разберётся
+    if (token) return;
+
+    // Ждём пока bot_id загрузится
+    if (!bot?.bot_id) return;
 
     api
       .post('/api/auth/tma', {
         initData: tg.initData,
         platform: 'telegram',
-        bot_id: process.env.NEXT_PUBLIC_BOT_ID,
+        bot_id: bot.bot_id, // 👈 динамически
       })
       .then(({ data }) => {
         localStorage.setItem('auth_token', data.token);
         login(data.user);
       })
       .catch(() => {});
-  }, [pathname, user]);
+  }, [pathname, user, bot]); // 👈 зависимость от bot
 
   return <>{children}</>;
 };

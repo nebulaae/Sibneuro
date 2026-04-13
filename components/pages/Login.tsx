@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 import { LoginButton } from '@telegram-auth/react';
 import { useAuth } from '@/hooks/useAuth';
+import { useBot } from '@/app/providers/BotProvider';
 import { useEffect, useState, useRef } from 'react';
 import { Loader2, Mail, Eye, EyeOff, ArrowLeft } from 'lucide-react';
 import { useHaptic } from '@/hooks/useHaptic';
@@ -14,33 +15,17 @@ import { cn } from '@/lib/utils';
 type AppEnv = 'telegram' | 'max' | 'browser';
 type LoginView = 'main' | 'email-login' | 'email-register';
 
-// ─── MAX Bridge: корректное определение по window.WebApp (официальный SDK) ───
 function detectEnv(): AppEnv {
   if (typeof window === 'undefined') return 'browser';
   const tg = (window as any)?.Telegram?.WebApp;
   if (tg?.initData) return 'telegram';
-  // MAX Bridge SDK выставляет именно window.WebApp (не window.max.WebApp)
   const maxWA = (window as any)?.WebApp;
   if (maxWA?.initData) return 'max';
   return 'browser';
 }
 
-// ─── Хелпер получения MAX initData ───
 function getMaxInitData(): string | null {
-  const maxWA = (window as any)?.WebApp;
-  return maxWA?.initData || null;
-}
-
-async function authViaTMA(initData: string, platform: 'telegram' | 'max') {
-  const { data } = await api.post('/api/auth/tma', {
-    initData,
-    platform,
-    bot_id:
-      platform === 'max'
-        ? process.env.NEXT_PUBLIC_MAX_BOT_ID
-        : process.env.NEXT_PUBLIC_BOT_ID,
-  });
-  return data as { token: string; user: any };
+  return (window as any)?.WebApp?.initData || null;
 }
 
 function saveSessionAuth(
@@ -91,7 +76,6 @@ const glassBlue = cn(
 const spring =
   'transition-all duration-[280ms] [transition-timing-function:cubic-bezier(0.32,0.72,0,1)]';
 
-/* ── Glass Input ── */
 const GlassInput = ({
   type = 'text',
   placeholder,
@@ -134,7 +118,6 @@ const GlassInput = ({
   </div>
 );
 
-/* ── Page wrapper ── */
 const PageWrapper = ({ children }: { children: React.ReactNode }) => (
   <div className="relative flex flex-col items-center justify-center min-h-[100svh] overflow-x-hidden px-5 py-6">
     <div className="absolute inset-0 z-0 pointer-events-none">
@@ -151,10 +134,10 @@ const PageWrapper = ({ children }: { children: React.ReactNode }) => (
   </div>
 );
 
-/* ── Main ── */
 export const Login = () => {
   const router = useRouter();
-  const { user, login, isLoading } = useAuth();
+  const { user, login, isLoading: authLoading } = useAuth();
+  const { bot, isLoading: botLoading } = useBot(); // 👈
   const haptic = useHaptic();
   const [env, setEnv] = useState<AppEnv>('browser');
   const [autoLogging, setAutoLogging] = useState(false);
@@ -168,15 +151,16 @@ export const Login = () => {
   const [emailLoading, setEmailLoading] = useState(false);
   const [name, setName] = useState('');
 
+  const isLoading = authLoading || botLoading;
+
   useEffect(() => {
-    if (!isLoading && user) router.replace('/');
-  }, [user, isLoading, router]);
+    if (!authLoading && user) router.replace('/');
+  }, [user, authLoading, router]);
 
   useEffect(() => {
     setEnv(detectEnv());
   }, []);
 
-  // ─── MAX Bridge: ready() + expand() через window.WebApp ───
   useEffect(() => {
     if (env !== 'max') return;
     const maxWA = (window as any)?.WebApp;
@@ -184,34 +168,39 @@ export const Login = () => {
     try {
       maxWA.ready?.();
       maxWA.expand?.();
-    } catch { }
+    } catch {}
   }, [env]);
 
-  // ─── Авто-вход через TMA (Telegram или MAX) ───
+  // Авто-вход через TMA — ждём пока bot загрузится
   useEffect(() => {
-    if (env === 'browser' || attempted.current || isLoading || user) return;
+    if (env === 'browser' || attempted.current || authLoading || user) return;
+    if (!bot?.bot_id) return; // 👈 ждём bot_id
 
     const tg = (window as any)?.Telegram?.WebApp;
-    const initData =
-      env === 'telegram' ? tg?.initData : getMaxInitData();
-
+    const initData = env === 'telegram' ? tg?.initData : getMaxInitData();
     if (!initData) return;
+
     attempted.current = true;
     setAutoLogging(true);
 
-    // Telegram: ready + expand
     if (env === 'telegram') {
       try {
         tg.ready();
         tg.expand();
-      } catch { }
+      } catch {}
     }
 
-    authViaTMA(initData, env)
-      .then(({ token, user: u }) => {
-        localStorage.setItem('auth_token', token);
-        if (u?.id) localStorage.setItem('auth_user_id', String(u.id));
-        login(u);
+    api
+      .post('/api/auth/tma', {
+        initData,
+        platform: env,
+        bot_id: bot.bot_id, // 👈 динамически
+      })
+      .then(({ data }) => {
+        localStorage.setItem('auth_token', data.token);
+        if (data.user?.id)
+          localStorage.setItem('auth_user_id', String(data.user.id));
+        login(data.user);
         router.replace('/');
       })
       .catch(() => {
@@ -219,13 +208,13 @@ export const Login = () => {
         setAutoError(true);
         attempted.current = false;
       });
-  }, [env, isLoading, user]);
+  }, [env, authLoading, user, bot]); // 👈 зависимость от bot
 
   const handleTelegramAuth = async (tgUser: any) => {
     try {
       const { data } = await api.post('/api/auth/telegram', {
         ...tgUser,
-        bot_id: process.env.NEXT_PUBLIC_BOT_ID,
+        bot_id: bot?.bot_id, // 👈 динамически
       });
       localStorage.setItem('auth_token', data.token);
       if (data.user?.id)
@@ -240,7 +229,6 @@ export const Login = () => {
     }
   };
 
-  // ─── Email login: поддержка и JWT-токена, и session-based ответа ───
   const handleEmailLogin = async () => {
     if (!email.trim() || !password.trim()) {
       toast.error('Введите email и пароль');
@@ -248,14 +236,11 @@ export const Login = () => {
     }
     setEmailLoading(true);
     try {
-      // Прямой вызов /auth/login/email согласно доке (через API-прокси)
       const { data } = await api.post(
-        `/api/auth/login/email?bot_id=${process.env.NEXT_PUBLIC_BOT_ID}`,
+        `/api/auth/login/email?bot_id=${bot?.bot_id}`, // 👈 динамически
         { email: email.trim(), password }
       );
-
       if (data.token) {
-        // JWT-путь
         localStorage.setItem('auth_token', data.token);
         const u = data.user || { id: 0, first_name: email.split('@')[0] };
         if (u.id) localStorage.setItem('auth_user_id', String(u.id));
@@ -264,12 +249,12 @@ export const Login = () => {
         toast.success('Вход выполнен!');
         router.replace('/');
       } else if (data.session_hash && data.session_data) {
-        // Session-путь (email-аккаунты через /auth/session)
         const sd =
           typeof data.session_data === 'string'
             ? JSON.parse(data.session_data)
             : data.session_data;
-        const displayName = data.user?.name || data.user?.first_name || email.split('@')[0];
+        const displayName =
+          data.user?.name || data.user?.first_name || email.split('@')[0];
         saveSessionAuth(data.session_hash, sd, {
           id: sd.id,
           first_name: displayName,
@@ -279,9 +264,7 @@ export const Login = () => {
         haptic.success();
         toast.success('Вход выполнен!');
         router.replace('/');
-      } else {
-        throw new Error(data.error || 'Неверный ответ сервера');
-      }
+      } else throw new Error(data.error || 'Неверный ответ сервера');
     } catch (e: any) {
       haptic.error();
       const msg =
@@ -294,7 +277,6 @@ export const Login = () => {
     }
   };
 
-  // ─── Email register: POST /auth/create/email ───
   const handleEmailRegister = async () => {
     if (!email.trim() || !password.trim() || !name.trim()) {
       toast.error('Заполните все поля');
@@ -303,14 +285,12 @@ export const Login = () => {
     setEmailLoading(true);
     try {
       const { data } = await api.post(
-        `/api/auth/create/email?bot_id=${process.env.NEXT_PUBLIC_BOT_ID}`,
+        `/api/auth/create/email?bot_id=${bot?.bot_id}`, // 👈 динамически
         { email: email.trim(), password, name: name.trim(), lang: 'ru' }
       );
       if (!data.success) throw new Error(data.error || 'Ошибка регистрации');
-
       haptic.success();
       toast.success('Аккаунт создан!');
-
       if (data.session_hash && data.session_data) {
         const sd =
           typeof data.session_data === 'string'
@@ -339,7 +319,6 @@ export const Login = () => {
     }
   };
 
-  /* Loader */
   if (isLoading || autoLogging)
     return (
       <PageWrapper>
@@ -378,7 +357,6 @@ export const Login = () => {
     </button>
   );
 
-  /* Email Login */
   if (view === 'email-login')
     return (
       <PageWrapper>
@@ -425,7 +403,7 @@ export const Login = () => {
               emailLoading && 'opacity-60'
             )}
           >
-            {emailLoading && <Loader2 size={16} className="animate-spin" />}
+            {emailLoading && <Loader2 size={16} className="animate-spin" />}{' '}
             Войти
           </button>
         </div>
@@ -444,7 +422,6 @@ export const Login = () => {
       </PageWrapper>
     );
 
-  /* Email Register */
   if (view === 'email-register')
     return (
       <PageWrapper>
@@ -497,7 +474,7 @@ export const Login = () => {
               emailLoading && 'opacity-60'
             )}
           >
-            {emailLoading && <Loader2 size={16} className="animate-spin" />}
+            {emailLoading && <Loader2 size={16} className="animate-spin" />}{' '}
             Создать аккаунт
           </button>
         </div>
@@ -516,7 +493,6 @@ export const Login = () => {
       </PageWrapper>
     );
 
-  /* Main login */
   return (
     <PageWrapper>
       <div className="text-center mb-11">
@@ -539,7 +515,7 @@ export const Login = () => {
       </div>
 
       <div className="flex flex-col gap-3">
-        {/* Telegram */}
+        {/* Telegram — LoginButton использует bot_username без @ */}
         <div className={cn(glassCard, 'p-5')}>
           <div className="flex items-center gap-2 mb-3">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
@@ -552,18 +528,23 @@ export const Login = () => {
             </svg>
             <span className="text-[15px] font-semibold">Telegram</span>
           </div>
-          <div className="flex justify-center">
-            <LoginButton
-              botUsername={
-                process.env.NEXT_PUBLIC_TG_BOT_USERNAME || 'iamrdgbot'
-              }
-              onAuthCallback={handleTelegramAuth}
-              showAvatar={false}
-              buttonSize="large"
-              cornerRadius={12}
-              lang="ru"
-            />
-          </div>
+          {/* Рендерим LoginButton только когда bot_username готов */}
+          {bot?.bot_username ? (
+            <div className="flex justify-center">
+              <LoginButton
+                botUsername={bot.bot_username} // 👈 динамически, без @
+                onAuthCallback={handleTelegramAuth}
+                showAvatar={false}
+                buttonSize="large"
+                cornerRadius={12}
+                lang="ru"
+              />
+            </div>
+          ) : (
+            <div className="flex justify-center py-2">
+              <Loader2 size={20} className="animate-spin text-white/30" />
+            </div>
+          )}
         </div>
 
         {/* Max */}

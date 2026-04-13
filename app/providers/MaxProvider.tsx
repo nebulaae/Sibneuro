@@ -4,16 +4,15 @@ import { useEffect, useRef } from 'react';
 import { usePathname } from 'next/navigation';
 import api from '@/lib/api';
 import { useAuth } from '@/hooks/useAuth';
+import { useBot } from '@/app/providers/BotProvider';
 
-// MAX Bridge SDK выставляет window.WebApp (не window.max.WebApp и не window.MaxApp)
-// https://st.max.ru/js/max-web-app.js
 export const MaxProvider = ({ children }: { children: React.ReactNode }) => {
   const { user, login } = useAuth();
+  const { bot } = useBot(); // 👈
   const pathname = usePathname();
   const expanded = useRef(false);
 
   useEffect(() => {
-    // Правильное обращение к MAX Bridge SDK
     const maxWA = (window as any)?.WebApp;
     if (!maxWA?.initData) return;
 
@@ -21,7 +20,7 @@ export const MaxProvider = ({ children }: { children: React.ReactNode }) => {
       try {
         maxWA.ready?.();
         maxWA.expand?.();
-      } catch { }
+      } catch {}
       expanded.current = true;
     }
 
@@ -31,11 +30,13 @@ export const MaxProvider = ({ children }: { children: React.ReactNode }) => {
     const token = localStorage.getItem('auth_token');
     if (token) return;
 
+    if (!bot?.bot_id) return;
+
     api
       .post('/api/auth/tma', {
         initData: maxWA.initData,
         platform: 'max',
-        bot_id: process.env.NEXT_PUBLIC_MAX_BOT_ID,
+        bot_id: bot.bot_id, // 👈 динамически (max_username для MAX если нужен)
       })
       .then(({ data }) => {
         localStorage.setItem('auth_token', data.token);
@@ -43,8 +44,8 @@ export const MaxProvider = ({ children }: { children: React.ReactNode }) => {
           localStorage.setItem('auth_user_id', String(data.user.id));
         login(data.user);
       })
-      .catch(() => { });
-  }, [pathname, user]);
+      .catch(() => {});
+  }, [pathname, user, bot]);
 
   return <>{children}</>;
 };

@@ -1,12 +1,11 @@
 import axios from 'axios';
 
-// Эндпоинты, которые НЕ требуют авторизационных заголовков
-// (X-Init-Data, Authorization Bearer)
 const AUTH_FREE_PATHS = [
   '/api/auth/create/email',
   '/api/auth/login/email',
   '/api/auth/tma',
   '/api/auth/telegram',
+  '/api/bot', // 👈 не требует авторизации — это первый запрос при инициализации
 ];
 
 function isAuthFreePath(url?: string): boolean {
@@ -14,21 +13,14 @@ function isAuthFreePath(url?: string): boolean {
   return AUTH_FREE_PATHS.some((p) => url.includes(p));
 }
 
-// Приоритет источников user_id:
-// 1. auth_user_id (выставляется при любом логине — Telegram, MAX, email)
-// 2. JWT decode (fallback)
-// 3. tg_user в sessionStorage
 function getUserId(): number | null {
   if (typeof window === 'undefined') return null;
   try {
-    // 1. Универсальный user_id (выставляется AuthProvider при любом логине)
     const stored = localStorage.getItem('auth_user_id');
     if (stored) {
       const parsed = parseInt(stored, 10);
       if (!isNaN(parsed) && parsed > 0) return parsed;
     }
-
-    // 2. JWT Bearer token
     const token = localStorage.getItem('auth_token');
     if (token) {
       const parts = token.split('.');
@@ -39,8 +31,6 @@ function getUserId(): number | null {
         if (id) return id;
       }
     }
-
-    // 3. Telegram TMA sessionStorage
     const tgUser = sessionStorage.getItem('tg_user');
     if (tgUser) {
       const user = JSON.parse(tgUser);
@@ -50,15 +40,23 @@ function getUserId(): number | null {
   return null;
 }
 
-function getBotId(): string | undefined {
+// 👈 Читаем bot_id из localStorage (сохранено BotProvider)
+function getBotId(): number | string | undefined {
+  if (typeof window === 'undefined') return process.env.NEXT_PUBLIC_BOT_ID;
+  try {
+    const raw = localStorage.getItem('bot_info');
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed?.bot_id) return parsed.bot_id;
+    }
+  } catch {}
+  // Fallback на .env пока BotProvider не загрузился
   return process.env.NEXT_PUBLIC_BOT_ID;
 }
 
 const api = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
+  headers: { 'Content-Type': 'application/json' },
 });
 
 api.interceptors.request.use((config) => {
@@ -67,30 +65,18 @@ api.interceptors.request.use((config) => {
     const isFree = isAuthFreePath(url);
 
     if (!isFree) {
-      // Bearer токен
       const token = localStorage.getItem('auth_token');
-      if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
-      }
-
-      // X-Init-Data для TMA авторизации (если нет Bearer и не в auth-эндпоинте)
+      if (token) config.headers.Authorization = `Bearer ${token}`;
       const tg = (window as any)?.Telegram?.WebApp;
-      if (!token && tg?.initData) {
-        config.headers['X-Init-Data'] = tg.initData;
-      }
+      if (!token && tg?.initData) config.headers['X-Init-Data'] = tg.initData;
     }
 
-    const botId = getBotId();
+    const botId = getBotId(); // 👈 динамически из localStorage
     const userId = getUserId();
 
-    // Добавляем bot_id только если его ещё нет в params
     config.params = config.params || {};
-    if (botId && !config.params.bot_id) {
-      config.params.bot_id = botId;
-    }
-    if (userId && !config.params.user_id) {
-      config.params.user_id = userId;
-    }
+    if (botId && !config.params.bot_id) config.params.bot_id = botId;
+    if (userId && !config.params.user_id) config.params.user_id = userId;
   }
   return config;
 });
@@ -99,7 +85,6 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     const url = error.config?.url || '';
-    // Не редиректим на /login при ошибках на auth-эндпоинтах
     if (error.response?.status === 401 && !isAuthFreePath(url)) {
       localStorage.removeItem('auth_token');
       localStorage.removeItem('session_data');
