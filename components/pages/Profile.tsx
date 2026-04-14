@@ -5,10 +5,10 @@ import { useRequests } from '@/hooks/useRequests';
 import { useAuth } from '@/hooks/useAuth';
 import {
   useReferrals,
-  usePaymentLink,
   useApiTokens,
   useGenerateApiToken,
 } from '@/hooks/useApiExtras';
+import { useBot } from '@/app/providers/BotProvider';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   LogOut,
@@ -19,6 +19,7 @@ import {
   Key,
   Copy,
   Check,
+  Link as LinkIcon,
 } from 'lucide-react';
 import { timeAgo } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -61,9 +62,9 @@ const STATUS: Record<string, { icon: string; color: string; label: string }> = {
 export const Profile = () => {
   const haptic = useHaptic();
   const { user: tgUser, logout } = useAuth();
+  const { bot } = useBot();
   const { data: userData, isLoading: userLoading } = useUser();
   const { data: refData } = useReferrals();
-  const { data: paymentUrl } = usePaymentLink();
   const { data: apiTokens } = useApiTokens();
   const generateToken = useGenerateApiToken();
   const {
@@ -75,6 +76,7 @@ export const Profile = () => {
   } = useRequests();
 
   const [copiedToken, setCopiedToken] = useState<string | null>(null);
+  const [copiedRef, setCopiedRef] = useState(false);
 
   const tokens = userData?.user?.tokens ?? 0;
   const isPremium = userData?.user?.premium ?? false;
@@ -85,13 +87,33 @@ export const Profile = () => {
     ? `${tgUser.first_name} ${tgUser.last_name || ''}`.trim()
     : 'Пользователь';
   const username = tgUser?.username || '';
+  const userId = tgUser?.id;
 
+  // Реферальная ссылка: https://t.me/{bot_username}?start={user_id}
+  const referralLink =
+    bot?.bot_username && userId
+      ? `https://t.me/${bot.bot_username}?start=${userId}`
+      : null;
+
+  // Ссылка на оплату: https://5901187-df03400.twc1.net/webhook/ais/sub?id={bot_id}&user_id={user_id}&sign=sha256(bot_id;bot_token;user_id)
+  // sign считается на бекенде — просто запрашиваем /api/payment-link
   const handleTopUp = () => {
     haptic.medium();
-    paymentUrl
-      ? window.open(paymentUrl, '_blank')
-      : toast.error('Ссылка на оплату недоступна');
+    // Запрашиваем ссылку с бека (там уже правильно сформирован sign)
+    import('@/lib/api').then(({ default: api }) => {
+      api
+        .get('/api/payment-link')
+        .then(({ data }) => {
+          if (data.success && data.url) {
+            window.open(data.url, '_blank');
+          } else {
+            toast.error('Ссылка на оплату недоступна');
+          }
+        })
+        .catch(() => toast.error('Ошибка получения ссылки на оплату'));
+    });
   };
+
   const handleCopyToken = (token: string) => {
     haptic.success();
     navigator.clipboard.writeText(token).then(() => {
@@ -100,6 +122,17 @@ export const Profile = () => {
       setTimeout(() => setCopiedToken(null), 2000);
     });
   };
+
+  const handleCopyRef = () => {
+    if (!referralLink) return;
+    haptic.success();
+    navigator.clipboard.writeText(referralLink).then(() => {
+      setCopiedRef(true);
+      toast.success('Реферальная ссылка скопирована');
+      setTimeout(() => setCopiedRef(false), 2000);
+    });
+  };
+
   const handleGenerateToken = () => {
     haptic.light();
     generateToken.mutate(undefined, {
@@ -232,14 +265,48 @@ export const Profile = () => {
             <div className={cn('w-12 h-8 rounded-lg', glassThin)} />
           ) : (
             <span className="text-[30px] font-bold tracking-[-0.8px] leading-none">
-              {refStats?.total ?? 0}
+              {refStats?.total ?? refStats?.total_referrals ?? 0}
             </span>
           )}
           <span className="text-[11px] text-white/50">
-            {refStats?.earned ?? 0} 💎 заработано
+            {refStats?.earned ?? refStats?.total_tokens ?? 0} 💎 заработано
           </span>
         </div>
       </div>
+
+      {/* ── Referral Link ── */}
+      {referralLink && (
+        <div className="px-5 pb-5">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-[11px] font-bold tracking-[0.7px] uppercase text-white/50">
+              Реферальная ссылка
+            </span>
+            <LinkIcon size={12} className="text-white/30" />
+          </div>
+          <GlassCard className="flex items-center gap-2.5 px-[14px] py-[12px]">
+            <span className="flex-1 text-[12px] text-white/70 overflow-hidden text-ellipsis whitespace-nowrap font-mono">
+              {referralLink}
+            </span>
+            <button
+              onClick={handleCopyRef}
+              className={cn(
+                'flex-shrink-0 p-1.5 rounded-lg',
+                spring,
+                'active:scale-[0.88]'
+              )}
+            >
+              {copiedRef ? (
+                <Check size={14} className="text-[#34C759]" />
+              ) : (
+                <Copy size={14} className="text-white/50" />
+              )}
+            </button>
+          </GlassCard>
+          <p className="text-[11px] text-white/30 mt-2 px-1">
+            Поделитесь ссылкой — получайте бонусы за каждого приглашённого друга
+          </p>
+        </div>
+      )}
 
       <div className="h-px bg-white/[.08] mb-5" />
 
@@ -356,6 +423,7 @@ export const Profile = () => {
                     {st.icon}
                   </div>
                   <div className="flex-1 min-w-0">
+                    {/* Показываем model как есть — это читаемое название из API */}
                     <p className="text-[14px] font-semibold truncate">
                       {req.model}
                     </p>

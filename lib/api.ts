@@ -5,7 +5,7 @@ const AUTH_FREE_PATHS = [
   '/api/auth/login/email',
   '/api/auth/tma',
   '/api/auth/telegram',
-  '/api/bot', // 👈 не требует авторизации — это первый запрос при инициализации
+  '/api/bot',
 ];
 
 function isAuthFreePath(url?: string): boolean {
@@ -40,7 +40,6 @@ function getUserId(): number | null {
   return null;
 }
 
-// 👈 Читаем bot_id из localStorage (сохранено BotProvider)
 function getBotId(): number | string | undefined {
   if (typeof window === 'undefined') return process.env.NEXT_PUBLIC_BOT_ID;
   try {
@@ -50,7 +49,6 @@ function getBotId(): number | string | undefined {
       if (parsed?.bot_id) return parsed.bot_id;
     }
   } catch {}
-  // Fallback на .env пока BotProvider не загрузился
   return process.env.NEXT_PUBLIC_BOT_ID;
 }
 
@@ -71,7 +69,7 @@ api.interceptors.request.use((config) => {
       if (!token && tg?.initData) config.headers['X-Init-Data'] = tg.initData;
     }
 
-    const botId = getBotId(); // 👈 динамически из localStorage
+    const botId = getBotId();
     const userId = getUserId();
 
     config.params = config.params || {};

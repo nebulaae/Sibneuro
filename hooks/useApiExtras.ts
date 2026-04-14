@@ -2,7 +2,7 @@ import api from '@/lib/api';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '@/lib/queryKeys';
 
-// POST /api/upload — загрузка файла
+// POST /api/upload
 export const useUpload = () => {
   return useMutation({
     mutationFn: async (file: File) => {
@@ -17,15 +17,12 @@ export const useUpload = () => {
   });
 };
 
-// GET /chats/history — история диалога
-// Polling каждые 2 сек пока есть хоть одно processing сообщение
+// GET /api/history — бекенд роут /history, не /chats/history
 export const useChatHistory = (dialogueId: string | null) => {
-  const queryClient = useQueryClient();
-
   return useQuery({
     queryKey: queryKeys.chatHistory(dialogueId!),
     queryFn: async () => {
-      const { data } = await api.get('/api/chats/history', {
+      const { data } = await api.get('/api/history', {
         params: { dialogue_id: dialogueId },
       });
       return (data.messages || []) as any[];
@@ -40,7 +37,7 @@ export const useChatHistory = (dialogueId: string | null) => {
   });
 };
 
-// GET /chats/history — polling последнего сообщения для Generate страницы
+// GET /api/history — polling для Generate страницы
 export const useGenerationStatus = (
   dialogueId: string | null,
   enabled: boolean
@@ -50,7 +47,7 @@ export const useGenerationStatus = (
   return useQuery({
     queryKey: [...queryKeys.chatHistory(dialogueId!), 'status'],
     queryFn: async () => {
-      const { data } = await api.get('/api/chats/history', {
+      const { data } = await api.get('/api/history', {
         params: { dialogue_id: dialogueId },
       });
       const msgs: any[] = data.messages || [];
@@ -82,7 +79,7 @@ export const useUI = (blockName: string) => {
   });
 };
 
-// GET /api/dashboard — лента постов
+// GET /api/dashboard
 export const useDashboard = () => {
   return useQuery({
     queryKey: queryKeys.dashboard,
@@ -120,7 +117,7 @@ export const usePaymentLink = () => {
   });
 };
 
-// POST /posts/like — лайк/дизлайк поста
+// POST /api/posts/like
 export const useLikePost = () => {
   const queryClient = useQueryClient();
   return useMutation({
@@ -136,7 +133,7 @@ export const useLikePost = () => {
   });
 };
 
-// GET /posts — публичная лента постов
+// GET /api/posts
 export const usePosts = (params?: {
   userId?: number;
   limit?: number;
@@ -160,7 +157,7 @@ export const usePosts = (params?: {
   });
 };
 
-// POST /posts/publish — публикация поста
+// POST /api/posts/publish
 export const usePublishPost = () => {
   const queryClient = useQueryClient();
   return useMutation({
@@ -183,7 +180,7 @@ export const usePublishPost = () => {
   });
 };
 
-// POST /posts/comment — добавить комментарий
+// POST /api/posts/comment
 export const useAddComment = () => {
   return useMutation({
     mutationFn: async ({
@@ -197,13 +194,8 @@ export const useAddComment = () => {
     }) => {
       const { data } = await api.post(
         '/api/posts/comment',
-        {
-          message,
-          reply_id: replyId ?? null,
-        },
-        {
-          params: { post_id: postId },
-        }
+        { message, reply_id: replyId ?? null },
+        { params: { post_id: postId } }
       );
       if (!data.success) throw new Error(data.error);
       return data as { success: true; id: number };
@@ -211,7 +203,7 @@ export const useAddComment = () => {
   });
 };
 
-// POST /posts/comment/pin — закрепить комментарий
+// POST /api/posts/comment/pin
 export const usePinComment = () => {
   return useMutation({
     mutationFn: async ({
@@ -230,7 +222,7 @@ export const usePinComment = () => {
   });
 };
 
-// GET /posts/likes
+// GET /api/posts/likes
 export const usePostLikes = (postId: number | null) => {
   return useQuery({
     queryKey: queryKeys.postLikes(postId!),
@@ -244,7 +236,7 @@ export const usePostLikes = (postId: number | null) => {
   });
 };
 
-// POST /chats/avatar — изменить аватар чата
+// POST /api/chats/avatar
 export const useSetChatAvatar = () => {
   const queryClient = useQueryClient();
   return useMutation({
@@ -268,11 +260,7 @@ export const useSetChatAvatar = () => {
   });
 };
 
-// ============================================================
-// GET /tokens — список API-токенов пользователя
-// ФИКС Bug 5: если бэкенд вернул 404 (эндпоинт не существует),
-// возвращаем пустой массив вместо краша страницы профиля
-// ============================================================
+// GET /api/tokens
 export const useApiTokens = () => {
   return useQuery({
     queryKey: queryKeys.apiTokens,
@@ -282,7 +270,6 @@ export const useApiTokens = () => {
         if (!data.success) return [];
         return data.items || [];
       } catch (err: any) {
-        // 404 — эндпоинт не реализован на сервере, gracefully возвращаем []
         if (err?.response?.status === 404) return [];
         throw err;
       }
@@ -291,7 +278,7 @@ export const useApiTokens = () => {
   });
 };
 
-// POST /tokens/generate — создать новый API-токен
+// POST /api/tokens/generate
 export const useGenerateApiToken = () => {
   const queryClient = useQueryClient();
   return useMutation({
@@ -313,7 +300,7 @@ export const useGenerateApiToken = () => {
   });
 };
 
-// GET /auth/session — получить/обновить сессию
+// GET /api/auth/session
 export const useAuthSession = () => {
   return useMutation({
     mutationFn: async (params: {
@@ -340,7 +327,7 @@ export const useAuthSession = () => {
   });
 };
 
-// POST /auth/password — смена пароля
+// POST /api/auth/password
 export const useChangePassword = () => {
   return useMutation({
     mutationFn: async ({
@@ -360,7 +347,7 @@ export const useChangePassword = () => {
   });
 };
 
-// DELETE /auth/method — отвязать метод авторизации
+// DELETE /api/auth/method
 export const useRemoveAuthMethod = () => {
   return useMutation({
     mutationFn: async (method: 'telegram' | 'max' | 'email') => {
@@ -373,7 +360,7 @@ export const useRemoveAuthMethod = () => {
   });
 };
 
-// GET /auth/method/link — ссылка для привязки Telegram/MAX
+// GET /api/auth/method/link
 export const useAuthMethodLink = () => {
   return useMutation({
     mutationFn: async (method: 'telegram' | 'max') => {
@@ -386,7 +373,7 @@ export const useAuthMethodLink = () => {
   });
 };
 
-// POST /auth/method — привязать новый метод авторизации
+// POST /api/auth/method
 export const useAddAuthMethod = () => {
   return useMutation({
     mutationFn: async (
@@ -401,7 +388,7 @@ export const useAddAuthMethod = () => {
   });
 };
 
-// POST /auth/create/email — регистрация нового пользователя по email
+// POST /api/auth/create/email
 export const useCreateEmailAccount = () => {
   return useMutation({
     mutationFn: async (payload: {
@@ -414,10 +401,7 @@ export const useCreateEmailAccount = () => {
       const botId = process.env.NEXT_PUBLIC_BOT_ID;
       const { data } = await api.post(
         `/api/auth/create/email?bot_id=${botId}`,
-        {
-          ...payload,
-          lang: payload.lang ?? 'ru',
-        }
+        { ...payload, lang: payload.lang ?? 'ru' }
       );
       if (!data.success) throw new Error(data.error);
       return data as {
@@ -429,7 +413,7 @@ export const useCreateEmailAccount = () => {
   });
 };
 
-// POST /chats/title — изменить заголовок диалога
+// POST /api/chat/title — бекенд роут /chat/title (не /chats/title)
 export const useSetChatTitle = () => {
   const queryClient = useQueryClient();
   return useMutation({
@@ -440,7 +424,7 @@ export const useSetChatTitle = () => {
       dialogueId: string;
       title: string;
     }) => {
-      const { data } = await api.post('/api/chats/title', {
+      const { data } = await api.post('/api/chat/title', {
         dialogue_id: dialogueId,
         title,
       });

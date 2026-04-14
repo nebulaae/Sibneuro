@@ -49,6 +49,10 @@ interface Message {
   created_at?: string;
 }
 
+// Ключ для хранения модели диалога в sessionStorage
+const dialogueModelKey = (id: string) => `dialogue_model_${id}`;
+const dialogueTitleKey = (id: string) => `dialogue_title_${id}`;
+
 function extractDisplayMedia(
   inputs: Message['inputs']
 ): { url: string; type: string }[] {
@@ -108,6 +112,14 @@ export default function ChatPage({
     type: string;
   } | null>(null);
 
+  // Модель/версия/роль сохраняются из первого загруженного сообщения
+  const [cachedModel, setCachedModel] = useState<string | null>(null);
+  const [cachedVersion, setCachedVersion] = useState<string | null>(null);
+  const [cachedRoleId, setCachedRoleId] = useState<number | null | undefined>(
+    undefined
+  );
+  const [chatTitle, setChatTitle] = useState<string>('Диалог');
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -119,15 +131,73 @@ export default function ChatPage({
 
   const msgs = (messages as Message[]) || [];
   const isProcessing = msgs.some((m) => m.status === 'processing');
-  const firstMsg = msgs[0];
-  const currentModel = allModels?.find((m) => m.tech_name === firstMsg?.model);
+
+  // Извлекаем модель из первого сообщения и кешируем в state + sessionStorage
+  useEffect(() => {
+    if (msgs.length === 0) return;
+    const first = msgs[0];
+
+    if (first.model && !cachedModel) {
+      setCachedModel(first.model);
+      setCachedVersion(first.version || null);
+      setCachedRoleId(first.role_id ?? null);
+      try {
+        sessionStorage.setItem(
+          dialogueModelKey(params.dialogueId),
+          JSON.stringify({
+            model: first.model,
+            version: first.version,
+            role_id: first.role_id ?? null,
+          })
+        );
+      } catch {}
+    }
+  }, [msgs, cachedModel, params.dialogueId]);
+
+  // При маунте пробуем восстановить из sessionStorage (для случая когда история ещё грузится)
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem(dialogueModelKey(params.dialogueId));
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed.model) {
+          setCachedModel(parsed.model);
+          setCachedVersion(parsed.version || null);
+          setCachedRoleId(parsed.role_id ?? null);
+        }
+      }
+    } catch {}
+  }, [params.dialogueId]);
+
+  // Определяем данные текущей модели
+  const activeModel = cachedModel || msgs[0]?.model;
+  const activeVersion = cachedVersion || msgs[0]?.version;
+  const activeRoleId =
+    cachedRoleId !== undefined ? cachedRoleId : (msgs[0]?.role_id ?? null);
+
+  const currentModel = allModels?.find((m) => m.tech_name === activeModel);
   const currentVersion = currentModel?.versions?.find(
-    (v) => v.label === firstMsg?.version
+    (v) => v.label === activeVersion
   );
   const limitMedia = currentVersion?.limit_media ?? null;
   const canAttachMedia =
     currentModel?.input?.some((t) => ['image', 'video', 'audio'].includes(t)) ??
     true;
+
+  // Заголовок — название модели (не tech_name)
+  useEffect(() => {
+    if (msgs.length > 0 && activeModel) {
+      const modelName = currentModel?.model_name;
+      const versionLabel = activeVersion;
+      if (modelName && versionLabel) {
+        setChatTitle(`${modelName} · ${versionLabel}`);
+      } else if (modelName) {
+        setChatTitle(modelName);
+      } else if (versionLabel) {
+        setChatTitle(versionLabel);
+      }
+    }
+  }, [msgs.length, currentModel, activeVersion]);
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -197,11 +267,14 @@ export default function ChatPage({
       return;
     }
     if (!text.trim() && uploadedFiles.length === 0) return;
-    if (!firstMsg?.model) {
+
+    // Используем кешированную модель, даже если история ещё пустая
+    if (!activeModel) {
       haptic.error();
       toast.error('Не удалось определить модель диалога');
       return;
     }
+
     haptic.light();
     const oldFormatMedia = uploadedFiles.map((f) => ({
       type: f.type,
@@ -210,12 +283,13 @@ export default function ChatPage({
     }));
     const safeText = text.trim() || 'Опиши изображение';
     const inputs = convertMediaToInputs(safeText, oldFormatMedia);
+
     generate.mutate(
       {
-        tech_name: firstMsg.model,
-        version: firstMsg.version || undefined,
+        tech_name: activeModel,
+        version: activeVersion || undefined,
         dialogue_id: params.dialogueId,
-        role_id: firstMsg.role_id ?? null,
+        role_id: activeRoleId,
         inputs,
       },
       {
@@ -237,7 +311,6 @@ export default function ChatPage({
     }
   };
 
-  const chatTitle = firstMsg?.version || firstMsg?.model || 'Диалог';
   const acceptTypes = (() => {
     if (!currentModel) return 'image/*,.heic,video/*,audio/*';
     const a: string[] = [];
@@ -537,7 +610,6 @@ export default function ChatPage({
           'pb-[max(10px,env(safe-area-inset-bottom))]'
         )}
       >
-        {/* File previews */}
         {uploadedFiles.length > 0 && (
           <div className="flex gap-2 mb-2 flex-wrap">
             {uploadedFiles.map((f, i) => (
@@ -571,7 +643,6 @@ export default function ChatPage({
         )}
 
         <div className="flex items-end gap-2">
-          {/* Attach */}
           {canAttachMedia && (
             <>
               <button
@@ -601,7 +672,6 @@ export default function ChatPage({
             </>
           )}
 
-          {/* Textarea */}
           <textarea
             ref={textareaRef}
             value={text}
@@ -620,7 +690,6 @@ export default function ChatPage({
             )}
           />
 
-          {/* Send */}
           <button
             onClick={handleSend}
             disabled={

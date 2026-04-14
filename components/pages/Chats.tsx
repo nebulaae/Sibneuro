@@ -21,6 +21,21 @@ const glassThin = cn(
   'border border-white/[.14]'
 );
 
+// Сохраняем данные модели в sessionStorage при переходе в диалог
+function cacheDialogueModel(
+  dialogueId: string,
+  model: string,
+  version: string,
+  roleId: number | null | undefined
+) {
+  try {
+    sessionStorage.setItem(
+      `dialogue_model_${dialogueId}`,
+      JSON.stringify({ model, version, role_id: roleId ?? null })
+    );
+  } catch {}
+}
+
 export const Chats = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -92,8 +107,16 @@ export const Chats = () => {
       { tech_name: techName, version, inputs, role_id: role ? role.id : null },
       {
         onSuccess: (d) => {
-          if (d.dialogue_id) router.replace(`/chats/${d.dialogue_id}`);
-          else {
+          if (d.dialogue_id) {
+            // Кешируем модель перед переходом
+            cacheDialogueModel(
+              d.dialogue_id,
+              techName!,
+              version || '',
+              role?.id ?? null
+            );
+            router.replace(`/chats/${d.dialogue_id}`);
+          } else {
             toast.error('Не удалось получить ID диалога');
             startedRef.current = false;
             router.replace('/chats');
@@ -165,59 +188,77 @@ export const Chats = () => {
           </div>
         ) : (
           <>
-            {chats.map((chat) => (
-              <button
-                key={chat.dialogue_id}
-                onClick={() => {
-                  haptic.light();
-                  router.push(`/chats/${chat.dialogue_id}`);
-                }}
-                className={cn(
-                  'flex items-center gap-3 px-4 py-3.5 w-full text-left',
-                  'border-b border-white/6',
-                  'bg-transparent transition-colors duration-200',
-                  'hover:bg-white/4 active:bg-white/[.07]'
-                )}
-              >
-                <Avatar className="size-12 rounded-xl border border-white/[.14] shrink-0">
-                  <AvatarImage
-                    src={
-                      chat.avatar ||
-                      `https://ui-avatars.com/api/?name=${encodeURIComponent(chat.model || 'AI')}&background=1c1c1c&color=ffffff`
+            {chats.map((chat) => {
+              // Определяем читаемое название чата
+              const displayName = chat.title || chat.model || 'Диалог';
+              // Подпись: версия, но не tech_name
+              const subtitle = chat.version || '';
+
+              return (
+                <button
+                  key={chat.dialogue_id}
+                  onClick={() => {
+                    haptic.light();
+                    // Кешируем модель при клике из списка
+                    if (chat.model) {
+                      cacheDialogueModel(
+                        chat.dialogue_id,
+                        chat.model,
+                        chat.version,
+                        chat.role_id
+                      );
                     }
-                  />
-                  <AvatarFallback className="rounded-xl bg-white/10 text-xs font-bold">
-                    {(chat.model || 'AI').slice(0, 2).toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
+                    router.push(`/chats/${chat.dialogue_id}`);
+                  }}
+                  className={cn(
+                    'flex items-center gap-3 px-4 py-3.5 w-full text-left',
+                    'border-b border-white/6',
+                    'bg-transparent transition-colors duration-200',
+                    'hover:bg-white/4 active:bg-white/[.07]'
+                  )}
+                >
+                  <Avatar className="size-12 rounded-xl border border-white/[.14] shrink-0">
+                    <AvatarImage
+                      src={
+                        chat.avatar ||
+                        `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=1c1c1c&color=ffffff`
+                      }
+                    />
+                    <AvatarFallback className="rounded-xl bg-white/10 text-xs font-bold">
+                      {displayName.slice(0, 2).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
 
-                <div className="flex-1 min-w-0">
-                  <div className="text-[14px] font-semibold text-white truncate">
-                    {chat.title || chat.model || 'Диалог'}
+                  <div className="flex-1 min-w-0">
+                    <div className="text-[14px] font-semibold text-white truncate">
+                      {displayName}
+                    </div>
+                    {subtitle && (
+                      <div className="text-[12px] text-white/50 mt-0.5 truncate">
+                        {subtitle}
+                      </div>
+                    )}
                   </div>
-                  <div className="text-[12px] text-white/50 mt-0.5 truncate">
-                    {chat.version}
-                  </div>
-                </div>
 
-                <div className="flex flex-col items-end gap-1 shrink-0">
-                  <span className="text-[12px] text-white/40">
-                    {timeAgo(chat.last_activity || chat.started_at)}
-                  </span>
-                  <svg
-                    width="14"
-                    height="14"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    className="text-white/25"
-                  >
-                    <path d="M9 18l6-6-6-6" />
-                  </svg>
-                </div>
-              </button>
-            ))}
+                  <div className="flex flex-col items-end gap-1 shrink-0">
+                    <span className="text-[12px] text-white/40">
+                      {timeAgo(chat.last_activity || chat.started_at)}
+                    </span>
+                    <svg
+                      width="14"
+                      height="14"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      className="text-white/25"
+                    >
+                      <path d="M9 18l6-6-6-6" />
+                    </svg>
+                  </div>
+                </button>
+              );
+            })}
 
             {hasNextPage && (
               <div className="p-4">

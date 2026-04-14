@@ -78,8 +78,8 @@ export const BottomBar = () => {
       {/* Pill */}
       <div
         className={cn(
-          'flex items-center w-full max-w-100',
-          'px-2 py-1.75 rounded-full',
+          'flex items-center w-full max-w-100 gap-0.5',
+          'px-1 py-1.5 rounded-full',
           // Liquid Glass chrome
           'bg-black/72 backdrop-blur-3xl backdrop-saturate-200',
           'border border-white/20',
@@ -100,7 +100,7 @@ export const BottomBar = () => {
                 else haptic.selection();
               }}
               className={cn(
-                'flex-1 flex flex-col items-center gap-0.75 py-1.25 px-0.5',
+                'flex-1 flex flex-col items-center gap-1',
                 'rounded-full select-none no-underline',
                 '-webkit-tap-highlight-color-transparent',
                 'transition-all duration-280 ease-[cubic-bezier(0.32,0.72,0,1)]',
@@ -111,7 +111,7 @@ export const BottomBar = () => {
               {/* Icon bubble */}
               <div
                 className={cn(
-                  'w-full min-w-9 h-7 flex items-center justify-center rounded-full',
+                  'w-full h-full py-1 flex flex-col items-center justify-center rounded-full',
                   'transition-all duration-280 ease-[cubic-bezier(0.32,0.72,0,1)]',
                   isCreate
                     ? cn(
@@ -130,12 +130,11 @@ export const BottomBar = () => {
                 )}
               >
                 <Icon size={16} strokeWidth={active || isCreate ? 2.2 : 1.6} />
+                {/* Label */}
+                <span className="text-[10px] font-thin tracking-[0.1px] leading-none whitespace-nowrap">
+                  {item.label}
+                </span>
               </div>
-
-              {/* Label */}
-              <span className="text-[9.5px] font-semibold tracking-[0.1px] leading-none whitespace-nowrap">
-                {item.label}
-              </span>
             </Link>
           );
         })}
