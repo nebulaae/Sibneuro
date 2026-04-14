@@ -89,20 +89,26 @@ export const Profile = () => {
   const username = tgUser?.username || '';
   const userId = tgUser?.id;
 
-  // Реферальная ссылка: https://t.me/{bot_username}?start={user_id}
   const referralLink =
     bot?.bot_username && userId
       ? `https://t.me/${bot.bot_username}?start=${userId}`
       : null;
 
-  // Ссылка на оплату: https://5901187-df03400.twc1.net/webhook/ais/sub?id={bot_id}&user_id={user_id}&sign=sha256(bot_id;bot_token;user_id)
-  // sign считается на бекенде — просто запрашиваем /api/payment-link
   const handleTopUp = () => {
     haptic.medium();
-    // Запрашиваем ссылку с бека (там уже правильно сформирован sign)
+
+    if (!bot?.bot_id) {
+      toast.error('Бот не определён');
+      return;
+    }
+
     import('@/lib/api').then(({ default: api }) => {
       api
-        .get('/api/payment-link')
+        .get('/api/payment-link', {
+          params: {
+            bot_id: bot.bot_id,
+          },
+        })
         .then(({ data }) => {
           if (data.success && data.url) {
             window.open(data.url, '_blank');
