@@ -150,7 +150,7 @@ export const Chats = () => {
     );
 
   return (
-    <div className="flex flex-col h-full pb-[calc(80px+max(16px,env(safe-area-inset-bottom)))] max-w-7xl mx-auto">
+    <div className="flex flex-col h-full pb-[calc(80px+max(16px,env(safe-area-inset-bottom)))] w-full max-w-7xl mx-auto">
       {/* Header */}
       <div
         className={cn(
@@ -230,14 +230,14 @@ export const Chats = () => {
                   </Avatar>
 
                   <div className="flex-1 min-w-0">
-                    <div className="text-[14px] font-semibold text-white truncate">
-                      {displayName}
+                    <div className="text-base font-semibold text-white truncate">
+                      {subtitle}
                     </div>
-                    {subtitle && (
+                    {/* {subtitle && (
                       <div className="text-[12px] text-white/50 mt-0.5 truncate">
-                        {subtitle}
+                        
                       </div>
-                    )}
+                    )} */}
                   </div>
 
                   <div className="flex flex-col items-end gap-1 shrink-0">

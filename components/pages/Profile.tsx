@@ -154,7 +154,7 @@ export const Profile = () => {
   };
 
   return (
-    <div className="pb-[calc(80px+max(16px,env(safe-area-inset-bottom)))] max-w-[1280px] mx-auto">
+    <div className="pb-[calc(80px+max(16px,env(safe-area-inset-bottom)))] max-w-7xl mx-auto">
       {/* ── Nav Bar ── */}
       <header
         className={cn(

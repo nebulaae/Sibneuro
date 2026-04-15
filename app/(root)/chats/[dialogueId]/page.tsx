@@ -111,13 +111,30 @@ export default function ChatPage({
     url: string;
     type: string;
   } | null>(null);
+  const [cachedModel, setCachedModel] = useState<string | null>(() => {
+    try {
+      const raw = sessionStorage.getItem(`dialogue_model_${params.dialogueId}`);
+      if (raw) return JSON.parse(raw)?.model ?? null;
+    } catch { }
+    return null;
+  });
 
-  // Модель/версия/роль сохраняются из первого загруженного сообщения
-  const [cachedModel, setCachedModel] = useState<string | null>(null);
-  const [cachedVersion, setCachedVersion] = useState<string | null>(null);
-  const [cachedRoleId, setCachedRoleId] = useState<number | null | undefined>(
-    undefined
-  );
+  const [cachedVersion, setCachedVersion] = useState<string | null>(() => {
+    try {
+      const raw = sessionStorage.getItem(`dialogue_model_${params.dialogueId}`);
+      if (raw) return JSON.parse(raw)?.version ?? null;
+    } catch { }
+    return null;
+  });
+
+  const [cachedRoleId, setCachedRoleId] = useState<number | null | undefined>(() => {
+    try {
+      const raw = sessionStorage.getItem(`dialogue_model_${params.dialogueId}`);
+      if (raw) return JSON.parse(raw)?.role_id ?? null;
+    } catch { }
+    return undefined;
+  });
+
   const [chatTitle, setChatTitle] = useState<string>('Диалог');
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -150,24 +167,9 @@ export default function ChatPage({
             role_id: first.role_id ?? null,
           })
         );
-      } catch {}
+      } catch { }
     }
   }, [msgs, cachedModel, params.dialogueId]);
-
-  // При маунте пробуем восстановить из sessionStorage (для случая когда история ещё грузится)
-  useEffect(() => {
-    try {
-      const raw = sessionStorage.getItem(dialogueModelKey(params.dialogueId));
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (parsed.model) {
-          setCachedModel(parsed.model);
-          setCachedVersion(parsed.version || null);
-          setCachedRoleId(parsed.role_id ?? null);
-        }
-      }
-    } catch {}
-  }, [params.dialogueId]);
 
   // Определяем данные текущей модели
   const activeModel = cachedModel || msgs[0]?.model;
@@ -322,7 +324,7 @@ export default function ChatPage({
 
   return (
     <div
-      className="flex flex-col h-svh"
+      className="flex flex-col h-svh w-full max-w-7xl mx-auto"
       style={{ background: 'var(--page-bg)' }}
     >
       {/* ── Header ── */}
@@ -705,7 +707,7 @@ export default function ChatPage({
               (isProcessing ||
                 generate.isPending ||
                 (!text.trim() && uploadedFiles.length === 0)) &&
-                'opacity-40'
+              'opacity-40'
             )}
           >
             {generate.isPending ? (

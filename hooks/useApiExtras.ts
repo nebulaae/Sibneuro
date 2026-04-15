@@ -37,35 +37,20 @@ export const useChatHistory = (dialogueId: string | null) => {
   });
 };
 
-// GET /api/history — polling для Generate страницы
-export const useGenerationStatus = (
-  dialogueId: string | null,
-  enabled: boolean
-) => {
-  const queryClient = useQueryClient();
-
+export const useGenerationStatus = (dialogueId: string | null, enabled: boolean) => {
   return useQuery({
-    queryKey: [...queryKeys.chatHistory(dialogueId!), 'status'],
+    queryKey: ['gen-status', dialogueId],
     queryFn: async () => {
       const { data } = await api.get('/api/history', {
         params: { dialogue_id: dialogueId },
       });
-      const msgs: any[] = data.messages || [];
-      return msgs[msgs.length - 1] || null;
+      const msgs = data.messages || data || [];
+      return Array.isArray(msgs) ? msgs[msgs.length - 1] : null;
     },
     enabled: !!dialogueId && enabled,
-    refetchInterval: (query) => {
-      const last = query.state.data;
-      if (!last || last.status === 'processing') return 2000;
-      queryClient.invalidateQueries({ queryKey: queryKeys.user });
-      queryClient.invalidateQueries({ queryKey: queryKeys.requests });
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.chatHistory(dialogueId!),
-      });
-      return false;
-    },
+    refetchInterval: 2000,
   });
-};
+}
 
 // GET /api/ui/:blockName
 export const useUI = (blockName: string) => {
