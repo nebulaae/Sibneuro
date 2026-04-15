@@ -150,8 +150,8 @@ export default function ChatPage({
 
   const msgs = (messages as Message[]) || [];
   const isProcessing = msgs.some((m) => m.status === 'processing');
-
   const flatChats = chatsPages?.pages?.flat() || [];
+
   const currentChat = flatChats.find(
     (c) => c.dialogue_id === params.dialogueId
   );
@@ -177,18 +177,10 @@ export default function ChatPage({
     }
   }, [msgs.length]);
 
-  const activeModel =
-    cachedModel ||
-    msgs[0]?.model ||
-    currentChat?.model;
-
-  const activeVersion =
-    cachedVersion ||
-    msgs[0]?.version ||
-    currentChat?.version;
-  const activeRoleId =
-    cachedRoleId !== undefined ? cachedRoleId : (msgs[0]?.role_id ?? null);
-
+  const activeModel = currentChat?.model;
+  const activeVersion = currentChat?.version;
+  const activeRoleId = currentChat?.role_id ?? null;
+  
   const currentModel = allModels?.find((m) => m.tech_name === activeModel);
   const currentVersion = currentModel?.versions?.find(
     (v) => v.label === activeVersion
