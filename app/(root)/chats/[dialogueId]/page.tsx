@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation';
 import { useChatHistory, useUpload } from '@/hooks/useApiExtras';
 import {
   useGenerateAI,
@@ -86,9 +86,13 @@ function writeStoredModel(
  * Дополнительная защита: если в истории есть сообщения, но find по model не сработал — берём первое сообщение (на случай расхождений в структуре бэкенда)
  */
 function getDialogueModel(
-  dialogueId: string,
+  dialogueId: string | null,
   messages: Message[]
 ): { model: string | null; version: string | null; roleId: number | null } {
+  if (!dialogueId) {
+    return { model: null, version: null, roleId: null };
+  }
+
   // Источник 1: история
   let fromHistory = messages.find((m) => m.model);
 
@@ -169,14 +173,11 @@ const glassBlueBtn = cn(
 const spring =
   'transition-all duration-[280ms] [transition-timing-function:cubic-bezier(0.32,0.72,0,1)]';
 
-export default function ChatPage({
-  params,
-}: {
-  params: { dialogueId: string };
-}) {
+export default function ChatPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const [dialogueId, setDialogueId] = useState<string | null>(null);
+  const params = useParams();
+  const dialogueId = params?.dialogueId as string | undefined;
   const haptic = useHaptic();
   const [text, setText] = useState('');
   const [uploadedFiles, setUploadedFiles] = useState<
@@ -190,13 +191,6 @@ export default function ChatPage({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    if (params?.dialogueId) {
-      setDialogueId(params.dialogueId);
-    }
-  }, [params.dialogueId]);
-
 
   console.log("DEBUG DIALOG ID", dialogueId);
   if (!dialogueId) return [];
@@ -213,7 +207,7 @@ export default function ChatPage({
     model: activeModel,
     version: activeVersion,
     roleId: activeRoleId,
-  } = getDialogueModel(params.dialogueId, msgs);
+  } = getDialogueModel(dialogueId, msgs);
 
   const isProcessing = msgs.some(
     (m) => m.status === 'processing' || m.status === 'pending'
@@ -319,7 +313,7 @@ export default function ChatPage({
       model: techName,
       version,
       roleId,
-    } = getDialogueModel(params.dialogueId, msgs);
+    } = getDialogueModel(dialogueId, msgs);
 
     if (!techName) {
       haptic.error();
@@ -327,7 +321,7 @@ export default function ChatPage({
         dialogueId: params.dialogueId,
         msgsCount: msgs.length,
         firstMsg: msgs[0],
-        sessionStorage: readStoredModel(params.dialogueId),
+        sessionStorage: readStoredModel(dialogueId),
       });
       toast.error('Загрузка диалога... Попробуйте ещё раз');
       return;
@@ -350,14 +344,14 @@ export default function ChatPage({
       {
         tech_name: techName,
         version: version || undefined,
-        dialogue_id: params.dialogueId,
+        dialogue_id: dialogueId,
         role_id: roleId,
         inputs,
       },
       {
         onSuccess: () => {
           queryClient.invalidateQueries({
-            queryKey: queryKeys.chatHistory(params.dialogueId),
+            queryKey: queryKeys.chatHistory(dialogueId),
             refetchType: 'all',
           });
         },
