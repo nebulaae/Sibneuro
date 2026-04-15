@@ -176,6 +176,7 @@ export default function ChatPage({
 }) {
   const router = useRouter();
   const queryClient = useQueryClient();
+  const [dialogueId, setDialogueId] = useState<string | null>(null);
   const haptic = useHaptic();
   const [text, setText] = useState('');
   const [uploadedFiles, setUploadedFiles] = useState<
@@ -190,7 +191,17 @@ export default function ChatPage({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const { data: messages = [], isLoading: isHistoryLoading } = useChatHistory(params.dialogueId);
+  useEffect(() => {
+    if (params?.dialogueId) {
+      setDialogueId(params.dialogueId);
+    }
+  }, [params.dialogueId]);
+
+
+  console.log("DEBUG DIALOG ID", dialogueId);
+  if (!dialogueId) return [];
+
+  const { data: messages = [], isLoading: isHistoryLoading } = useChatHistory(dialogueId);
   const { data: allModels } = useAIModels();
   const generate = useGenerateAI();
   const upload = useUpload();

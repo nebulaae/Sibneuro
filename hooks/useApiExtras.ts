@@ -40,9 +40,6 @@ export const useChatHistory = (dialogueId: string | null) => {
 
       return Array.isArray(messages) ? messages : [];
     },
-
-    enabled: !!dialogueId,
-
     staleTime: 0,
     refetchOnMount: 'always',
     refetchOnReconnect: true,
