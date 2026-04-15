@@ -29,7 +29,8 @@ function useGenerationStatus(dialogueId: string | null, enabled: boolean) {
   return useQuery({
     queryKey: ['gen-status', dialogueId],
     queryFn: async () => {
-      const { data } = await api.get('/api/history', {   // ← ФИКС ПУТИ
+      const { data } = await api.get('/api/history', {
+        // ← ФИКС ПУТИ
         params: { dialogue_id: dialogueId },
       });
       const msgs = data.messages || data || [];
@@ -272,7 +273,7 @@ export const Generate = () => {
                   role_id: null,
                 })
               );
-            } catch { }
+            } catch {}
           }
 
           if (data.status === 'processing') {
@@ -311,7 +312,7 @@ export const Generate = () => {
       setPendingId(null);
     }
   }, [lastMessage, isWaiting, pendingId]);
-  
+
   /* ── Waiting screen ── */
   if (isWaiting && pendingId) {
     const status = lastMessage?.status;
@@ -508,7 +509,7 @@ export const Generate = () => {
             {/* Advanced params */}
             {params &&
               params.filter((p: any) => p.name !== 'aspect_ratio').length >
-              0 && (
+                0 && (
                 <div>
                   <button
                     onClick={() => {
@@ -667,7 +668,7 @@ export const Generate = () => {
                 ((!prompt.trim() && media.length === 0) ||
                   generate.isPending ||
                   upload.isPending) &&
-                'opacity-45'
+                  'opacity-45'
               )}
             >
               {generate.isPending || upload.isPending ? (
@@ -716,54 +717,54 @@ export const Generate = () => {
         <div className="max-w-[760px] mx-auto">
           {isLoading
             ? Array.from({ length: 6 }).map((_, i) => (
-              <div
-                key={i}
-                className="flex items-center gap-[14px] px-5 py-[13px] border-b border-white/[.06]"
-              >
                 <div
-                  className={cn(
-                    'w-[46px] h-[46px] rounded-[14px] flex-shrink-0 animate-[pulse-opacity_1.6s_ease-in-out_infinite]',
-                    glassThin
-                  )}
-                />
-                <div className="flex-1">
+                  key={i}
+                  className="flex items-center gap-[14px] px-5 py-[13px] border-b border-white/[.06]"
+                >
                   <div
                     className={cn(
-                      'w-[40%] h-[13px] rounded-md mb-1.5 animate-[pulse-opacity_1.6s_ease-in-out_0.1s_infinite]',
+                      'w-[46px] h-[46px] rounded-[14px] flex-shrink-0 animate-[pulse-opacity_1.6s_ease-in-out_infinite]',
                       glassThin
                     )}
                   />
-                  <div
-                    className={cn(
-                      'w-[25%] h-[10px] rounded-md animate-[pulse-opacity_1.6s_ease-in-out_0.2s_infinite]',
-                      glassThin
-                    )}
-                  />
-                </div>
-              </div>
-            ))
-            : catOrder.map((cat) => {
-              const catModels = models.filter(
-                (m) => m.mainCategory === cat || m.categories?.includes(cat)
-              );
-              if (!catModels.length) return null;
-              return (
-                <div key={cat}>
-                  <div className="px-5 py-[10px] bg-white/[.04] backdrop-blur-xl border-b border-white/[.06]">
-                    <p className="text-[11px] font-bold tracking-[0.6px] uppercase text-white/50">
-                      {catLabel[cat]}
-                    </p>
-                  </div>
-                  {catModels.map((m) => (
-                    <ModelRow
-                      key={m.tech_name}
-                      m={m}
-                      onClick={() => setSelectedTech(m.tech_name)}
+                  <div className="flex-1">
+                    <div
+                      className={cn(
+                        'w-[40%] h-[13px] rounded-md mb-1.5 animate-[pulse-opacity_1.6s_ease-in-out_0.1s_infinite]',
+                        glassThin
+                      )}
                     />
-                  ))}
+                    <div
+                      className={cn(
+                        'w-[25%] h-[10px] rounded-md animate-[pulse-opacity_1.6s_ease-in-out_0.2s_infinite]',
+                        glassThin
+                      )}
+                    />
+                  </div>
                 </div>
-              );
-            })}
+              ))
+            : catOrder.map((cat) => {
+                const catModels = models.filter(
+                  (m) => m.mainCategory === cat || m.categories?.includes(cat)
+                );
+                if (!catModels.length) return null;
+                return (
+                  <div key={cat}>
+                    <div className="px-5 py-[10px] bg-white/[.04] backdrop-blur-xl border-b border-white/[.06]">
+                      <p className="text-[11px] font-bold tracking-[0.6px] uppercase text-white/50">
+                        {catLabel[cat]}
+                      </p>
+                    </div>
+                    {catModels.map((m) => (
+                      <ModelRow
+                        key={m.tech_name}
+                        m={m}
+                        onClick={() => setSelectedTech(m.tech_name)}
+                      />
+                    ))}
+                  </div>
+                );
+              })}
         </div>
       </div>
 

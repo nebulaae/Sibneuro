@@ -22,7 +22,7 @@ import {
 import { toast } from 'sonner';
 import { useHaptic } from '@/hooks/useHaptic';
 import { cn } from '@/lib/utils';
-import { useChats } from '@/hooks/useChats';
+import api from '@/lib/api';
 
 /* ── Types ── */
 interface MediaItem {
@@ -44,12 +44,13 @@ interface Message {
     media?: MediaItem[];
   };
   result?: { text?: string; media?: MediaItem[] };
-  status: 'completed' | 'processing' | 'error';
+  status: 'completed' | 'processing' | 'error' | 'pending';
   error?: string | null;
   cost?: number;
   created_at?: string;
 }
 
+/* ── Хелперы для кэша модели в sessionStorage ── */
 const STORAGE_KEY = (id: string) => `dialogue_model_${id}`;
 
 function readStoredModel(id: string) {
@@ -61,10 +62,25 @@ function readStoredModel(id: string) {
         version: string;
         role_id: number | null;
       };
-  } catch { }
+  } catch {}
   return null;
 }
 
+function writeStoredModel(
+  id: string,
+  model: string,
+  version: string,
+  role_id: number | null
+) {
+  try {
+    sessionStorage.setItem(
+      STORAGE_KEY(id),
+      JSON.stringify({ model, version, role_id })
+    );
+  } catch {}
+}
+
+/* ── Извлечение медиа из сообщений ── */
 function extractDisplayMedia(
   inputs: Message['inputs']
 ): { url: string; type: string }[] {
@@ -81,6 +97,40 @@ function extractDisplayMedia(
 }
 function extractResultMedia(result: Message['result']) {
   return result?.media ? normalizeResultMedia(result.media) : [];
+}
+
+/* ── Хук: получить модель диалога из истории напрямую ── */
+/**
+ * КЛЮЧЕВОЙ ФИК: не зависим от useChats().
+ * Берём модель из sessionStorage (если есть) или из первого сообщения истории.
+ */
+function useDialogueModel(dialogueId: string, messages: Message[]) {
+  const stored = readStoredModel(dialogueId);
+
+  const [model, setModel] = useState<string | null>(stored?.model ?? null);
+  const [version, setVersion] = useState<string | null>(
+    stored?.version ?? null
+  );
+  const [roleId, setRoleId] = useState<number | null>(stored?.role_id ?? null);
+
+  useEffect(() => {
+    if (model) return; // уже есть
+    if (messages.length === 0) return;
+    const first = messages[0];
+    if (first.model) {
+      setModel(first.model);
+      setVersion(first.version || null);
+      setRoleId(first.role_id ?? null);
+      writeStoredModel(
+        dialogueId,
+        first.model,
+        first.version || '',
+        first.role_id ?? null
+      );
+    }
+  }, [messages.length, model, dialogueId]);
+
+  return { model, version, roleId };
 }
 
 /* ── Shared classes ── */
@@ -123,64 +173,29 @@ export default function ChatPage({
     url: string;
     type: string;
   } | null>(null);
-  const [chatTitle, setChatTitle] = useState<string>('Диалог');
-
-  // ── Читаем модель из sessionStorage СИНХРОННО при инициализации ──
-  const stored = readStoredModel(params.dialogueId);
-  const [cachedModel, setCachedModel] = useState<string | null>(
-    stored?.model ?? null
-  );
-  const [cachedVersion, setCachedVersion] = useState<string | null>(
-    stored?.version ?? null
-  );
-  const [cachedRoleId, setCachedRoleId] = useState<number | null | undefined>(
-    stored ? (stored.role_id ?? null) : undefined
-  );
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // ФИКС: useChatHistory из useApiExtras использует /api/history — правильный путь
   const { data: messages, isLoading } = useChatHistory(params.dialogueId);
   const { data: allModels } = useAIModels();
-  const { data: chatsPages } = useChats();
   const generate = useGenerateAI();
   const upload = useUpload();
 
   const msgs = (messages as Message[]) || [];
-  const isProcessing = msgs.some((m) => m.status === 'processing');
-  const flatChats = chatsPages?.pages?.flat() || [];
 
-  const currentChat = flatChats.find(
-    (c) => c.dialogue_id === params.dialogueId
+  // ── ФИКС: модель берётся из истории, не из useChats ──
+  const {
+    model: activeModel,
+    version: activeVersion,
+    roleId: activeRoleId,
+  } = useDialogueModel(params.dialogueId, msgs);
+
+  const isProcessing = msgs.some(
+    (m) => m.status === 'processing' || m.status === 'pending'
   );
 
-  // Когда сообщения загрузились — кешируем модель из первого сообщения
-  useEffect(() => {
-    if (msgs.length === 0) return;
-    const first = msgs[0];
-    if (first.model && !cachedModel) {
-      setCachedModel(first.model);
-      setCachedVersion(first.version || null);
-      setCachedRoleId(first.role_id ?? null);
-      try {
-        sessionStorage.setItem(
-          STORAGE_KEY(params.dialogueId),
-          JSON.stringify({
-            model: first.model,
-            version: first.version,
-            role_id: first.role_id ?? null,
-          })
-        );
-      } catch { }
-    }
-  }, [msgs.length]);
-
-  const activeModel = currentChat?.model;
-  const activeVersion = currentChat?.version;
-  const activeRoleId = currentChat?.role_id ?? null;
-  
   const currentModel = allModels?.find((m) => m.tech_name === activeModel);
   const currentVersion = currentModel?.versions?.find(
     (v) => v.label === activeVersion
@@ -190,16 +205,16 @@ export default function ChatPage({
     currentModel?.input?.some((t) => ['image', 'video', 'audio'].includes(t)) ??
     true;
 
-  useEffect(() => {
-    if (activeModel) {
-      const modelName = currentModel?.model_name;
-      if (modelName && activeVersion)
-        setChatTitle(`${modelName} · ${activeVersion}`);
-      else if (modelName) setChatTitle(modelName);
-      else if (activeVersion) setChatTitle(activeVersion);
-    }
-  }, [activeModel, currentModel, activeVersion]);
+  /* ── Заголовок чата ── */
+  const chatTitle = (() => {
+    const modelName = currentModel?.model_name;
+    if (modelName && activeVersion) return `${modelName} · ${activeVersion}`;
+    if (modelName) return modelName;
+    if (activeVersion) return activeVersion;
+    return 'Диалог';
+  })();
 
+  /* ── Scroll ── */
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, []);
@@ -207,6 +222,7 @@ export default function ChatPage({
     scrollToBottom();
   }, [messages]);
 
+  /* ── Авторесайз textarea ── */
   useEffect(() => {
     const ta = textareaRef.current;
     if (!ta) return;
@@ -214,6 +230,7 @@ export default function ChatPage({
     ta.style.height = Math.min(ta.scrollHeight, 120) + 'px';
   }, [text]);
 
+  /* ── Инвалидация баланса после завершения генерации ── */
   const prevProcessingRef = useRef(false);
   useEffect(() => {
     if (prevProcessingRef.current && !isProcessing && msgs.length > 0)
@@ -221,6 +238,7 @@ export default function ChatPage({
     prevProcessingRef.current = isProcessing;
   }, [isProcessing]);
 
+  /* ── Загрузка файла ── */
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files?.length) return;
@@ -261,6 +279,7 @@ export default function ChatPage({
   const removeFile = (i: number) =>
     setUploadedFiles((prev) => prev.filter((_, idx) => idx !== i));
 
+  /* ── Отправка ── */
   const handleSend = () => {
     if (isProcessing) {
       haptic.warning();
@@ -269,6 +288,7 @@ export default function ChatPage({
     }
     if (!text.trim() && uploadedFiles.length === 0) return;
 
+    // ФИКС: модель теперь надёжно берётся из истории/sessionStorage
     if (!activeModel) {
       haptic.error();
       toast.error('Не удалось определить модель диалога');
@@ -284,6 +304,27 @@ export default function ChatPage({
     const safeText = text.trim() || 'Опиши изображение';
     const inputs = convertMediaToInputs(safeText, oldFormatMedia);
 
+    // Оптимистично добавляем сообщение пользователя
+    const optimisticUserMsg: Message = {
+      id: Date.now(),
+      model: activeModel,
+      version: activeVersion || '',
+      role_id: activeRoleId,
+      inputs: { text: safeText },
+      status: 'completed',
+    };
+    const optimisticBotMsg: Message = {
+      id: Date.now() + 1,
+      model: activeModel,
+      version: activeVersion || '',
+      status: 'processing',
+    };
+
+    // Сразу очищаем инпут
+    const sentText = text;
+    setText('');
+    setUploadedFiles([]);
+
     generate.mutate(
       {
         tech_name: activeModel,
@@ -294,11 +335,14 @@ export default function ChatPage({
       },
       {
         onSuccess: () => {
-          setText('');
-          setUploadedFiles([]);
+          // Перезапрашиваем историю
           queryClient.invalidateQueries({
             queryKey: queryKeys.chatHistory(params.dialogueId),
           });
+        },
+        onError: () => {
+          // Возвращаем текст при ошибке
+          setText(sentText);
         },
       }
     );
@@ -398,6 +442,7 @@ export default function ChatPage({
             const resultMedia = extractResultMedia(msg.result);
             return (
               <div key={msg.id || idx} className="flex flex-col gap-2.5">
+                {/* Сообщение пользователя */}
                 {(msg.inputs?.text || userMedia.length > 0) && (
                   <div className="flex justify-end">
                     <div
@@ -446,9 +491,11 @@ export default function ChatPage({
                     </div>
                   </div>
                 )}
+
+                {/* Ответ модели */}
                 <div className="flex justify-start">
                   <div className="max-w-[82%]">
-                    {msg.status === 'processing' ? (
+                    {msg.status === 'processing' || msg.status === 'pending' ? (
                       <div
                         className={cn(
                           'flex items-center gap-2 px-3.5 py-2.5 rounded-[20px_20px_20px_4px]',
@@ -698,7 +745,7 @@ export default function ChatPage({
               (isProcessing ||
                 generate.isPending ||
                 (!text.trim() && uploadedFiles.length === 0)) &&
-              'opacity-40'
+                'opacity-40'
             )}
           >
             {generate.isPending ? (

@@ -21,7 +21,6 @@ const glassThin = cn(
   'border border-white/[.14]'
 );
 
-// Сохраняем данные модели в sessionStorage при переходе в диалог
 function cacheDialogueModel(
   dialogueId: string,
   model: string,
@@ -108,7 +107,6 @@ export const Chats = () => {
       {
         onSuccess: (d) => {
           if (d.dialogue_id) {
-            // Кешируем модель перед переходом
             cacheDialogueModel(
               d.dialogue_id,
               techName!,
@@ -189,17 +187,16 @@ export const Chats = () => {
         ) : (
           <>
             {chats.map((chat) => {
-              // Определяем читаемое название чата
-              const displayName = chat.title || chat.model || 'Диалог';
-              // Подпись: версия, но не tech_name
-              const subtitle = chat.version || '';
+              // ФИКС: используем version как основной заголовок (так и было),
+              // но добавляем fallback на title и model
+              const displayName =
+                chat.version || chat.title || chat.model || 'Диалог';
 
               return (
                 <button
                   key={chat.dialogue_id}
                   onClick={() => {
                     haptic.light();
-                    // Кешируем модель при клике из списка
                     if (chat.model) {
                       cacheDialogueModel(
                         chat.dialogue_id,
@@ -231,13 +228,8 @@ export const Chats = () => {
 
                   <div className="flex-1 min-w-0">
                     <div className="text-base font-semibold text-white truncate">
-                      {subtitle}
+                      {displayName}
                     </div>
-                    {/* {subtitle && (
-                      <div className="text-[12px] text-white/50 mt-0.5 truncate">
-                        
-                      </div>
-                    )} */}
                   </div>
 
                   <div className="flex flex-col items-end gap-1 shrink-0">

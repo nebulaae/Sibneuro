@@ -33,16 +33,22 @@ export const useChatHistory = (dialogueId: string | null) => {
       );
     },
     enabled: !!dialogueId,
+    // ФИКС: polling при pending И processing статусах
     refetchInterval: (query) => {
       const msgs: any[] = query.state.data || [];
-      const isProcessing = msgs.some((m) => m.status === 'processing');
-      return isProcessing ? 2000 : false;
+      const needsPolling = msgs.some(
+        (m) => m.status === 'processing' || m.status === 'pending'
+      );
+      return needsPolling ? 2000 : false;
     },
     select: (msgs: any[]) => msgs,
   });
 };
 
-export const useGenerationStatus = (dialogueId: string | null, enabled: boolean) => {
+export const useGenerationStatus = (
+  dialogueId: string | null,
+  enabled: boolean
+) => {
   return useQuery({
     queryKey: ['gen-status', dialogueId],
     queryFn: async () => {
@@ -55,7 +61,7 @@ export const useGenerationStatus = (dialogueId: string | null, enabled: boolean)
     enabled: !!dialogueId && enabled,
     refetchInterval: 2000,
   });
-}
+};
 
 // GET /api/ui/:blockName
 export const useUI = (blockName: string) => {
