@@ -27,7 +27,7 @@ import { cn } from '@/lib/utils';
 interface MediaItem {
   type?: string;
   url?: string;
-  input?: string;
+  input?: string | { type: string; format: string; input: string };
   format?: string;
 }
 interface Message {
@@ -139,8 +139,21 @@ function extractDisplayMedia(
   (inputs.video || []).forEach((url) => r.push({ url, type: 'video' }));
   (inputs.audio || []).forEach((url) => r.push({ url, type: 'audio' }));
   (inputs.media || []).forEach((m) => {
-    const url = m.url || m.input || '';
-    if (url) r.push({ url, type: m.type || 'image' });
+    // Обработка вложенной структуры: input может быть объектом {type, format, input}
+    let url = '';
+    let type = 'image';
+    
+    if (typeof m.input === 'object' && m.input !== null) {
+      // m.input = {type: "image", format: "url", input: "https://..."}
+      url = m.input.input || '';
+      type = m.input.type || 'image';
+    } else {
+      // m.input = "https://..." (старый формат)
+      url = m.url || m.input || '';
+      type = m.type || 'image';
+    }
+    
+    if (url) r.push({ url, type });
   });
   return r;
 }

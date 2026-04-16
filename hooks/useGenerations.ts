@@ -24,11 +24,22 @@ export function normalizeResultMedia(
 ): Array<{ url: string; type: string }> {
   if (!Array.isArray(media)) return [];
   return media
-    .map((m) => ({
-      // Поддерживаем оба формата: m.url и m.input
-      url: m.url || m.input || '',
-      type: m.type || 'image',
-    }))
+    .map((m) => {
+      let url = '';
+      let type = 'image';
+      
+      // Обработка вложенной структуры: input может быть объектом {type, format, input}
+      if (typeof m.input === 'object' && m.input !== null) {
+        url = m.input.input || '';
+        type = m.input.type || 'image';
+      } else {
+        // m.url или m.input - обычная строка URL
+        url = m.url || m.input || '';
+        type = m.type || 'image';
+      }
+      
+      return { url, type };
+    })
     .filter((m) => m.url);
 }
 

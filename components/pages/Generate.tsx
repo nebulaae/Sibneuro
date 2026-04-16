@@ -206,21 +206,6 @@ export const Generate = () => {
     });
     setExtraParams(defaults);
   }, [params]);
-  useEffect(() => {
-    if (!isWaiting || !lastMessage) return;
-    if (lastMessage.status === 'completed') {
-      haptic.success();
-      setIsWaiting(false);
-      toast.success('Генерация завершена!');
-      if (pendingId) router.push(`/chats/${pendingId}`);
-      setPendingId(null);
-    } else if (lastMessage.status === 'error') {
-      haptic.error();
-      setIsWaiting(false);
-      toast.error('Ошибка: ' + (lastMessage.error || 'Неизвестная ошибка'));
-      setPendingId(null);
-    }
-  }, [lastMessage, isWaiting, pendingId]);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -293,7 +278,7 @@ export const Generate = () => {
     );
   };
 
-  // 3. В useEffect где отслеживаем lastMessage (isWaiting) — тоже кешируем и кидаем в чат:
+  // ── Отслеживаем завершение генерации ──
   useEffect(() => {
     if (!isWaiting || !lastMessage) return;
     if (lastMessage.status === 'completed') {
@@ -301,7 +286,6 @@ export const Generate = () => {
       setIsWaiting(false);
       toast.success('Генерация завершена!');
       if (pendingId) {
-        // Модель уже закешировна в handleGenerate выше
         router.push(`/chats/${pendingId}`);
       }
       setPendingId(null);
@@ -311,7 +295,7 @@ export const Generate = () => {
       toast.error('Ошибка: ' + (lastMessage.error || 'Неизвестная ошибка'));
       setPendingId(null);
     }
-  }, [lastMessage, isWaiting, pendingId]);
+  }, [lastMessage, isWaiting, pendingId, haptic, router]);
 
   /* ── Waiting screen ── */
   if (isWaiting && pendingId) {
@@ -324,26 +308,28 @@ export const Generate = () => {
             glassThick
           )}
         >
-          {!status || status === 'processing' ? (
-            <Loader2 size={32} className="animate-spin text-white/50" />
-          ) : status === 'completed' ? (
+          {status === 'completed' ? (
             <CheckCircle size={32} className="text-[#34C759]" />
-          ) : (
+          ) : status === 'error' ? (
             <AlertCircle size={32} className="text-[#FF3B30]" />
+          ) : (
+            <Loader2 size={32} className="animate-spin text-white/50" />
           )}
         </div>
         <div className="flex flex-col gap-1.5">
           <p className="text-[20px] font-bold tracking-[-0.4px]">
-            {!status || status === 'processing'
-              ? 'Генерация...'
-              : status === 'completed'
-                ? 'Готово!'
-                : 'Ошибка'}
+            {status === 'completed'
+              ? 'Готово!'
+              : status === 'error'
+                ? 'Ошибка'
+                : 'Генерация...'}
           </p>
           <p className="text-[14px] text-white/50 max-w-[280px] leading-[1.5]">
-            {!status || status === 'processing'
-              ? 'Нейросеть обрабатывает запрос. Это может занять от нескольких секунд до минуты.'
-              : 'Переход к результату...'}
+            {status === 'completed'
+              ? 'Переход к результату...'
+              : status === 'error'
+                ? lastMessage?.error || 'Произошла ошибка при генерации'
+                : 'Нейросеть обрабатывает запрос. Это может занять от нескольких секунд до минуты.'}
           </p>
         </div>
         <div className="flex gap-1.5">
