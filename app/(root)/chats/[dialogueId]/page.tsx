@@ -61,8 +61,110 @@ function readStoredModel(id: string) {
         version: string;
         role_id: number | null;
       };
-  } catch {}
+  } catch { }
   return null;
+}
+
+function AudioPlayer({ src }: { src: string }) {
+  const audioRef = useRef<HTMLAudioElement>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [duration, setDuration] = useState(0);
+
+  const togglePlay = () => {
+    const a = audioRef.current;
+    if (!a) return;
+
+    if (isPlaying) {
+      a.pause();
+    } else {
+      a.play();
+    }
+  };
+
+  const onTimeUpdate = () => {
+    const a = audioRef.current;
+    if (!a) return;
+    setProgress(a.currentTime);
+  };
+
+  const onLoaded = () => {
+    const a = audioRef.current;
+    if (!a) return;
+    setDuration(a.duration);
+  };
+
+  const onSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const a = audioRef.current;
+    if (!a) return;
+    const val = Number(e.target.value);
+    a.currentTime = val;
+    setProgress(val);
+  };
+
+  useEffect(() => {
+    const a = audioRef.current;
+    if (!a) return;
+
+    const play = () => setIsPlaying(true);
+    const pause = () => setIsPlaying(false);
+
+    a.addEventListener('play', play);
+    a.addEventListener('pause', pause);
+
+    return () => {
+      a.removeEventListener('play', play);
+      a.removeEventListener('pause', pause);
+    };
+  }, []);
+
+  const format = (t: number) => {
+    if (!t) return '0:00';
+    const m = Math.floor(t / 60);
+    const s = Math.floor(t % 60)
+      .toString()
+      .padStart(2, '0');
+    return `${m}:${s}`;
+  };
+
+  return (
+    <div className="flex flex-col gap-2 w-full">
+      <audio
+        ref={audioRef}
+        src={src}
+        onTimeUpdate={onTimeUpdate}
+        onLoadedMetadata={onLoaded}
+      />
+
+      {/* Верх: кнопка + время */}
+      <div className="flex items-center gap-3">
+        <button
+          onClick={togglePlay}
+          className={cn(
+            'w-10 h-10 rounded-full flex items-center justify-center',
+            'bg-white/10 border border-white/20 backdrop-blur-xl',
+            'active:scale-90 transition'
+          )}
+        >
+          {isPlaying ? '⏸' : '▶️'}
+        </button>
+
+        <div className="text-xs text-white/60 min-w-[60px]">
+          {format(progress)} / {format(duration)}
+        </div>
+      </div>
+
+      {/* Прогресс */}
+      <input
+        type="range"
+        min={0}
+        max={duration || 0}
+        value={progress}
+        onChange={onSeek}
+        className="w-full accent-[#0A84FF]"
+      />
+    </div>
+  );
 }
 
 function writeStoredModel(
@@ -76,7 +178,7 @@ function writeStoredModel(
       STORAGE_KEY(id),
       JSON.stringify({ model, version, role_id })
     );
-  } catch {}
+  } catch { }
 }
 
 /* ── ГЛАВНАЯ ФУНКЦИЯ: получить модель диалога ──
@@ -142,7 +244,7 @@ function extractDisplayMedia(
     // Обработка вложенной структуры: input может быть объектом {type, format, input}
     let url = '';
     let type = 'image';
-    
+
     if (typeof m.input === 'object' && m.input !== null) {
       // m.input = {type: "image", format: "url", input: "https://..."}
       url = m.input.input || '';
@@ -152,7 +254,7 @@ function extractDisplayMedia(
       url = m.url || m.input || '';
       type = m.type || 'image';
     }
-    
+
     if (url) r.push({ url, type });
   });
   return r;
@@ -576,35 +678,28 @@ export default function ChatPage() {
                               // ── НОВОЕ: отдельный стиль для аудио с всегда видимой кнопкой скачивания ──
                               if (m.type === 'audio') {
                                 return (
-                                  <div
-                                    key={i}
-                                    className="flex-1 min-w-0 max-w-[440px]"
-                                  >
+                                  <div key={i} className="w-full max-w-[420px]">
                                     <div
                                       className={cn(
-                                        'flex items-center gap-3 px-4 py-3',
+                                        'flex flex-col gap-3 p-4',
                                         glassRegular,
-                                        'rounded-3xl border border-white/20 shadow-[0_4px_16px_rgba(0,0,0,0.22)]'
+                                        'rounded-3xl border border-white/20'
                                       )}
                                     >
-                                      <audio
-                                        src={m.url}
-                                        controls
-                                        className="flex-1 min-w-0"
-                                      />
+                                      <AudioPlayer src={m.url} />
+
                                       <a
                                         href={m.url}
                                         download
                                         target="_blank"
                                         rel="noopener noreferrer"
-                                        onClick={(e) => e.stopPropagation()}
                                         className={cn(
-                                          'shrink-0 w-10 h-10 flex items-center justify-center rounded-2xl',
-                                          'bg-black/45 backdrop-blur-xl border border-white/15',
-                                          'text-white hover:bg-black/70 active:scale-95 transition-all'
+                                          'self-end w-9 h-9 flex items-center justify-center rounded-xl',
+                                          'bg-black/40 border border-white/15',
+                                          'active:scale-90 transition'
                                         )}
                                       >
-                                        <Download size={20} />
+                                        <Download size={18} />
                                       </a>
                                     </div>
                                   </div>
