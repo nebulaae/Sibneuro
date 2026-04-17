@@ -572,45 +572,80 @@ export default function ChatPage() {
                         )}
                         {resultMedia.length > 0 && (
                           <div className="flex flex-wrap gap-2">
-                            {resultMedia.map((m, i) => (
-                              <div key={i} className="relative group">
-                                {m.type === 'image' ? (
-                                  <img
-                                    src={m.url}
-                                    alt="Generated"
-                                    onClick={() => setViewerSrc(m)}
-                                    className="max-w-65 max-h-65 rounded-2xl object-cover cursor-pointer border border-white/18 shadow-[0_4px_16px_rgba(0,0,0,0.22)]"
-                                  />
-                                ) : m.type === 'video' ? (
-                                  <video
-                                    src={m.url}
-                                    controls
-                                    className="max-w-65 max-h-65 rounded-2xl"
-                                  />
-                                ) : (
-                                  <audio
-                                    src={m.url}
-                                    controls
-                                    className="rounded-lg"
-                                  />
-                                )}
-                                <a
-                                  href={m.url}
-                                  download
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  onClick={(e) => e.stopPropagation()}
-                                  className={cn(
-                                    'absolute top-2 right-2 p-1.5 rounded-full',
-                                    'bg-black/45 backdrop-blur-xl border border-white/15',
-                                    'text-white flex items-center justify-center',
-                                    'opacity-0 group-hover:opacity-100 transition-opacity'
+                            {resultMedia.map((m, i) => {
+                              // ── НОВОЕ: отдельный стиль для аудио с всегда видимой кнопкой скачивания ──
+                              if (m.type === 'audio') {
+                                return (
+                                  <div
+                                    key={i}
+                                    className="flex-1 min-w-0 max-w-[440px]"
+                                  >
+                                    <div
+                                      className={cn(
+                                        'flex items-center gap-3 px-4 py-3',
+                                        glassRegular,
+                                        'rounded-3xl border border-white/20 shadow-[0_4px_16px_rgba(0,0,0,0.22)]'
+                                      )}
+                                    >
+                                      <audio
+                                        src={m.url}
+                                        controls
+                                        className="flex-1 min-w-0"
+                                      />
+                                      <a
+                                        href={m.url}
+                                        download
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        onClick={(e) => e.stopPropagation()}
+                                        className={cn(
+                                          'shrink-0 w-10 h-10 flex items-center justify-center rounded-2xl',
+                                          'bg-black/45 backdrop-blur-xl border border-white/15',
+                                          'text-white hover:bg-black/70 active:scale-95 transition-all'
+                                        )}
+                                      >
+                                        <Download size={20} />
+                                      </a>
+                                    </div>
+                                  </div>
+                                );
+                              }
+
+                              // Оригинальный рендер для изображений и видео
+                              return (
+                                <div key={i} className="relative group">
+                                  {m.type === 'image' ? (
+                                    <img
+                                      src={m.url}
+                                      alt="Generated"
+                                      onClick={() => setViewerSrc(m)}
+                                      className="max-w-65 max-h-65 rounded-2xl object-cover cursor-pointer border border-white/18 shadow-[0_4px_16px_rgba(0,0,0,0.22)]"
+                                    />
+                                  ) : (
+                                    <video
+                                      src={m.url}
+                                      controls
+                                      className="max-w-65 max-h-65 rounded-2xl"
+                                    />
                                   )}
-                                >
-                                  <Download size={14} />
-                                </a>
-                              </div>
-                            ))}
+                                  <a
+                                    href={m.url}
+                                    download
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    onClick={(e) => e.stopPropagation()}
+                                    className={cn(
+                                      'absolute top-2 right-2 p-1.5 rounded-full',
+                                      'bg-black/45 backdrop-blur-xl border border-white/15',
+                                      'text-white flex items-center justify-center',
+                                      'opacity-0 group-hover:opacity-100 transition-opacity'
+                                    )}
+                                  >
+                                    <Download size={14} />
+                                  </a>
+                                </div>
+                              );
+                            })}
                           </div>
                         )}
                         {!msg.result?.text && resultMedia.length === 0 && (
@@ -635,7 +670,7 @@ export default function ChatPage() {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* ── Media Viewer ── */}
+      {/* ── Media Viewer (добавлена поддержка аудио) ── */}
       {viewerSrc && (
         <div
           onClick={() => setViewerSrc(null)}
@@ -654,6 +689,15 @@ export default function ChatPage() {
               autoPlay
               className="max-w-full max-h-full rounded-3xl"
             />
+          ) : viewerSrc.type === 'audio' ? (
+            <div className="w-full max-w-md bg-white/10 backdrop-blur-2xl rounded-3xl p-6 shadow-2xl">
+              <audio
+                src={viewerSrc.url}
+                controls
+                autoPlay
+                className="w-full"
+              />
+            </div>
           ) : null}
           <button
             onClick={() => setViewerSrc(null)}

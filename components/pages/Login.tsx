@@ -191,11 +191,21 @@ export const Login = () => {
     }
 
     api
-      .post('/api/auth/tma', {
-        initData,
-        platform: env,
-        bot_id: bot.bot_id, // 👈 динамически
-      })
+      .post(
+        '/api/auth/tma',
+        {
+          initData,
+          platform: env,
+          bot_id: bot.bot_id,
+        },
+        {
+          headers: {
+            'x-init-data': initData,
+            'x-bot-id': bot.bot_id,
+            'x-platform': env,
+          },
+        }
+      )
       .then(({ data }) => {
         localStorage.setItem('auth_token', data.token);
         if (data.user?.id)

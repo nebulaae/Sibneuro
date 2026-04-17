@@ -439,10 +439,10 @@ export const Profile = () => {
                   <div className="flex-1 min-w-0">
                     {/* Показываем model как есть — это читаемое название из API */}
                     <p className="text-[14px] font-semibold truncate">
-                      {req.model}
+                      {req.version}
                     </p>
                     <p className="text-[12px] text-white/50 mt-0.5">
-                      {req.version} · {timeAgo(req.created_at)}
+                      {req.id} · {timeAgo(req.created_at)}
                     </p>
                   </div>
                   <div className="flex flex-col items-end gap-[3px] flex-shrink-0">
