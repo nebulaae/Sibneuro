@@ -18,6 +18,8 @@ import {
   Loader2,
   X,
   Download,
+  Pause,
+  Play,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useHaptic } from '@/hooks/useHaptic';
@@ -146,7 +148,7 @@ function AudioPlayer({ src }: { src: string }) {
             'active:scale-90 transition'
           )}
         >
-          {isPlaying ? '⏸' : '▶️'}
+          {isPlaying ? <Pause size={24} /> : <Play size={24} />}
         </button>
 
         <div className="text-xs text-white/60 min-w-[60px]">
