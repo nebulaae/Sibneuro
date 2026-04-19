@@ -247,6 +247,7 @@ export default function ChatPage() {
   const dialogueId = params?.dialogueId as string | undefined;
   const haptic = useHaptic();
   const [text, setText] = useState('');
+
   const [uploadedFiles, setUploadedFiles] = useState<
     { url: string; type: string; file: File }[]
   >([]);
@@ -262,6 +263,10 @@ export default function ChatPage() {
   const urlModel = searchParams.get('model');
   const urlVersion = searchParams.get('version');
   const urlRole = searchParams.get('role');
+
+  const [selectedRoleId, setSelectedRoleId] = useState<number | null>(
+    urlRole ? parseInt(urlRole) : null
+  );
 
   const { data: messages = [], isLoading: isHistoryLoading } =
     useChatHistory(dialogueId === 'new' ? null : dialogueId); // ← не загружаем историю для 'new'
@@ -286,9 +291,9 @@ export default function ChatPage() {
   // Если это новый чат и модель пришла из URL — сразу кешируем
   useEffect(() => {
     if (dialogueId === 'new' && urlModel) {
-      writeStoredModel(dialogueId, urlModel, urlVersion || '', urlRole ? parseInt(urlRole) : null);
+      writeStoredModel(dialogueId, urlModel, urlVersion || '', selectedRoleId);
     }
-  }, [dialogueId, urlModel, urlVersion, urlRole]);
+  }, [dialogueId, urlModel, urlVersion, selectedRoleId]);
 
   const isProcessing = msgs.some(
     (m) => m.status === 'processing' || m.status === 'pending'
@@ -359,7 +364,7 @@ export default function ChatPage() {
     setUploadedFiles((prev) => prev.filter((_, idx) => idx !== i));
 
   /* ── Отправка ── */
-  const handleSend = (overrideRoleId?: number | null) => {
+  const handleSend = () => {
     if (isHistoryLoading) return;
     if (isProcessing) { haptic.warning(); toast('Дождитесь окончания генерации'); return; }
     if (!text.trim() && uploadedFiles.length === 0) return;
@@ -390,15 +395,12 @@ export default function ChatPage() {
     setText('');
     setUploadedFiles([]);
 
-    // effectiveRoleId: если передан через кнопку роли — берём его, иначе из параметров
-    const effectiveRoleId = overrideRoleId !== undefined ? overrideRoleId : roleId;
-
     generate.mutate(
       {
         tech_name: techName,
         version: version || undefined,
         dialogue_id: dialogueId === 'new' ? undefined : dialogueId,
-        role_id: effectiveRoleId,
+        role_id: selectedRoleId ?? roleId,
         inputs,
       },
       {
@@ -496,20 +498,15 @@ export default function ChatPage() {
                       key={role.id}
                       onClick={() => {
                         haptic.light();
-                        // Устанавливаем роль и фокусируемся на textarea
+                        setSelectedRoleId(role.id);
                         textareaRef.current?.focus();
-                        // Просто подскажем пользователю — роль запишем при отправке
-                        // Обновим URL чтобы role был в параметрах
-                        const url = new URL(window.location.href);
-                        url.searchParams.set('role', String(role.id));
-                        router.replace(url.pathname + '?' + url.searchParams.toString());
                       }}
                       className={cn(
                         'flex items-center gap-3 px-4 py-3 rounded-2xl w-full text-left',
                         glassThin,
                         spring,
                         'active:scale-[0.97]',
-                        String(activeRoleId) === String(role.id) && 'border-[rgba(0,122,255,0.5)] bg-[rgba(0,122,255,0.10)]'
+                        selectedRoleId === role.id && 'border-[rgba(0,122,255,0.5)] bg-[rgba(0,122,255,0.10)]'
                       )}
                     >
                       <div className="w-9 h-9 rounded-xl overflow-hidden border border-white/[.14] shrink-0">
@@ -528,7 +525,7 @@ export default function ChatPage() {
                           {localize(role.description)}
                         </p>
                       </div>
-                      {String(activeRoleId) === String(role.id) && (
+                      {selectedRoleId === role.id && (
                         <div className="w-2 h-2 rounded-full bg-[#0A84FF] shrink-0" />
                       )}
                     </button>
