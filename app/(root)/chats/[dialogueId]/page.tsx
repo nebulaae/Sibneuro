@@ -369,7 +369,7 @@ export default function ChatPage() {
     if (isProcessing) { haptic.warning(); toast('Дождитесь окончания генерации'); return; }
     if (!text.trim() && uploadedFiles.length === 0) return;
 
-    const { model: techName, version, roleId } = getDialogueModel(dialogueId, msgs, {
+    const { model: techName, version } = getDialogueModel(dialogueId, msgs, {
       model: urlModel, version: urlVersion, role: urlRole,
     });
 
@@ -400,7 +400,7 @@ export default function ChatPage() {
         tech_name: techName,
         version: version || undefined,
         dialogue_id: dialogueId === 'new' ? undefined : dialogueId,
-        role_id: selectedRoleId ?? roleId,
+        role_id: selectedRoleId,
         inputs,
       },
       {
