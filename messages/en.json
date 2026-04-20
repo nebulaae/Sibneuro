@@ -175,7 +175,8 @@
         "noReferralsHint": "Share your referral link to start earning",
         "linkCopied": "Link copied",
         "recently": "Recently",
-        "user": "User #{id}"
+        "user": "User #{id}",
+        "locale": "en"
     },
     "Empty": {
         "noModels": "No models",
