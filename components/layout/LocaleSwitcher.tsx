@@ -1,6 +1,5 @@
 "use client";
 
-import { GlobeIcon } from "@radix-ui/react-icons";
 import { Locale, useLocale } from "next-intl";
 import {
   Select,
@@ -51,7 +50,6 @@ export const LanguageSwitcher = () => {
                    transition-all duration-200 w-fit h-9 px-3 rounded-xl shadow-sm"
       >
         <div className="flex items-center gap-2">
-          <GlobeIcon className="size-4" />
           <SelectValue />
         </div>
       </SelectTrigger>
@@ -67,7 +65,6 @@ export const LanguageSwitcher = () => {
           className="flex items-center gap-3 px-3 py-3 rounded-xl cursor-pointer 
                      hover:bg-accent transition-colors text-base font-medium"
         >
-          <span className="text-xl leading-none">🇬🇧</span>
           <span>Eng</span>
         </SelectItem>
 
@@ -76,7 +73,6 @@ export const LanguageSwitcher = () => {
           className="flex items-center gap-3 px-3 py-3 rounded-xl cursor-pointer 
                      hover:bg-accent transition-colors text-base font-medium"
         >
-          <span className="text-xl leading-none">🇷🇺</span>
           <span>Рус</span>
         </SelectItem>
       </SelectContent>
