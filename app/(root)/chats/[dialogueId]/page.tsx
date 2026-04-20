@@ -9,9 +9,10 @@ import {
   normalizeResultMedia,
 } from '@/hooks/useGenerations';
 import { useAIModels } from '@/hooks/useModels';
-import { useRoles } from '@/hooks/useRoles';           // ← добавили
+import { useRoles } from '@/hooks/useRoles';
 import { useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '@/lib/queryKeys';
+import { useTranslations } from 'next-intl';
 import {
   ChevronLeft,
   Send,
@@ -22,11 +23,11 @@ import {
   Pause,
   Play,
 } from 'lucide-react';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'; // ← добавили
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { toast } from 'sonner';
 import { useHaptic } from '@/hooks/useHaptic';
 import { cn } from '@/lib/utils';
-import { localize } from '@/lib/utils'; // ← добавили
+import { localize } from '@/lib/utils';
 
 /* ── Types ── */
 interface MediaItem {
@@ -240,10 +241,11 @@ const spring =
   'transition-all duration-[280ms] [transition-timing-function:cubic-bezier(0.32,0.72,0,1)]';
 
 export default function ChatPage() {
+  const t = useTranslations('ChatPage');
   const router = useRouter();
   const queryClient = useQueryClient();
   const params = useParams();
-  const searchParams = useSearchParams(); // ← читаем URL-параметры
+  const searchParams = useSearchParams();
   const dialogueId = params?.dialogueId as string | undefined;
   const haptic = useHaptic();
   const [text, setText] = useState('');
@@ -257,7 +259,7 @@ export default function ChatPage() {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  if (!dialogueId) return null; // ← вместо return []
+  if (!dialogueId) return null;
 
   // ── URL-параметры (для нового чата) ──
   const urlModel = searchParams.get('model');
@@ -269,9 +271,9 @@ export default function ChatPage() {
   );
 
   const { data: messages = [], isLoading: isHistoryLoading } =
-    useChatHistory(dialogueId === 'new' ? null : dialogueId); // ← не загружаем историю для 'new'
+    useChatHistory(dialogueId === 'new' ? null : dialogueId);
   const { data: allModels } = useAIModels();
-  const { data: roles } = useRoles(); // ← для выбора ролей
+  const { data: roles } = useRoles();
   const generate = useGenerateAI();
   const upload = useUpload();
 
@@ -314,8 +316,8 @@ export default function ChatPage() {
     if (modelName && activeVersion) return `${modelName} · ${activeVersion}`;
     if (modelName) return modelName;
     if (activeVersion) return activeVersion;
-    if (msgs.length > 0) return msgs[0].version || msgs[0].model || 'Диалог';
-    return 'Диалог';
+    if (msgs.length > 0) return msgs[0].version || msgs[0].model || t('dialogue');
+    return t('dialogue');
   })();
 
   /* ── Scroll ── */
@@ -350,13 +352,13 @@ export default function ChatPage() {
     if (limitMedia !== null) {
       const limit = limitMedia[fileType] ?? 0;
       const currentCount = uploadedFiles.filter((f) => f.type === fileType).length;
-      if (limit === 0) { toast.error(`Модель не принимает ${fileType}`); if (fileInputRef.current) fileInputRef.current.value = ''; return; }
-      if (currentCount >= limit) { toast.error(`Максимум ${limit} файл(ов) типа ${fileType}`); if (fileInputRef.current) fileInputRef.current.value = ''; return; }
+      if (limit === 0) { toast.error(t('modelNotAccept', { fileType })); if (fileInputRef.current) fileInputRef.current.value = ''; return; }
+      if (currentCount >= limit) { toast.error(t('maxFiles', { limit, fileType })); if (fileInputRef.current) fileInputRef.current.value = ''; return; }
     }
     try {
       const res = await upload.mutateAsync(file);
       setUploadedFiles((prev) => [...prev, { url: res.url, type: res.type, file }]);
-    } catch { toast.error('Ошибка загрузки файла'); }
+    } catch { toast.error(t('uploadError')); }
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -366,7 +368,7 @@ export default function ChatPage() {
   /* ── Отправка ── */
   const handleSend = () => {
     if (isHistoryLoading) return;
-    if (isProcessing) { haptic.warning(); toast('Дождитесь окончания генерации'); return; }
+    if (isProcessing) { haptic.warning(); toast(t('waitGeneration')); return; }
     if (!text.trim() && uploadedFiles.length === 0) return;
 
     const { model: techName, version } = getDialogueModel(dialogueId, msgs, {
@@ -382,13 +384,13 @@ export default function ChatPage() {
         sessionStorage: readStoredModel(dialogueId),
         urlModel,
       });
-      toast.error('Модель не определена. Вернитесь и выберите снова.');
+      toast.error(t('modelNotFound'));
       return;
     }
 
     haptic.light();
     const oldFormatMedia = uploadedFiles.map((f) => ({ type: f.type, format: 'url', input: f.url }));
-    const safeText = text.trim() || 'Опиши изображение';
+    const safeText = text.trim() || t('describeImage');
     const inputs = convertMediaToInputs(safeText, oldFormatMedia);
 
     const sentText = text;
@@ -459,11 +461,11 @@ export default function ChatPage() {
         </button>
         <div className="flex-1 min-w-0">
           <p className="text-[15px] font-semibold tracking-[-0.2px] truncate">{chatTitle}</p>
-          {isHistoryLoading && <span className="text-[11px] text-white/40">Загрузка...</span>}
+          {isHistoryLoading && <span className="text-[11px] text-white/40">{t('loading')}</span>}
           {!isHistoryLoading && isProcessing && (
             <div className="flex items-center gap-1.5 mt-0.5">
               <span className="w-1.5 h-1.5 rounded-full bg-[#FF9500] inline-block animate-[pulse-opacity_1s_infinite]" />
-              <span className="text-[11px] text-[#FF9500] font-medium">Генерация...</span>
+              <span className="text-[11px] text-[#FF9500] font-medium">{t('generating')}</span>
             </div>
           )}
         </div>
@@ -483,14 +485,14 @@ export default function ChatPage() {
               </svg>
             </div>
             <p className="text-[14px] text-white/50 max-w-60 leading-relaxed">
-              Начните диалог — напишите что-нибудь
+              {t('startDialogue')}
             </p>
 
             {/* ── Выбор роли ── */}
             {showRoles && (
               <div className="w-full max-w-sm mt-2">
                 <p className="text-[11px] font-bold tracking-[0.6px] uppercase text-white/40 mb-3">
-                  Или выберите ассистента
+                  {t('chooseAssistant')}
                 </p>
                 <div className="flex flex-col gap-2">
                   {roles!.slice(0, 5).map((role) => (
@@ -560,7 +562,7 @@ export default function ChatPage() {
                               ) : m.type === 'video' ? (
                                 <video src={m.url} className="max-h-35 rounded-[10px]" />
                               ) : (
-                                <div className="px-2.5 py-1.5 bg-white/15 rounded-lg text-xs">🎵 Аудио</div>
+                                <div className="px-2.5 py-1.5 bg-white/15 rounded-lg text-xs">{t('audioLabel')}</div>
                               )}
                             </button>
                           ))}
@@ -582,7 +584,7 @@ export default function ChatPage() {
                       <div className={cn('px-3.5 py-2.5 rounded-[20px_20px_20px_4px]',
                         'bg-[rgba(255,59,48,0.12)] border border-[rgba(255,59,48,0.25)]',
                         'backdrop-blur-xl text-[#FF3B30] text-[15px]')}>
-                        {msg.error || 'Ошибка генерации'}
+                        {msg.error || t('error')}
                       </div>
                     ) : (
                       <div className="flex flex-col gap-2">
@@ -630,7 +632,7 @@ export default function ChatPage() {
                         )}
                         {!msg.result?.text && extractResultMedia(msg.result).length === 0 && (
                           <div className={cn('px-3.5 py-2.5 rounded-[20px_20px_20px_4px]', glassThin, 'text-[14px] text-white/50 italic')}>
-                            Ответ получен
+                            {t('responseReceived')}
                           </div>
                         )}
                       </div>
@@ -708,7 +710,7 @@ export default function ChatPage() {
             value={text}
             onChange={(e) => setText(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder={isHistoryLoading ? 'Загрузка диалога...' : 'Напишите сообщение...'}
+            placeholder={isHistoryLoading ? t('loadingPlaceholder') : t('placeholder')}
             rows={1}
             className={cn(
               'flex-1 resize-none outline-none',

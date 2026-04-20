@@ -10,6 +10,8 @@ import {
   useGenerateApiToken,
 } from '@/hooks/useApiExtras';
 import { useBot } from '@/app/providers/BotProvider';
+import { useTranslations } from 'next-intl';
+import { LanguageSwitcher } from '@/components/layout/LocaleSwitcher';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   LogOut,
@@ -54,13 +56,15 @@ const GlassCard = ({
   </div>
 );
 
-const STATUS: Record<string, { icon: string; color: string; label: string }> = {
-  completed: { icon: '✅', color: '#34C759', label: 'Готово' },
-  error: { icon: '❌', color: '#FF3B30', label: 'Ошибка' },
-  processing: { icon: '⏳', color: '#FF9500', label: 'Обработка' },
-};
+const getStatusMap = (t: any): Record<string, { icon: string; color: string; label: string }> => ({
+  completed: { icon: '✅', color: '#34C759', label: t('statusCompleted') },
+  error: { icon: '❌', color: '#FF3B30', label: t('statusError') },
+  processing: { icon: '⏳', color: '#FF9500', label: t('statusProcessing') },
+});
 
 export const Profile = () => {
+  const t = useTranslations('Profile');
+  const STATUS = getStatusMap(t);
   const router = useRouter();
   const haptic = useHaptic();
   const { user: tgUser, logout } = useAuth();
@@ -87,7 +91,7 @@ export const Profile = () => {
   const refStats = (refData as any)?.stats;
   const name = tgUser
     ? `${tgUser.first_name} ${tgUser.last_name || ''}`.trim()
-    : 'Пользователь';
+    : t('user');
   const username = tgUser?.username || '';
   const userId = tgUser?.id;
 
@@ -100,7 +104,7 @@ export const Profile = () => {
     haptic.medium();
 
     if (!bot?.bot_id) {
-      toast.error('Бот не определён');
+      toast.error(t('botNotDefined'));
       return;
     }
 
@@ -115,10 +119,10 @@ export const Profile = () => {
           if (data.success && data.url) {
             window.open(data.url, '_blank');
           } else {
-            toast.error('Ссылка на оплату недоступна');
+            toast.error(t('paymentLinkUnavailable'));
           }
         })
-        .catch(() => toast.error('Ошибка получения ссылки на оплату'));
+        .catch(() => toast.error(t('paymentLinkError')));
     });
   };
 
@@ -126,7 +130,7 @@ export const Profile = () => {
     haptic.success();
     navigator.clipboard.writeText(token).then(() => {
       setCopiedToken(token);
-      toast.success('Токен скопирован');
+      toast.success(t('tokenCopied'));
       setTimeout(() => setCopiedToken(null), 2000);
     });
   };
@@ -136,7 +140,7 @@ export const Profile = () => {
     haptic.success();
     navigator.clipboard.writeText(referralLink).then(() => {
       setCopiedRef(true);
-      toast.success('Реферальная ссылка скопирована');
+      toast.success(t('refLinkCopied'));
       setTimeout(() => setCopiedRef(false), 2000);
     });
   };
@@ -145,12 +149,12 @@ export const Profile = () => {
     haptic.light();
     generateToken.mutate(undefined, {
       onSuccess: (d) => {
-        toast.success('Новый API-токен создан');
+        toast.success(t('newTokenCreated'));
         handleCopyToken(d.token);
       },
       onError: () => {
         haptic.error();
-        toast.error('Не удалось создать токен');
+        toast.error(t('tokenCreateError'));
       },
     });
   };
@@ -166,24 +170,27 @@ export const Profile = () => {
           'shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]'
         )}
       >
-        <span className="text-[22px] font-bold tracking-[-0.5px]">Профиль</span>
-        <button
-          onClick={() => {
-            haptic.heavy();
-            logout();
-          }}
-          className={cn(
-            'flex items-center gap-1.5 px-3 py-1.5 rounded-full',
-            'bg-[rgba(255,59,48,0.12)] backdrop-blur-xl border border-[rgba(255,59,48,0.22)]',
-            'shadow-[inset_0_1px_0_rgba(255,255,255,0.15)]',
-            'text-[#FF3B30] text-[13px] font-semibold',
-            spring,
-            'active:scale-[0.94]'
-          )}
-        >
-          <LogOut size={13} />
-          Выйти
-        </button>
+        <span className="text-[22px] font-bold tracking-[-0.5px]">{t('title')}</span>
+        <div className="flex items-center gap-2">
+          <LanguageSwitcher />
+          <button
+            onClick={() => {
+              haptic.heavy();
+              logout();
+            }}
+            className={cn(
+              'flex items-center gap-1.5 px-3 py-1.5 rounded-full',
+              'bg-[rgba(255,59,48,0.12)] backdrop-blur-xl border border-[rgba(255,59,48,0.22)]',
+              'shadow-[inset_0_1px_0_rgba(255,255,255,0.15)]',
+              'text-[#FF3B30] text-[13px] font-semibold',
+              spring,
+              'active:scale-[0.94]'
+            )}
+          >
+            <LogOut size={13} />
+            {t('logout')}
+          </button>
+        </div>
       </header>
 
       {/* ── User Hero ── */}
@@ -215,7 +222,7 @@ export const Profile = () => {
               )}
               {isPremium && premiumEnd && (
                 <p className="text-[12px] text-white/30 mt-0.5">
-                  до {new Date(premiumEnd * 1000).toLocaleDateString('ru-RU')}
+                  до {new Date(premiumEnd * 1000).toLocaleDateString(t('locale') === 'en' ? 'en-US' : 'ru-RU')}
                 </p>
               )}
             </div>
@@ -237,7 +244,7 @@ export const Profile = () => {
         >
           <div className="flex justify-between items-center">
             <span className="text-[11px] font-semibold tracking-[0.4px] uppercase text-white/50">
-              Токены
+              {t('tokens')}
             </span>
             <ExternalLink size={12} className="text-white/30" />
           </div>
@@ -252,7 +259,7 @@ export const Profile = () => {
             </div>
           )}
           <span className="text-[11px] font-semibold text-[#0A84FF]">
-            Пополнить →
+            {t('topUp')}
           </span>
         </button>
 
@@ -271,7 +278,7 @@ export const Profile = () => {
         >
           <div className="flex justify-between items-center">
             <span className="text-[11px] font-semibold tracking-[0.4px] uppercase text-white/50">
-              Рефералы
+              {t('referrals')}
             </span>
             <Users size={12} className="text-white/30" />
           </div>
@@ -283,7 +290,7 @@ export const Profile = () => {
             </span>
           )}
           <span className="text-[11px] text-white/50">
-            {refStats?.earned ?? refStats?.total_tokens ?? 0} 💎 заработано
+            {t('earned', { amount: refStats?.earned ?? refStats?.total_tokens ?? 0 })}
           </span>
         </button>
       </div>
@@ -293,7 +300,7 @@ export const Profile = () => {
         <div className="px-5 pb-5">
           <div className="flex items-center justify-between mb-3">
             <span className="text-[11px] font-bold tracking-[0.7px] uppercase text-white/50">
-              Реферальная ссылка
+              {t('referralLink')}
             </span>
             <LinkIcon size={12} className="text-white/30" />
           </div>
@@ -317,7 +324,7 @@ export const Profile = () => {
             </button>
           </GlassCard>
           <p className="text-[11px] text-white/30 mt-2 px-1">
-            Поделитесь ссылкой — получайте бонусы за каждого приглашённого друга
+            {t('shareLink')}
           </p>
         </div>
       )}
@@ -328,7 +335,7 @@ export const Profile = () => {
       <div className="px-5 pb-5">
         <div className="flex items-center justify-between mb-3">
           <span className="text-[11px] font-bold tracking-[0.7px] uppercase text-white/50">
-            API-токены
+            {t('apiTokens')}
           </span>
           <button
             onClick={handleGenerateToken}
@@ -347,13 +354,13 @@ export const Profile = () => {
             ) : (
               <Key size={11} />
             )}
-            Создать
+            {t('createToken')}
           </button>
         </div>
 
         {!apiTokens || apiTokens.length === 0 ? (
           <p className="text-[13px] text-white/50 px-1">
-            Нет токенов. Создайте для доступа к API.
+            {t('noTokens')}
           </p>
         ) : (
           <div className="flex flex-col gap-2">
@@ -393,7 +400,7 @@ export const Profile = () => {
       {/* ── History ── */}
       <div className="px-5">
         <span className="block text-[11px] font-bold tracking-[0.7px] uppercase text-white/50 mb-3">
-          История генераций
+          {t('generationHistory')}
         </span>
 
         {reqLoading ? (
@@ -414,7 +421,7 @@ export const Profile = () => {
             ))}
           </div>
         ) : requests.length === 0 ? (
-          <p className="text-[14px] text-white/50 py-4">Нет генераций</p>
+          <p className="text-[14px] text-white/50 py-4">{t('noGenerations')}</p>
         ) : (
           <div className="flex flex-col">
             {requests.map((req) => {
@@ -478,10 +485,10 @@ export const Profile = () => {
                 {isFetchingNextPage ? (
                   <>
                     <Loader2 size={14} className="animate-spin" />
-                    Загрузка...
+                    {t('loading')}
                   </>
                 ) : (
-                  'Загрузить ещё'
+                  t('loadMore')
                 )}
               </button>
             )}

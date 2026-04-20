@@ -9,6 +9,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ChatsLoader } from '@/components/states/Loading';
 import { ChatsEmpty } from '@/components/states/Empty';
 import { ErrorComponent } from '@/components/states/Error';
+import { useTranslations } from 'next-intl';
 import { MessageSquarePlus, Loader2 } from 'lucide-react';
 import { timeAgo } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -35,6 +36,7 @@ function cacheDialogueModel(
 }
 
 export const Chats = () => {
+  const t = useTranslations('Chats');
   const router = useRouter();
   const searchParams = useSearchParams();
   const haptic = useHaptic();
@@ -66,7 +68,7 @@ export const Chats = () => {
       ? roles?.find((r) => r.id === parseInt(roleParam))
       : null;
     if (roleParam && !role) {
-      toast.error('Ассистент не найден');
+      toast.error(t('assistantNotFound'));
       router.replace('/chats');
       return;
     }
@@ -76,7 +78,7 @@ export const Chats = () => {
     if (modelParam) {
       const model = models?.find((m) => m.tech_name === modelParam);
       if (!model) {
-        toast.error('Модель не найдена');
+        toast.error(t('modelNotFound'));
         router.replace('/chats');
         return;
       }
@@ -93,7 +95,7 @@ export const Chats = () => {
       )?.label;
     }
     if (!techName) {
-      toast.error('Подходящая модель не найдена');
+      toast.error(t('suitableModelNotFound'));
       router.replace('/chats');
       return;
     }
@@ -115,8 +117,8 @@ export const Chats = () => {
     return (
       <div className="flex items-center justify-center min-h-screen p-6">
         <ErrorComponent
-          title="Ошибка"
-          description="Не удалось загрузить чаты."
+          title={t('error')}
+          description={t('errorLoadChats')}
           onRetry={refetch}
         />
       </div>
@@ -126,7 +128,7 @@ export const Chats = () => {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen gap-4">
         <Loader2 className="size-8 animate-spin text-white/40" />
-        <p className="text-[14px] text-white/50">Открываем чат...</p>
+        <p className="text-[14px] text-white/50">{t('openingChat')}</p>
       </div>
     );
 
@@ -141,7 +143,7 @@ export const Chats = () => {
           'shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]'
         )}
       >
-        <span className="text-[22px] font-bold tracking-[-0.5px]">Чаты</span>
+        <span className="text-[22px] font-bold tracking-[-0.5px]">{t('title')}</span>
         <button
           onClick={() => {
             haptic.light();
@@ -153,7 +155,7 @@ export const Chats = () => {
             'transition-all duration-280 ease-[cubic-bezier(0.32,0.72,0,1)]',
             'active:scale-[0.88]'
           )}
-          title="Новый чат"
+          title={t('newChat')}
         >
           <MessageSquarePlus className="size-5 text-white/60" />
         </button>
@@ -171,7 +173,7 @@ export const Chats = () => {
           <>
             {chats.map((chat) => {
               const displayName =
-                chat.version || chat.title || chat.model || 'Диалог';
+                chat.version || chat.title || chat.model || t('dialogue');
 
               return (
                 <button
@@ -250,10 +252,10 @@ export const Chats = () => {
                   {isFetchingNextPage ? (
                     <span className="flex items-center justify-center gap-2">
                       <Loader2 className="size-4 animate-spin" />
-                      Загрузка...
+                      {t('loading')}
                     </span>
                   ) : (
-                    'Загрузить ещё'
+                    t('loadMore')
                   )}
                 </button>
               </div>

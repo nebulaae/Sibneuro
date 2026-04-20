@@ -4,7 +4,8 @@ import { useState, useRef, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAIModels, useModelParams } from '@/hooks/useModels';
 import { convertMediaToInputs, useGenerateAI } from '@/hooks/useGenerations';
-import { useUpload } from '@/hooks/useApiExtras';
+import { useUpload, useUI, usePaymentLink } from '@/hooks/useApiExtras';
+import { useTranslations } from 'next-intl';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   Loader2,
@@ -136,7 +137,7 @@ const ModelRow = ({ m, onClick }: { m: any; onClick: () => void }) => {
         </p>
         <p className="text-[12px] text-white/50 mt-0.5">
           {m.versions?.length > 1
-            ? `${m.versions.length} версии`
+            ? `${m.versions.length} versions`  // This part usually matches {count} versions in JSON
             : m.versions?.[0]?.label || ''}
         </p>
       </div>
@@ -154,6 +155,8 @@ const ModelRow = ({ m, onClick }: { m: any; onClick: () => void }) => {
 
 /* ── Main ── */
 export const Generate = () => {
+  const tGen = useTranslations('Generate');
+  const tMod = useTranslations('Models');
   const router = useRouter();
   const searchParams = useSearchParams();
   const modelParam = searchParams.get('model');
@@ -218,7 +221,7 @@ export const Generate = () => {
         { type: uploaded.type, url: uploaded.url, file },
       ]);
     } catch {
-      toast.error('Ошибка загрузки файла');
+      toast.error(tMod('uploadError'));
     }
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
@@ -226,7 +229,7 @@ export const Generate = () => {
   const handleGenerate = () => {
     if (!selected) return;
     if (!prompt.trim() && media.length === 0) {
-      toast.error('Введите описание или прикрепите файл');
+      toast.error(tGen('enterDescription'));
       return;
     }
     haptic.medium();
@@ -262,16 +265,16 @@ export const Generate = () => {
           }
 
           if (data.status === 'processing') {
-            toast('Генерация запущена, ждём результата...');
+            toast(tGen('generationStarted'));
             setPendingId(dialogueId || null);
             setIsWaiting(!!dialogueId);
           } else if (dialogueId) {
             haptic.success();
-            toast.success('Готово!');
+            toast.success(tGen('done'));
             // ── СРАЗУ В ЧАТ ──
             router.push(`/chats/${dialogueId}`);
           } else {
-            toast.success('Генерация завершена');
+            toast.success(tGen('generationComplete'));
           }
         },
       }
@@ -284,7 +287,7 @@ export const Generate = () => {
     if (lastMessage.status === 'completed') {
       haptic.success();
       setIsWaiting(false);
-      toast.success('Генерация завершена!');
+      toast.success(tGen('generationComplete'));
       if (pendingId) {
         router.push(`/chats/${pendingId}`);
       }
@@ -292,7 +295,7 @@ export const Generate = () => {
     } else if (lastMessage.status === 'error') {
       haptic.error();
       setIsWaiting(false);
-      toast.error('Ошибка: ' + (lastMessage.error || 'Неизвестная ошибка'));
+      toast.error(tGen('errorTitle') + ': ' + (lastMessage.error || tGen('unknownError')));
       setPendingId(null);
     }
   }, [lastMessage, isWaiting, pendingId, haptic, router]);
@@ -319,17 +322,17 @@ export const Generate = () => {
         <div className="flex flex-col gap-1.5">
           <p className="text-[20px] font-bold tracking-[-0.4px]">
             {status === 'completed'
-              ? 'Готово!'
+              ? tGen('doneTitle')
               : status === 'error'
-                ? 'Ошибка'
-                : 'Генерация...'}
+                ? tGen('errorTitle')
+                : tGen('waitingTitle')}
           </p>
           <p className="text-[14px] text-white/50 max-w-[280px] leading-[1.5]">
             {status === 'completed'
-              ? 'Переход к результату...'
+              ? tGen('doneSubtitle')
               : status === 'error'
-                ? lastMessage?.error || 'Произошла ошибка при генерации'
-                : 'Нейросеть обрабатывает запрос. Это может занять от нескольких секунд до минуты.'}
+                ? lastMessage?.error || tGen('unknownError')
+                : tGen('waitingSubtitle')}
           </p>
         </div>
         <div className="flex gap-1.5">
@@ -349,7 +352,7 @@ export const Generate = () => {
           }}
           className="text-[13px] text-white/50 bg-none border-none cursor-pointer underline underline-offset-4"
         >
-          Перейти в чат
+          {tGen('goToChat')}
         </button>
         <style>{`@keyframes pulse-dot{0%,80%,100%{transform:scale(.6);opacity:.4}40%{transform:scale(1);opacity:1}}`}</style>
       </div>
@@ -396,7 +399,7 @@ export const Generate = () => {
                 'active:scale-[0.92]'
               )}
             >
-              <ChevronLeft size={18} /> Назад
+              <ChevronLeft size={18} /> {tMod('back')}
             </button>
 
             <div className="flex items-center gap-2">
@@ -435,7 +438,7 @@ export const Generate = () => {
             {/* Versions */}
             {selected.versions && selected.versions.length > 1 && (
               <div>
-                <SectionLabel>Версия</SectionLabel>
+                <SectionLabel>{tMod('version')}</SectionLabel>
                 <div className="flex flex-wrap gap-2">
                   {selected.versions.map((v) => (
                     <PillBtn
@@ -452,11 +455,11 @@ export const Generate = () => {
 
             {/* Prompt */}
             <div>
-              <SectionLabel>Описание</SectionLabel>
+              <SectionLabel>{tMod('description')}</SectionLabel>
               <textarea
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
-                placeholder="Опишите, что хотите создать..."
+                placeholder={tMod('descriptionPlaceholder')}
                 rows={4}
                 className={cn(
                   'w-full resize-none outline-none px-4 py-[14px] rounded-2xl',
@@ -473,7 +476,7 @@ export const Generate = () => {
             {/* Aspect ratio */}
             {aspectParam && (
               <div>
-                <SectionLabel>Соотношение сторон</SectionLabel>
+                <SectionLabel>{tMod('aspectRatio')}</SectionLabel>
                 <div className="flex flex-wrap gap-2">
                   {aspectParam.values?.map((val: string) => (
                     <PillBtn
@@ -506,7 +509,7 @@ export const Generate = () => {
                     className="flex items-center gap-1.5 text-[13px] text-white/50 bg-none border-none cursor-pointer py-1.5"
                   >
                     <Settings2 size={14} />
-                    Дополнительные параметры
+                    {tMod('advancedParams')}
                     <ChevronDown
                       size={14}
                       className={cn(
@@ -575,7 +578,7 @@ export const Generate = () => {
             {canAttach && (
               <div>
                 <div className="flex items-center justify-between mb-2.5">
-                  <SectionLabel>Медиафайл</SectionLabel>
+                  <SectionLabel>{tMod('media')}</SectionLabel>
                   <button
                     onClick={() => fileInputRef.current?.click()}
                     disabled={upload.isPending}
@@ -590,7 +593,7 @@ export const Generate = () => {
                     ) : (
                       <ImagePlus size={13} />
                     )}
-                    Прикрепить
+                    {tMod('attach')}
                   </button>
                 </div>
                 <input
@@ -661,12 +664,12 @@ export const Generate = () => {
               {generate.isPending || upload.isPending ? (
                 <>
                   <Loader2 size={18} className="animate-spin" />
-                  {upload.isPending ? 'Загрузка...' : 'Генерация...'}
+                  {upload.isPending ? tMod('uploading') : tMod('generating')}
                 </>
               ) : (
                 <>
                   <Sparkles size={18} />
-                  Создать
+                  {tMod('generate')}
                 </>
               )}
             </button>
@@ -678,11 +681,11 @@ export const Generate = () => {
 
   /* ── Model picker ── */
   const catOrder = ['image', 'video', 'audio'] as const;
-  const catLabel: Record<string, string> = {
-    image: '🖼️ Изображения',
-    video: '🎬 Видео',
-    audio: '🎵 Аудио',
-  };
+  const getterCatLabels = (t: any): Record<string, string> => ({
+    image: t('catImageEmoji'),
+    video: t('catVideoEmoji'),
+    audio: t('catAudioEmoji'),
+  });
 
   return (
     <div className="flex flex-col min-h-[100svh] pb-[calc(80px+max(16px,env(safe-area-inset-bottom)))] overflow-x-hidden">
@@ -695,8 +698,8 @@ export const Generate = () => {
         )}
       >
         <div className="max-w-[760px] mx-auto">
-          <p className="text-[22px] font-bold tracking-[-0.5px]">Создать</p>
-          <p className="text-[13px] text-white/50 mt-0.5">Выберите нейросеть</p>
+          <p className="text-[22px] font-bold tracking-[-0.5px]">{tGen('title')}</p>
+          <p className="text-[13px] text-white/50 mt-0.5">{tGen('subtitle')}</p>
         </div>
       </header>
 
@@ -739,7 +742,7 @@ export const Generate = () => {
                 <div key={cat}>
                   <div className="px-5 py-[10px] bg-white/[.04] backdrop-blur-xl border-b border-white/[.06]">
                     <p className="text-[11px] font-bold tracking-[0.6px] uppercase text-white/50">
-                      {catLabel[cat]}
+                      {getterCatLabels(tMod)[cat]}
                     </p>
                   </div>
                   {catModels.map((m) => (

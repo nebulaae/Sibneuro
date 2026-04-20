@@ -5,6 +5,7 @@ import { useAIModels } from '@/hooks/useModels';
 import { useRoles } from '@/hooks/useRoles';
 import { useUser } from '@/hooks/useUser';
 import { useUI, usePaymentLink } from '@/hooks/useApiExtras';
+import { useTranslations } from 'next-intl';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ErrorComponent } from '@/components/states/Error';
 import { localize } from '@/lib/utils';
@@ -46,6 +47,7 @@ const GlassSkeleton = ({
 );
 
 export const Home = () => {
+  const t = useTranslations('Home');
   const router = useRouter();
   const {
     data: models,
@@ -113,8 +115,8 @@ export const Home = () => {
     return (
       <div className="flex items-center justify-center min-h-screen p-6">
         <ErrorComponent
-          title="Ошибка"
-          description="Не удалось загрузить данные."
+          title={t('error')}
+          description={t('errorLoadData')}
           onRetry={refetch}
         />
       </div>
@@ -204,7 +206,7 @@ export const Home = () => {
               color: 'var(--sys-label-secondary)',
             }}
           >
-            Модели
+            {t('models')}
           </span>
           <button
             onClick={() => router.push('/models')}
@@ -217,7 +219,7 @@ export const Home = () => {
               cursor: 'pointer',
             }}
           >
-            Все
+            {t('all')}
           </button>
         </div>
 
@@ -343,7 +345,7 @@ export const Home = () => {
               color: 'var(--sys-label-secondary)',
             }}
           >
-            AI Ассистенты
+            {t('aiAssistants')}
           </span>
           <button
             onClick={() => router.push('/chats')}
@@ -356,7 +358,7 @@ export const Home = () => {
               cursor: 'pointer',
             }}
           >
-            Все
+            {t('all')}
           </button>
         </div>
 
@@ -476,7 +478,7 @@ export const Home = () => {
             padding: '0 4px',
           }}
         >
-          В тренде
+          {t('trending')}
         </span>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -489,22 +491,22 @@ export const Home = () => {
                   [
                     {
                       icon: '🎨',
-                      title: 'Создай свой 2D-аватар',
+                      title: t('trend1'),
                       href: '/generate',
                     },
                     {
                       icon: '🤖',
-                      title: 'Открой возможности GPT',
+                      title: t('trend2'),
                       href: '/chats',
                     },
                     {
                       icon: '📸',
-                      title: 'Фотореалистичные изображения',
+                      title: t('trend3'),
                       href: '/generate',
                     },
                     {
                       icon: '🎵',
-                      title: 'Генерация музыки',
+                      title: t('trend4'),
                       href: '/generate',
                     },
                   ] as any[]

@@ -5,20 +5,22 @@ import { useEffect, useState, useCallback } from 'react';
 import { usePathname } from 'next/navigation';
 import { Home, Brain, Sparkles, MessageCircle, UserRound } from 'lucide-react';
 import { useHaptic } from '@/hooks/useHaptic';
+import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils';
 
-const items = [
-  { id: 1, href: '/', label: 'Главная', icon: Home },
-  { id: 2, href: '/models', label: 'Модели', icon: Brain },
-  { id: 3, href: '/generate', label: 'Создать', icon: Sparkles },
-  { id: 4, href: '/chats', label: 'Чаты', icon: MessageCircle },
-  { id: 5, href: '/profile', label: 'Профиль', icon: UserRound },
-] as const;
-
 export const BottomBar = () => {
+  const t = useTranslations('BottomBar');
   const pathname = usePathname();
   const haptic = useHaptic();
   const [visible, setVisible] = useState(true);
+
+  const items = [
+    { id: 1, href: '/', label: t('home'), icon: Home },
+    { id: 2, href: '/models', label: t('models'), icon: Brain },
+    { id: 3, href: '/generate', label: t('create'), icon: Sparkles },
+    { id: 4, href: '/chats', label: t('chats'), icon: MessageCircle },
+    { id: 5, href: '/profile', label: t('profile'), icon: UserRound },
+  ] as const;
 
   // Скрываем внутри конкретного чата
   const isChat = /^\/chats\/.+/.test(pathname);
@@ -64,7 +66,7 @@ export const BottomBar = () => {
 
   return (
     <nav
-      aria-label="Нижняя навигация"
+      aria-label={t('ariaLabel')}
       className={cn(
         // Только на мобилке
         'flex sm:hidden fixed bottom-0 left-0 right-0 z-50',

@@ -3,26 +3,27 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAIModels } from '@/hooks/useModels';
+import { useTranslations } from 'next-intl';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ModelsEmpty } from '@/components/states/Empty';
 import { ErrorComponent } from '@/components/states/Error';
 import { useHaptic } from '@/hooks/useHaptic';
 import { cn } from '@/lib/utils';
 
-const TABS = [
-  { key: 'all', label: 'Все' },
-  { key: 'text', label: 'Текст' },
-  { key: 'image', label: 'Фото' },
-  { key: 'video', label: 'Видео' },
-  { key: 'audio', label: 'Аудио' },
+const getTabs = (t: any) => [
+  { key: 'all', label: t('tabAll') },
+  { key: 'text', label: t('tabText') },
+  { key: 'image', label: t('tabImage') },
+  { key: 'video', label: t('tabVideo') },
+  { key: 'audio', label: t('tabAudio') },
 ] as const;
 
-const CATEGORY_LABEL: Record<string, string> = {
-  text: 'Текст',
-  image: 'Фото',
-  video: 'Видео',
-  audio: 'Аудио',
-};
+const getCategoryLabels = (t: any): Record<string, string> => ({
+  text: t('catText'),
+  image: t('catImage'),
+  video: t('catVideo'),
+  audio: t('catAudio'),
+});
 const CAT_ICON: Record<string, string> = {
   text: '✦',
   image: '◈',
@@ -81,6 +82,9 @@ const SkeletonRow = () => (
 );
 
 export const Models = () => {
+  const t = useTranslations('Models');
+  const TABS = getTabs(t);
+  const CATEGORY_LABEL = getCategoryLabels(t);
   const [tab, setTab] = useState<string>('all');
   const router = useRouter();
   const haptic = useHaptic();
@@ -90,8 +94,8 @@ export const Models = () => {
     return (
       <div className="flex items-center justify-center min-h-svh p-6">
         <ErrorComponent
-          title="Ошибка загрузки"
-          description="Не удалось получить список моделей."
+          title={t('error')}
+          description={t('errorDescription')}
           onRetry={refetch}
         />
       </div>
@@ -129,7 +133,7 @@ export const Models = () => {
       >
         <div className="max-w-190 mx-auto">
           <span className="text-[22px] font-bold tracking-[-0.5px]">
-            Модели
+            {t('title')}
           </span>
         </div>
       </header>
@@ -224,7 +228,7 @@ export const Models = () => {
                       {m.versions && m.versions.length > 1 && (
                         <>
                           <span className="opacity-40">·</span>
-                          <span>{m.versions.length} версии</span>
+                          <span>{t('versions', { count: m.versions.length })}</span>
                         </>
                       )}
                     </p>
