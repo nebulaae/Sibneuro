@@ -32,32 +32,53 @@ export const LanguageSwitcher = () => {
     const nextLocale: "en" | "ru" = value as "en" | "ru";
 
     startTransition(() => {
-      // Update the cookie that your server-side getRequestConfig reads
       document.cookie = `locale=${nextLocale}; path=/; max-age=${
         60 * 60 * 24 * 365
-      };`; // 1 year
+      };`;
 
-      // Update UI instantly
       setCurrentLocale(nextLocale);
-
-      // Refresh server components with new locale
       router.refresh();
     });
   }, [startTransition, setCurrentLocale, router]);
 
   return (
     <Select value={currentLocale} onValueChange={handleLanguageChange}>
+      {/* Красивый триггер */}
       <SelectTrigger
         disabled={isPending}
-        className="bg-transparent text-textPrimary hover:bg-transparent border-0 focus:ring-0 w-fit h-9 px-3"
+        className="bg-transparent hover:bg-muted/50 border border-border/60 text-textPrimary 
+                   hover:border-border focus:ring-2 focus:ring-primary/30 
+                   transition-all duration-200 w-fit h-9 px-3 rounded-xl shadow-sm"
       >
-        <GlobeIcon className="size-4 mr-2" />
-        <SelectValue />
+        <div className="flex items-center gap-2">
+          <GlobeIcon className="size-4" />
+          <SelectValue />
+        </div>
       </SelectTrigger>
 
-      <SelectContent>
-        <SelectItem value="en">Eng</SelectItem>
-        <SelectItem value="ru">Рус</SelectItem>
+      {/* Улучшенное выпадающее меню */}
+      <SelectContent 
+        className="w-40 rounded-2xl border border-border/80 bg-popover shadow-xl 
+                   backdrop-blur-xl p-1 animate-in fade-in-0 zoom-in-95"
+        align="end"
+      >
+        <SelectItem 
+          value="en"
+          className="flex items-center gap-3 px-3 py-3 rounded-xl cursor-pointer 
+                     hover:bg-accent transition-colors text-base font-medium"
+        >
+          <span className="text-xl leading-none">🇬🇧</span>
+          <span>Eng</span>
+        </SelectItem>
+
+        <SelectItem 
+          value="ru"
+          className="flex items-center gap-3 px-3 py-3 rounded-xl cursor-pointer 
+                     hover:bg-accent transition-colors text-base font-medium"
+        >
+          <span className="text-xl leading-none">🇷🇺</span>
+          <span>Рус</span>
+        </SelectItem>
       </SelectContent>
     </Select>
   );
