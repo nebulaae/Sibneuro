@@ -321,8 +321,7 @@ export const Login = () => {
       }
     } catch (e: any) {
       haptic.error();
-      if (e?.response?.status === 409)
-        toast.error(t('emailExists'));
+      if (e?.response?.status === 409) toast.error(t('emailExists'));
       else
         toast.error(
           e?.response?.data?.error || e?.message || t('registerError')
@@ -375,10 +374,10 @@ export const Login = () => {
       <PageWrapper>
         <BackBtn onClick={() => setView('main')} />
         <div className="mb-7">
-          <h2 className="text-[28px] font-bold tracking-[-0.6px] mb-1">{t('emailLoginTitle')}</h2>
-          <p className="text-[14px] text-white/50">
-            {t('emailLoginSubtitle')}
-          </p>
+          <h2 className="text-[28px] font-bold tracking-[-0.6px] mb-1">
+            {t('emailLoginTitle')}
+          </h2>
+          <p className="text-[14px] text-white/50">{t('emailLoginSubtitle')}</p>
         </div>
         <div className={cn(glassCard, 'p-5 flex flex-col gap-3')}>
           <GlassInput
@@ -522,9 +521,7 @@ export const Login = () => {
         <h1 className="text-[32px] font-extrabold tracking-[-0.8px] mb-1">
           Sibneuro
         </h1>
-        <p className="text-[15px] text-white/50">
-          {t('tagline')}
-        </p>
+        <p className="text-[15px] text-white/50">{t('tagline')}</p>
       </div>
 
       <div className="flex flex-col gap-3">
@@ -538,7 +535,9 @@ export const Login = () => {
               />
               <path d="M8.3 12.5l.3 3.4 1.7-2" fill="#B0D8F5" />
             </svg>
-            <span className="text-[15px] font-semibold">{t('telegramSection')}</span>
+            <span className="text-[15px] font-semibold">
+              {t('telegramSection')}
+            </span>
           </div>
           {bot?.bot_username ? (
             <div className="flex justify-center">

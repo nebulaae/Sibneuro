@@ -10,13 +10,14 @@ import { ErrorComponent } from '@/components/states/Error';
 import { useHaptic } from '@/hooks/useHaptic';
 import { cn } from '@/lib/utils';
 
-const getTabs = (t: any) => [
-  { key: 'all', label: t('tabAll') },
-  { key: 'text', label: t('tabText') },
-  { key: 'image', label: t('tabImage') },
-  { key: 'video', label: t('tabVideo') },
-  { key: 'audio', label: t('tabAudio') },
-] as const;
+const getTabs = (t: any) =>
+  [
+    { key: 'all', label: t('tabAll') },
+    { key: 'text', label: t('tabText') },
+    { key: 'image', label: t('tabImage') },
+    { key: 'video', label: t('tabVideo') },
+    { key: 'audio', label: t('tabAudio') },
+  ] as const;
 
 const getCategoryLabels = (t: any): Record<string, string> => ({
   text: t('catText'),
@@ -228,7 +229,9 @@ export const Models = () => {
                       {m.versions && m.versions.length > 1 && (
                         <>
                           <span className="opacity-40">·</span>
-                          <span>{t('versions', { count: m.versions.length })}</span>
+                          <span>
+                            {t('versions', { count: m.versions.length })}
+                          </span>
                         </>
                       )}
                     </p>

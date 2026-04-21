@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAIModels, useModelParams } from '@/hooks/useModels';
 import { convertMediaToInputs, useGenerateAI } from '@/hooks/useGenerations';
-import { useUpload, useUI, usePaymentLink } from '@/hooks/useApiExtras';
+import { useUpload } from '@/hooks/useApiExtras';
 import { useTranslations } from 'next-intl';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
@@ -21,7 +21,6 @@ import {
 import { toast } from 'sonner';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/api';
-import { queryKeys } from '@/lib/queryKeys';
 import { useHaptic } from '@/hooks/useHaptic';
 import { cn } from '@/lib/utils';
 
@@ -31,7 +30,6 @@ function useGenerationStatus(dialogueId: string | null, enabled: boolean) {
     queryKey: ['gen-status', dialogueId],
     queryFn: async () => {
       const { data } = await api.get('/api/history', {
-        // ← ФИКС ПУТИ
         params: { dialogue_id: dialogueId },
       });
       const msgs = data.messages || data || [];
@@ -41,6 +39,23 @@ function useGenerationStatus(dialogueId: string | null, enabled: boolean) {
     refetchInterval: 2000,
   });
 }
+
+/* ── Param label helpers ── */
+function paramLabel(name: string, t: any): string {
+  try {
+    return t(`params.${name}`);
+  } catch {
+    return name;
+  }
+}
+function paramValueLabel(paramName: string, val: string, t: any): string {
+  try {
+    return t(`paramValues.${paramName}.${val}`);
+  } catch {
+    return val;
+  }
+}
+
 /* ── Shared classes ── */
 const glassThin = cn(
   'bg-white/[.07] dark:bg-black/[.45] backdrop-blur-xl backdrop-saturate-150',
@@ -103,6 +118,7 @@ const PillBtn = ({
 
 /* ── Model row ── */
 const ModelRow = ({ m, onClick }: { m: any; onClick: () => void }) => {
+  const t = useTranslations('Generate');
   const haptic = useHaptic();
   const cost =
     m.versions?.find((v: any) => v.default)?.cost ?? m.versions?.[0]?.cost ?? 1;
@@ -137,7 +153,7 @@ const ModelRow = ({ m, onClick }: { m: any; onClick: () => void }) => {
         </p>
         <p className="text-[12px] text-white/50 mt-0.5">
           {m.versions?.length > 1
-            ? `${m.versions.length} versions`  // This part usually matches {count} versions in JSON
+            ? t('versions', { count: m.versions.length })
             : m.versions?.[0]?.label || ''}
         </p>
       </div>
@@ -155,8 +171,7 @@ const ModelRow = ({ m, onClick }: { m: any; onClick: () => void }) => {
 
 /* ── Main ── */
 export const Generate = () => {
-  const tGen = useTranslations('Generate');
-  const tMod = useTranslations('Models');
+  const t = useTranslations('Generate');
   const router = useRouter();
   const searchParams = useSearchParams();
   const modelParam = searchParams.get('model');
@@ -194,6 +209,7 @@ export const Generate = () => {
   useEffect(() => {
     if (modelParam) setSelectedTech(modelParam);
   }, [modelParam]);
+
   useEffect(() => {
     if (selected) {
       const def =
@@ -201,6 +217,7 @@ export const Generate = () => {
       setSelectedVersion(def?.label || null);
     }
   }, [selected?.tech_name]);
+
   useEffect(() => {
     if (!params) return;
     const defaults: Record<string, any> = {};
@@ -221,7 +238,7 @@ export const Generate = () => {
         { type: uploaded.type, url: uploaded.url, file },
       ]);
     } catch {
-      toast.error(tMod('uploadError'));
+      toast.error(t('uploadError'));
     }
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
@@ -229,7 +246,7 @@ export const Generate = () => {
   const handleGenerate = () => {
     if (!selected) return;
     if (!prompt.trim() && media.length === 0) {
-      toast.error(tGen('enterDescription'));
+      toast.error(t('enterDescription'));
       return;
     }
     haptic.medium();
@@ -249,8 +266,6 @@ export const Generate = () => {
       {
         onSuccess: (data) => {
           const dialogueId = data.dialogue_id;
-
-          // ── КЕШИРУЕМ МОДЕЛЬ чтобы страница чата сразу её знала ──
           if (dialogueId) {
             try {
               sessionStorage.setItem(
@@ -261,41 +276,38 @@ export const Generate = () => {
                   role_id: null,
                 })
               );
-            } catch { }
+            } catch {}
           }
-
           if (data.status === 'processing') {
-            toast(tGen('generationStarted'));
+            toast(t('generationStarted'));
             setPendingId(dialogueId || null);
             setIsWaiting(!!dialogueId);
           } else if (dialogueId) {
             haptic.success();
-            toast.success(tGen('done'));
-            // ── СРАЗУ В ЧАТ ──
+            toast.success(t('done'));
             router.push(`/chats/${dialogueId}`);
           } else {
-            toast.success(tGen('generationComplete'));
+            toast.success(t('generationComplete'));
           }
         },
       }
     );
   };
 
-  // ── Отслеживаем завершение генерации ──
   useEffect(() => {
     if (!isWaiting || !lastMessage) return;
     if (lastMessage.status === 'completed') {
       haptic.success();
       setIsWaiting(false);
-      toast.success(tGen('generationComplete'));
-      if (pendingId) {
-        router.push(`/chats/${pendingId}`);
-      }
+      toast.success(t('generationComplete'));
+      if (pendingId) router.push(`/chats/${pendingId}`);
       setPendingId(null);
     } else if (lastMessage.status === 'error') {
       haptic.error();
       setIsWaiting(false);
-      toast.error(tGen('errorTitle') + ': ' + (lastMessage.error || tGen('unknownError')));
+      toast.error(
+        t('errorTitle') + ': ' + (lastMessage.error || t('unknownError'))
+      );
       setPendingId(null);
     }
   }, [lastMessage, isWaiting, pendingId, haptic, router]);
@@ -322,17 +334,17 @@ export const Generate = () => {
         <div className="flex flex-col gap-1.5">
           <p className="text-[20px] font-bold tracking-[-0.4px]">
             {status === 'completed'
-              ? tGen('doneTitle')
+              ? t('doneTitle')
               : status === 'error'
-                ? tGen('errorTitle')
-                : tGen('waitingTitle')}
+                ? t('errorTitle')
+                : t('waitingTitle')}
           </p>
           <p className="text-[14px] text-white/50 max-w-[280px] leading-[1.5]">
             {status === 'completed'
-              ? tGen('doneSubtitle')
+              ? t('doneSubtitle')
               : status === 'error'
-                ? lastMessage?.error || tGen('unknownError')
-                : tGen('waitingSubtitle')}
+                ? lastMessage?.error || t('unknownError')
+                : t('waitingSubtitle')}
           </p>
         </div>
         <div className="flex gap-1.5">
@@ -352,7 +364,7 @@ export const Generate = () => {
           }}
           className="text-[13px] text-white/50 bg-none border-none cursor-pointer underline underline-offset-4"
         >
-          {tGen('goToChat')}
+          {t('goToChat')}
         </button>
         <style>{`@keyframes pulse-dot{0%,80%,100%{transform:scale(.6);opacity:.4}40%{transform:scale(1);opacity:1}}`}</style>
       </div>
@@ -365,8 +377,8 @@ export const Generate = () => {
       selected.versions?.find((v) => v.label === currentVersion)?.cost ??
       selected.versions?.[0]?.cost ??
       1;
-    const canAttach = selected.input?.some((t) =>
-      ['image', 'video', 'audio'].includes(t)
+    const canAttach = selected.input?.some((i) =>
+      ['image', 'video', 'audio'].includes(i)
     );
     const aspectParam = (params || []).find(
       (p: any) => p.name === 'aspect_ratio'
@@ -399,9 +411,8 @@ export const Generate = () => {
                 'active:scale-[0.92]'
               )}
             >
-              <ChevronLeft size={18} /> {tMod('back')}
+              <ChevronLeft size={18} /> {t('back')}
             </button>
-
             <div className="flex items-center gap-2">
               <div
                 className={cn(
@@ -420,7 +431,6 @@ export const Generate = () => {
                 {selected.model_name}
               </span>
             </div>
-
             <div
               className={cn(
                 'inline-flex items-center gap-1 px-[10px] py-1 rounded-full text-[12px] font-semibold text-white/50',
@@ -438,7 +448,7 @@ export const Generate = () => {
             {/* Versions */}
             {selected.versions && selected.versions.length > 1 && (
               <div>
-                <SectionLabel>{tMod('version')}</SectionLabel>
+                <SectionLabel>{t('version')}</SectionLabel>
                 <div className="flex flex-wrap gap-2">
                   {selected.versions.map((v) => (
                     <PillBtn
@@ -455,11 +465,11 @@ export const Generate = () => {
 
             {/* Prompt */}
             <div>
-              <SectionLabel>{tMod('description')}</SectionLabel>
+              <SectionLabel>{t('description')}</SectionLabel>
               <textarea
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
-                placeholder={tMod('descriptionPlaceholder')}
+                placeholder={t('descriptionPlaceholder')}
                 rows={4}
                 className={cn(
                   'w-full resize-none outline-none px-4 py-[14px] rounded-2xl',
@@ -469,14 +479,14 @@ export const Generate = () => {
                   spring,
                   'focus:border-[rgba(0,122,255,0.40)] focus:shadow-[inset_0_1px_0_rgba(255,255,255,0.20),0_0_0_3px_rgba(0,122,255,0.12)]'
                 )}
-                style={{ fontSize: 16 }}  // ← фикс zoom на iOS
+                style={{ fontSize: 16 }}
               />
             </div>
 
             {/* Aspect ratio */}
             {aspectParam && (
               <div>
-                <SectionLabel>{tMod('aspectRatio')}</SectionLabel>
+                <SectionLabel>{t('aspectRatio')}</SectionLabel>
                 <div className="flex flex-wrap gap-2">
                   {aspectParam.values?.map((val: string) => (
                     <PillBtn
@@ -499,7 +509,7 @@ export const Generate = () => {
             {/* Advanced params */}
             {params &&
               params.filter((p: any) => p.name !== 'aspect_ratio').length >
-              0 && (
+                0 && (
                 <div>
                   <button
                     onClick={() => {
@@ -509,7 +519,7 @@ export const Generate = () => {
                     className="flex items-center gap-1.5 text-[13px] text-white/50 bg-none border-none cursor-pointer py-1.5"
                   >
                     <Settings2 size={14} />
-                    {tMod('advancedParams')}
+                    {t('advancedParams')}
                     <ChevronDown
                       size={14}
                       className={cn(
@@ -525,7 +535,7 @@ export const Generate = () => {
                         .map((p: any) => (
                           <div key={p.name}>
                             <label className="block text-[12px] text-white/50 mb-1.5">
-                              {p.label || p.name}
+                              {paramLabel(p.name, t)}
                             </label>
                             {p.type === 'select' && p.values ? (
                               <div className="flex flex-wrap gap-1.5">
@@ -542,7 +552,7 @@ export const Generate = () => {
                                       }))
                                     }
                                   >
-                                    {val}
+                                    {paramValueLabel(p.name, val, t)}
                                   </PillBtn>
                                 ))}
                               </div>
@@ -578,7 +588,7 @@ export const Generate = () => {
             {canAttach && (
               <div>
                 <div className="flex items-center justify-between mb-2.5">
-                  <SectionLabel>{tMod('media')}</SectionLabel>
+                  <SectionLabel>{t('media')}</SectionLabel>
                   <button
                     onClick={() => fileInputRef.current?.click()}
                     disabled={upload.isPending}
@@ -593,7 +603,7 @@ export const Generate = () => {
                     ) : (
                       <ImagePlus size={13} />
                     )}
-                    {tMod('attach')}
+                    {t('attach')}
                   </button>
                 </div>
                 <input
@@ -658,18 +668,17 @@ export const Generate = () => {
                 ((!prompt.trim() && media.length === 0) ||
                   generate.isPending ||
                   upload.isPending) &&
-                'opacity-45'
+                  'opacity-45'
               )}
             >
               {generate.isPending || upload.isPending ? (
                 <>
                   <Loader2 size={18} className="animate-spin" />
-                  {upload.isPending ? tMod('uploading') : tMod('generating')}
+                  {upload.isPending ? t('uploading') : t('generating')}
                 </>
               ) : (
                 <>
-                  <Sparkles size={18} />
-                  {tMod('generate')}
+                  <Sparkles size={18} /> {t('generate')}
                 </>
               )}
             </button>
@@ -681,11 +690,11 @@ export const Generate = () => {
 
   /* ── Model picker ── */
   const catOrder = ['image', 'video', 'audio'] as const;
-  const getterCatLabels = (t: any): Record<string, string> => ({
+  const catLabels: Record<string, string> = {
     image: t('catImageEmoji'),
     video: t('catVideoEmoji'),
     audio: t('catAudioEmoji'),
-  });
+  };
 
   return (
     <div className="flex flex-col min-h-[100svh] pb-[calc(80px+max(16px,env(safe-area-inset-bottom)))] overflow-x-hidden">
@@ -698,8 +707,10 @@ export const Generate = () => {
         )}
       >
         <div className="max-w-[760px] mx-auto">
-          <p className="text-[22px] font-bold tracking-[-0.5px]">{tGen('title')}</p>
-          <p className="text-[13px] text-white/50 mt-0.5">{tGen('subtitle')}</p>
+          <p className="text-[22px] font-bold tracking-[-0.5px]">
+            {t('title')}
+          </p>
+          <p className="text-[13px] text-white/50 mt-0.5">{t('subtitle')}</p>
         </div>
       </header>
 
@@ -707,54 +718,54 @@ export const Generate = () => {
         <div className="max-w-[760px] mx-auto">
           {isLoading
             ? Array.from({ length: 6 }).map((_, i) => (
-              <div
-                key={i}
-                className="flex items-center gap-[14px] px-5 py-[13px] border-b border-white/[.06]"
-              >
                 <div
-                  className={cn(
-                    'w-[46px] h-[46px] rounded-[14px] flex-shrink-0 animate-[pulse-opacity_1.6s_ease-in-out_infinite]',
-                    glassThin
-                  )}
-                />
-                <div className="flex-1">
+                  key={i}
+                  className="flex items-center gap-[14px] px-5 py-[13px] border-b border-white/[.06]"
+                >
                   <div
                     className={cn(
-                      'w-[40%] h-[13px] rounded-md mb-1.5 animate-[pulse-opacity_1.6s_ease-in-out_0.1s_infinite]',
+                      'w-[46px] h-[46px] rounded-[14px] flex-shrink-0 animate-[pulse-opacity_1.6s_ease-in-out_infinite]',
                       glassThin
                     )}
                   />
-                  <div
-                    className={cn(
-                      'w-[25%] h-[10px] rounded-md animate-[pulse-opacity_1.6s_ease-in-out_0.2s_infinite]',
-                      glassThin
-                    )}
-                  />
-                </div>
-              </div>
-            ))
-            : catOrder.map((cat) => {
-              const catModels = models.filter(
-                (m) => m.mainCategory === cat || m.categories?.includes(cat)
-              );
-              if (!catModels.length) return null;
-              return (
-                <div key={cat}>
-                  <div className="px-5 py-[10px] bg-white/[.04] backdrop-blur-xl border-b border-white/[.06]">
-                    <p className="text-[11px] font-bold tracking-[0.6px] uppercase text-white/50">
-                      {getterCatLabels(tMod)[cat]}
-                    </p>
-                  </div>
-                  {catModels.map((m) => (
-                    <ModelRow
-                      key={m.tech_name}
-                      m={m}
-                      onClick={() => setSelectedTech(m.tech_name)}
+                  <div className="flex-1">
+                    <div
+                      className={cn(
+                        'w-[40%] h-[13px] rounded-md mb-1.5 animate-[pulse-opacity_1.6s_ease-in-out_0.1s_infinite]',
+                        glassThin
+                      )}
                     />
-                  ))}
+                    <div
+                      className={cn(
+                        'w-[25%] h-[10px] rounded-md animate-[pulse-opacity_1.6s_ease-in-out_0.2s_infinite]',
+                        glassThin
+                      )}
+                    />
+                  </div>
                 </div>
-              );
-            })}
+              ))
+            : catOrder.map((cat) => {
+                const catModels = models.filter(
+                  (m) => m.mainCategory === cat || m.categories?.includes(cat)
+                );
+                if (!catModels.length) return null;
+                return (
+                  <div key={cat}>
+                    <div className="px-5 py-[10px] bg-white/[.04] backdrop-blur-xl border-b border-white/[.06]">
+                      <p className="text-[11px] font-bold tracking-[0.6px] uppercase text-white/50">
+                        {catLabels[cat]}
+                      </p>
+                    </div>
+                    {catModels.map((m) => (
+                      <ModelRow
+                        key={m.tech_name}
+                        m={m}
+                        onClick={() => setSelectedTech(m.tech_name)}
+                      />
+                    ))}
+                  </div>
+                );
+              })}
         </div>
       </div>
 

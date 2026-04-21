@@ -5,7 +5,15 @@ import { useReferrals } from '@/hooks/useApiExtras';
 import { useHaptic } from '@/hooks/useHaptic';
 import { useAuth } from '@/hooks/useAuth';
 import { useBot } from '@/app/providers/BotProvider';
-import { ChevronLeft, Users, Gift, Zap, Copy, Check, Loader2 } from 'lucide-react';
+import {
+  ChevronLeft,
+  Users,
+  Gift,
+  Zap,
+  Copy,
+  Check,
+  Loader2,
+} from 'lucide-react';
 import { toast } from 'sonner';
 import { useState, useMemo } from 'react';
 import { useTranslations } from 'next-intl';
@@ -43,12 +51,7 @@ const StatCard = ({
   value: string | number;
   isLoading?: boolean;
 }) => (
-  <div
-    className={cn(
-      'flex flex-col gap-2.5 p-4 rounded-[16px]',
-      glassRegular
-    )}
-  >
+  <div className={cn('flex flex-col gap-2.5 p-4 rounded-[16px]', glassRegular)}>
     <div className="flex items-center justify-between">
       <span className="text-[11px] font-semibold tracking-[0.4px] uppercase text-white/50">
         {label}
@@ -101,7 +104,10 @@ export const Referrals = () => {
   }, [stats.total_tokens]);
 
   return (
-    <div className="flex flex-col h-svh" style={{ background: 'var(--page-bg)' }}>
+    <div
+      className="flex flex-col h-svh"
+      style={{ background: 'var(--page-bg)' }}
+    >
       {/* ── Header ── */}
       <header
         className={cn(
@@ -129,9 +135,7 @@ export const Referrals = () => {
           <p className="text-[15px] font-semibold tracking-[-0.2px]">
             {t('title')}
           </p>
-          <span className="text-[11px] text-white/40">
-            {t('subtitle')}
-          </span>
+          <span className="text-[11px] text-white/40">{t('subtitle')}</span>
         </div>
       </header>
 
@@ -206,7 +210,10 @@ export const Referrals = () => {
               {levelStats.map((level: any, idx: number) => (
                 <div
                   key={idx}
-                  className={cn(glassRegular, 'rounded-[14px] px-4 py-3 flex items-center justify-between')}
+                  className={cn(
+                    glassRegular,
+                    'rounded-[14px] px-4 py-3 flex items-center justify-between'
+                  )}
                 >
                   <div>
                     <p className="text-[13px] font-semibold text-white">
@@ -241,7 +248,9 @@ export const Referrals = () => {
                 >
                   <div className="flex items-center justify-between mb-2">
                     <p className="text-[13px] font-semibold text-white truncate">
-                      {ref.first_name || ref.username || t('user', { id: ref.user_id || idx })}
+                      {ref.first_name ||
+                        ref.username ||
+                        t('user', { id: ref.user_id || idx })}
                     </p>
                     <span className="text-[11px] text-white/50 flex-shrink-0">
                       {ref.tokens_earned || 0} 💎
@@ -250,7 +259,9 @@ export const Referrals = () => {
                   <div className="flex items-center justify-between">
                     <span className="text-[11px] text-white/40">
                       {ref.created_at
-                        ? new Date(ref.created_at).toLocaleDateString(t('locale') === 'en' ? 'en-US' : 'ru-RU')
+                        ? new Date(ref.created_at).toLocaleDateString(
+                            t('locale') === 'en' ? 'en-US' : 'ru-RU'
+                          )
                         : t('recently')}
                     </span>
                     {ref.level && (

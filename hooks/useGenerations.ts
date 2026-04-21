@@ -27,7 +27,7 @@ export function normalizeResultMedia(
     .map((m) => {
       let url = '';
       let type = 'image';
-      
+
       // Обработка вложенной структуры: input может быть объектом {type, format, input}
       if (typeof m.input === 'object' && m.input !== null) {
         url = m.input.input || '';
@@ -37,7 +37,7 @@ export function normalizeResultMedia(
         url = m.url || m.input || '';
         type = m.type || 'image';
       }
-      
+
       return { url, type };
     })
     .filter((m) => m.url);
@@ -53,7 +53,7 @@ export function convertMediaToInputs(
 
   // Если есть медиа, отправляем её в формате media: [{type, format, input}]
   if (media.length > 0) {
-    inputs.media = media.map(m => ({
+    inputs.media = media.map((m) => ({
       type: m.type,
       format: m.format || 'url',
       input: m.input,

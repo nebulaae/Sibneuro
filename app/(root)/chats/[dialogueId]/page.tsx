@@ -94,7 +94,11 @@ function writeStoredModel(
 function getDialogueModel(
   dialogueId: string | null,
   messages: Message[],
-  urlParams?: { model?: string | null; version?: string | null; role?: string | null }
+  urlParams?: {
+    model?: string | null;
+    version?: string | null;
+    role?: string | null;
+  }
 ): { model: string | null; version: string | null; roleId: number | null } {
   if (!dialogueId) {
     return { model: null, version: null, roleId: null };
@@ -181,7 +185,9 @@ function AudioPlayer({ src }: { src: string }) {
   const format = (t: number) => {
     if (!t) return '0:00';
     const m = Math.floor(t / 60);
-    const s = Math.floor(t % 60).toString().padStart(2, '0');
+    const s = Math.floor(t % 60)
+      .toString()
+      .padStart(2, '0');
     return `${m}:${s}`;
   };
 
@@ -192,26 +198,55 @@ function AudioPlayer({ src }: { src: string }) {
     const pause = () => setIsPlaying(false);
     a.addEventListener('play', play);
     a.addEventListener('pause', pause);
-    return () => { a.removeEventListener('play', play); a.removeEventListener('pause', pause); };
+    return () => {
+      a.removeEventListener('play', play);
+      a.removeEventListener('pause', pause);
+    };
   }, []);
 
   return (
     <div className="flex flex-col gap-2 w-full">
-      <audio ref={audioRef} src={src}
-        onTimeUpdate={() => { const a = audioRef.current; if (a) setProgress(a.currentTime); }}
-        onLoadedMetadata={() => { const a = audioRef.current; if (a) setDuration(a.duration); }}
+      <audio
+        ref={audioRef}
+        src={src}
+        onTimeUpdate={() => {
+          const a = audioRef.current;
+          if (a) setProgress(a.currentTime);
+        }}
+        onLoadedMetadata={() => {
+          const a = audioRef.current;
+          if (a) setDuration(a.duration);
+        }}
       />
       <div className="flex items-center gap-3">
-        <button onClick={togglePlay}
-          className={cn('w-10 h-10 rounded-full flex items-center justify-center',
-            'bg-white/10 border border-white/20 backdrop-blur-xl', 'active:scale-90 transition')}>
+        <button
+          onClick={togglePlay}
+          className={cn(
+            'w-10 h-10 rounded-full flex items-center justify-center',
+            'bg-white/10 border border-white/20 backdrop-blur-xl',
+            'active:scale-90 transition'
+          )}
+        >
           {isPlaying ? <Pause size={24} /> : <Play size={24} />}
         </button>
-        <div className="text-xs text-white/60 min-w-[60px]">{format(progress)} / {format(duration)}</div>
+        <div className="text-xs text-white/60 min-w-[60px]">
+          {format(progress)} / {format(duration)}
+        </div>
       </div>
-      <input type="range" min={0} max={duration || 0} value={progress}
-        onChange={(e) => { const a = audioRef.current; if (a) { a.currentTime = Number(e.target.value); setProgress(Number(e.target.value)); } }}
-        className="w-full accent-[#0A84FF]" />
+      <input
+        type="range"
+        min={0}
+        max={duration || 0}
+        value={progress}
+        onChange={(e) => {
+          const a = audioRef.current;
+          if (a) {
+            a.currentTime = Number(e.target.value);
+            setProgress(Number(e.target.value));
+          }
+        }}
+        className="w-full accent-[#0A84FF]"
+      />
     </div>
   );
 }
@@ -253,25 +288,50 @@ export default function ChatPage() {
   const [uploadedFiles, setUploadedFiles] = useState<
     { url: string; type: string; file: File }[]
   >([]);
-  const [viewerSrc, setViewerSrc] = useState<{ url: string; type: string } | null>(null);
+  const [viewerSrc, setViewerSrc] = useState<{
+    url: string;
+    type: string;
+  } | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  if (!dialogueId) return null;
 
   // ── URL-параметры (для нового чата) ──
   const urlModel = searchParams.get('model');
   const urlVersion = searchParams.get('version');
   const urlRole = searchParams.get('role');
 
+  // Если это новый чат и модель пришла из URL — сразу кешируем
+  useEffect(() => {
+    // Инициализируем selectedRoleId из URL при монтировании
+    if (urlRole) {
+      const parsed = parseInt(urlRole);
+      if (!isNaN(parsed)) setSelectedRoleId(parsed);
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    // При смене модели через URL — сбрасываем кеш sessionStorage
+    if (!dialogueId || !urlModel) return;
+    writeStoredModel(
+      dialogueId,
+      urlModel,
+      urlVersion || '',
+      urlRole ? (isNaN(parseInt(urlRole)) ? null : parseInt(urlRole)) : null
+    );
+  }, [dialogueId, urlModel, urlVersion, urlRole]);
+
+  // ✅ Теперь безопасно делать ранний return
+  if (!dialogueId) return null;
+
   const [selectedRoleId, setSelectedRoleId] = useState<number | null>(
     urlRole ? parseInt(urlRole) : null
   );
 
-  const { data: messages = [], isLoading: isHistoryLoading } =
-    useChatHistory(dialogueId === 'new' ? null : dialogueId);
+  const { data: messages = [], isLoading: isHistoryLoading } = useChatHistory(
+    dialogueId === 'new' ? null : dialogueId
+  );
   const { data: allModels } = useAIModels();
   const { data: roles } = useRoles();
   const generate = useGenerateAI();
@@ -289,13 +349,6 @@ export default function ChatPage() {
     version: urlVersion,
     role: urlRole,
   });
-
-  // Если это новый чат и модель пришла из URL — сразу кешируем
-  useEffect(() => {
-    if (dialogueId === 'new' && urlModel) {
-      writeStoredModel(dialogueId, urlModel, urlVersion || '', selectedRoleId);
-    }
-  }, [dialogueId, urlModel, urlVersion, selectedRoleId]);
 
   const isProcessing = msgs.some(
     (m) => m.status === 'processing' || m.status === 'pending'
@@ -316,7 +369,14 @@ export default function ChatPage() {
     if (modelName && activeVersion) return `${modelName} · ${activeVersion}`;
     if (modelName) return modelName;
     if (activeVersion) return activeVersion;
-    if (msgs.length > 0) return msgs[0].version || msgs[0].model || t('dialogue');
+    // ← Фикс: если модель ещё не загрузилась из allModels,
+    //   но есть urlModel — показываем его, а не устаревший кеш
+    if (urlModel) {
+      const ver = urlVersion || activeVersion;
+      return ver ? `${urlModel} · ${ver}` : urlModel;
+    }
+    if (msgs.length > 0)
+      return msgs[0].version || msgs[0].model || t('dialogue');
     return t('dialogue');
   })();
 
@@ -324,7 +384,9 @@ export default function ChatPage() {
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, []);
-  useEffect(() => { scrollToBottom(); }, [messages]);
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
 
   /* ── Авторесайз textarea ── */
   useEffect(() => {
@@ -348,17 +410,35 @@ export default function ChatPage() {
     if (!files?.length) return;
     const file = files[0];
     const fileType = file.type.startsWith('image/')
-      ? 'image' : file.type.startsWith('video/') ? 'video' : 'audio';
+      ? 'image'
+      : file.type.startsWith('video/')
+        ? 'video'
+        : 'audio';
     if (limitMedia !== null) {
       const limit = limitMedia[fileType] ?? 0;
-      const currentCount = uploadedFiles.filter((f) => f.type === fileType).length;
-      if (limit === 0) { toast.error(t('modelNotAccept', { fileType })); if (fileInputRef.current) fileInputRef.current.value = ''; return; }
-      if (currentCount >= limit) { toast.error(t('maxFiles', { limit, fileType })); if (fileInputRef.current) fileInputRef.current.value = ''; return; }
+      const currentCount = uploadedFiles.filter(
+        (f) => f.type === fileType
+      ).length;
+      if (limit === 0) {
+        toast.error(t('modelNotAccept', { fileType }));
+        if (fileInputRef.current) fileInputRef.current.value = '';
+        return;
+      }
+      if (currentCount >= limit) {
+        toast.error(t('maxFiles', { limit, fileType }));
+        if (fileInputRef.current) fileInputRef.current.value = '';
+        return;
+      }
     }
     try {
       const res = await upload.mutateAsync(file);
-      setUploadedFiles((prev) => [...prev, { url: res.url, type: res.type, file }]);
-    } catch { toast.error(t('uploadError')); }
+      setUploadedFiles((prev) => [
+        ...prev,
+        { url: res.url, type: res.type, file },
+      ]);
+    } catch {
+      toast.error(t('uploadError'));
+    }
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -368,11 +448,17 @@ export default function ChatPage() {
   /* ── Отправка ── */
   const handleSend = () => {
     if (isHistoryLoading) return;
-    if (isProcessing) { haptic.warning(); toast(t('waitGeneration')); return; }
+    if (isProcessing) {
+      haptic.warning();
+      toast(t('waitGeneration'));
+      return;
+    }
     if (!text.trim() && uploadedFiles.length === 0) return;
 
     const { model: techName, version } = getDialogueModel(dialogueId, msgs, {
-      model: urlModel, version: urlVersion, role: urlRole,
+      model: urlModel,
+      version: urlVersion,
+      role: urlRole,
     });
 
     if (!techName) {
@@ -389,7 +475,11 @@ export default function ChatPage() {
     }
 
     haptic.light();
-    const oldFormatMedia = uploadedFiles.map((f) => ({ type: f.type, format: 'url', input: f.url }));
+    const oldFormatMedia = uploadedFiles.map((f) => ({
+      type: f.type,
+      format: 'url',
+      input: f.url,
+    }));
     const safeText = text.trim() || t('describeImage');
     const inputs = convertMediaToInputs(safeText, oldFormatMedia);
 
@@ -418,13 +508,18 @@ export default function ChatPage() {
             });
           }
         },
-        onError: () => { setText(sentText); },
+        onError: () => {
+          setText(sentText);
+        },
       }
     );
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); }
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
   };
 
   const acceptTypes = (() => {
@@ -443,29 +538,50 @@ export default function ChatPage() {
     (!text.trim() && uploadedFiles.length === 0);
 
   /* ── Роли для пустого чата ── */
-  const showRoles = msgs.length === 0 && !isHistoryLoading && roles && roles.length > 0;
+  const showRoles =
+    msgs.length === 0 && !isHistoryLoading && roles && roles.length > 0;
 
   return (
-    <div className="flex flex-col h-svh" style={{ background: 'var(--page-bg)' }}>
+    <div
+      className="flex flex-col h-svh"
+      style={{ background: 'var(--page-bg)' }}
+    >
       {/* ── Header ── */}
-      <header className={cn(
-        'shrink-0 sticky top-0 z-10',
-        'flex items-center gap-3 px-4 py-3',
-        glassUltraThin,
-        'rounded-none border-x-0 border-t-0 border-b border-white/10'
-      )}>
+      <header
+        className={cn(
+          'shrink-0 sticky top-0 z-10',
+          'flex items-center gap-3 px-4 py-3',
+          glassUltraThin,
+          'rounded-none border-x-0 border-t-0 border-b border-white/10'
+        )}
+      >
         <button
-          onClick={() => { haptic.light(); router.back(); }}
-          className={cn('flex items-center justify-center w-8.5 h-8.5 rounded-full shrink-0', glassThin, spring, 'active:scale-[0.88]')}>
+          onClick={() => {
+            haptic.light();
+            router.back();
+          }}
+          className={cn(
+            'flex items-center justify-center w-8.5 h-8.5 rounded-full shrink-0',
+            glassThin,
+            spring,
+            'active:scale-[0.88]'
+          )}
+        >
           <ChevronLeft size={18} className="text-[#0A84FF]" />
         </button>
         <div className="flex-1 min-w-0">
-          <p className="text-[15px] font-semibold tracking-[-0.2px] truncate">{chatTitle}</p>
-          {isHistoryLoading && <span className="text-[11px] text-white/40">{t('loading')}</span>}
+          <p className="text-[15px] font-semibold tracking-[-0.2px] truncate">
+            {chatTitle}
+          </p>
+          {isHistoryLoading && (
+            <span className="text-[11px] text-white/40">{t('loading')}</span>
+          )}
           {!isHistoryLoading && isProcessing && (
             <div className="flex items-center gap-1.5 mt-0.5">
               <span className="w-1.5 h-1.5 rounded-full bg-[#FF9500] inline-block animate-[pulse-opacity_1s_infinite]" />
-              <span className="text-[11px] text-[#FF9500] font-medium">{t('generating')}</span>
+              <span className="text-[11px] text-[#FF9500] font-medium">
+                {t('generating')}
+              </span>
             </div>
           )}
         </div>
@@ -479,8 +595,20 @@ export default function ChatPage() {
           </div>
         ) : msgs.length === 0 ? (
           <div className="flex flex-col items-center justify-center flex-1 gap-5 text-center py-10">
-            <div className={cn('w-13 h-13 rounded-2xl flex items-center justify-center', glassRegular)}>
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+            <div
+              className={cn(
+                'w-13 h-13 rounded-2xl flex items-center justify-center',
+                glassRegular
+              )}
+            >
+              <svg
+                width="22"
+                height="22"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+              >
                 <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
               </svg>
             </div>
@@ -508,7 +636,8 @@ export default function ChatPage() {
                         glassThin,
                         spring,
                         'active:scale-[0.97]',
-                        selectedRoleId === role.id && 'border-[rgba(0,122,255,0.5)] bg-[rgba(0,122,255,0.10)]'
+                        selectedRoleId === role.id &&
+                        'border-[rgba(0,122,255,0.5)] bg-[rgba(0,122,255,0.10)]'
                       )}
                     >
                       <div className="w-9 h-9 rounded-xl overflow-hidden border border-white/[.14] shrink-0">
@@ -544,25 +673,44 @@ export default function ChatPage() {
               <div key={msg.id || idx} className="flex flex-col gap-2.5">
                 {(msg.inputs?.text || userMedia.length > 0) && (
                   <div className="flex justify-end">
-                    <div className={cn(
-                      'max-w-[78%] px-3.5 py-2.5',
-                      'bg-[rgba(0,122,255,0.85)] backdrop-blur-xl',
-                      'border border-[rgba(0,122,255,0.30)]',
-                      'shadow-[inset_0_1px_0_rgba(255,255,255,0.25),0_4px_16px_rgba(0,122,255,0.25)]',
-                      'text-white rounded-[20px_20px_4px_20px]',
-                      'text-[15px] leading-[1.45]'
-                    )}>
-                      {msg.inputs?.text && <p className="whitespace-pre-wrap m-0">{msg.inputs.text}</p>}
+                    <div
+                      className={cn(
+                        'max-w-[78%] px-3.5 py-2.5',
+                        'bg-[rgba(0,122,255,0.85)] backdrop-blur-xl',
+                        'border border-[rgba(0,122,255,0.30)]',
+                        'shadow-[inset_0_1px_0_rgba(255,255,255,0.25),0_4px_16px_rgba(0,122,255,0.25)]',
+                        'text-white rounded-[20px_20px_4px_20px]',
+                        'text-[15px] leading-[1.45]'
+                      )}
+                    >
+                      {msg.inputs?.text && (
+                        <p className="whitespace-pre-wrap m-0">
+                          {msg.inputs.text}
+                        </p>
+                      )}
                       {userMedia.length > 0 && (
                         <div className="mt-2 flex flex-wrap gap-1.5">
                           {userMedia.map((m, i) => (
-                            <button key={i} onClick={() => setViewerSrc(m)} className="bg-none border-none p-0 cursor-pointer">
+                            <button
+                              key={i}
+                              onClick={() => setViewerSrc(m)}
+                              className="bg-none border-none p-0 cursor-pointer"
+                            >
                               {m.type === 'image' ? (
-                                <img src={m.url} alt="" className="max-h-35 rounded-[10px] object-cover" />
+                                <img
+                                  src={m.url}
+                                  alt=""
+                                  className="max-h-35 rounded-[10px] object-cover"
+                                />
                               ) : m.type === 'video' ? (
-                                <video src={m.url} className="max-h-35 rounded-[10px]" />
+                                <video
+                                  src={m.url}
+                                  className="max-h-35 rounded-[10px]"
+                                />
                               ) : (
-                                <div className="px-2.5 py-1.5 bg-white/15 rounded-lg text-xs">{t('audioLabel')}</div>
+                                <div className="px-2.5 py-1.5 bg-white/15 rounded-lg text-xs">
+                                  {t('audioLabel')}
+                                </div>
                               )}
                             </button>
                           ))}
@@ -574,22 +722,40 @@ export default function ChatPage() {
                 <div className="flex justify-start">
                   <div className="max-w-[82%]">
                     {msg.status === 'processing' || msg.status === 'pending' ? (
-                      <div className={cn('flex items-center gap-2 px-3.5 py-2.5 rounded-[20px_20px_20px_4px]', glassRegular)}>
+                      <div
+                        className={cn(
+                          'flex items-center gap-2 px-3.5 py-2.5 rounded-[20px_20px_20px_4px]',
+                          glassRegular
+                        )}
+                      >
                         {[0, 1, 2].map((i) => (
-                          <div key={i} style={{ animationDelay: `${i * 0.15}s` }}
-                            className="w-1.5 h-1.5 rounded-full bg-white/50 animate-[pulse-dot_1.2s_infinite_ease-in-out]" />
+                          <div
+                            key={i}
+                            style={{ animationDelay: `${i * 0.15}s` }}
+                            className="w-1.5 h-1.5 rounded-full bg-white/50 animate-[pulse-dot_1.2s_infinite_ease-in-out]"
+                          />
                         ))}
                       </div>
                     ) : msg.status === 'error' ? (
-                      <div className={cn('px-3.5 py-2.5 rounded-[20px_20px_20px_4px]',
-                        'bg-[rgba(255,59,48,0.12)] border border-[rgba(255,59,48,0.25)]',
-                        'backdrop-blur-xl text-[#FF3B30] text-[15px]')}>
+                      <div
+                        className={cn(
+                          'px-3.5 py-2.5 rounded-[20px_20px_20px_4px]',
+                          'bg-[rgba(255,59,48,0.12)] border border-[rgba(255,59,48,0.25)]',
+                          'backdrop-blur-xl text-[#FF3B30] text-[15px]'
+                        )}
+                      >
                         {msg.error || t('error')}
                       </div>
                     ) : (
                       <div className="flex flex-col gap-2">
                         {msg.result?.text && (
-                          <div className={cn('px-3.5 py-2.5 rounded-[20px_20px_20px_4px]', glassRegular, 'text-[15px] leading-normal whitespace-pre-wrap')}>
+                          <div
+                            className={cn(
+                              'px-3.5 py-2.5 rounded-[20px_20px_20px_4px]',
+                              glassRegular,
+                              'text-[15px] leading-normal whitespace-pre-wrap'
+                            )}
+                          >
                             {msg.result.text}
                           </div>
                         )}
@@ -599,10 +765,25 @@ export default function ChatPage() {
                               if (m.type === 'audio') {
                                 return (
                                   <div key={i} className="w-full max-w-[420px]">
-                                    <div className={cn('flex flex-col gap-3 p-4', glassRegular, 'rounded-3xl border border-white/20')}>
+                                    <div
+                                      className={cn(
+                                        'flex flex-col gap-3 p-4',
+                                        glassRegular,
+                                        'rounded-3xl border border-white/20'
+                                      )}
+                                    >
                                       <AudioPlayer src={m.url} />
-                                      <a href={m.url} download target="_blank" rel="noopener noreferrer"
-                                        className={cn('self-end w-9 h-9 flex items-center justify-center rounded-xl', 'bg-black/40 border border-white/15', 'active:scale-90 transition')}>
+                                      <a
+                                        href={m.url}
+                                        download
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className={cn(
+                                          'self-end w-9 h-9 flex items-center justify-center rounded-xl',
+                                          'bg-black/40 border border-white/15',
+                                          'active:scale-90 transition'
+                                        )}
+                                      >
                                         <Download size={18} />
                                       </a>
                                     </div>
@@ -612,17 +793,32 @@ export default function ChatPage() {
                               return (
                                 <div key={i} className="relative group">
                                   {m.type === 'image' ? (
-                                    <img src={m.url} alt="Generated" onClick={() => setViewerSrc(m)}
-                                      className="max-w-65 max-h-65 rounded-2xl object-cover cursor-pointer border border-white/18 shadow-[0_4px_16px_rgba(0,0,0,0.22)]" />
+                                    <img
+                                      src={m.url}
+                                      alt="Generated"
+                                      onClick={() => setViewerSrc(m)}
+                                      className="max-w-65 max-h-65 rounded-2xl object-cover cursor-pointer border border-white/18 shadow-[0_4px_16px_rgba(0,0,0,0.22)]"
+                                    />
                                   ) : (
-                                    <video src={m.url} controls className="max-w-65 max-h-65 rounded-2xl" />
+                                    <video
+                                      src={m.url}
+                                      controls
+                                      className="max-w-65 max-h-65 rounded-2xl"
+                                    />
                                   )}
-                                  <a href={m.url} download target="_blank" rel="noopener noreferrer"
+                                  <a
+                                    href={m.url}
+                                    download
+                                    target="_blank"
+                                    rel="noopener noreferrer"
                                     onClick={(e) => e.stopPropagation()}
-                                    className={cn('absolute top-2 right-2 p-1.5 rounded-full',
+                                    className={cn(
+                                      'absolute top-2 right-2 p-1.5 rounded-full',
                                       'bg-black/45 backdrop-blur-xl border border-white/15',
                                       'text-white flex items-center justify-center',
-                                      'opacity-0 group-hover:opacity-100 transition-opacity')}>
+                                      'opacity-0 group-hover:opacity-100 transition-opacity'
+                                    )}
+                                  >
                                     <Download size={14} />
                                   </a>
                                 </div>
@@ -630,11 +826,18 @@ export default function ChatPage() {
                             })}
                           </div>
                         )}
-                        {!msg.result?.text && extractResultMedia(msg.result).length === 0 && (
-                          <div className={cn('px-3.5 py-2.5 rounded-[20px_20px_20px_4px]', glassThin, 'text-[14px] text-white/50 italic')}>
-                            {t('responseReceived')}
-                          </div>
-                        )}
+                        {!msg.result?.text &&
+                          extractResultMedia(msg.result).length === 0 && (
+                            <div
+                              className={cn(
+                                'px-3.5 py-2.5 rounded-[20px_20px_20px_4px]',
+                                glassThin,
+                                'text-[14px] text-white/50 italic'
+                              )}
+                            >
+                              {t('responseReceived')}
+                            </div>
+                          )}
                       </div>
                     )}
                   </div>
@@ -648,47 +851,88 @@ export default function ChatPage() {
 
       {/* ── Media Viewer ── */}
       {viewerSrc && (
-        <div onClick={() => setViewerSrc(null)}
-          className="fixed inset-0 z-50 bg-black/88 backdrop-blur-2xl flex items-center justify-center p-4">
+        <div
+          onClick={() => setViewerSrc(null)}
+          className="fixed inset-0 z-50 bg-black/88 backdrop-blur-2xl flex items-center justify-center p-4"
+        >
           {viewerSrc.type === 'image' ? (
-            <img src={viewerSrc.url} alt="" className="max-w-full max-h-full object-contain rounded-3xl shadow-2xl" />
+            <img
+              src={viewerSrc.url}
+              alt=""
+              className="max-w-full max-h-full object-contain rounded-3xl shadow-2xl"
+            />
           ) : viewerSrc.type === 'video' ? (
-            <video src={viewerSrc.url} controls autoPlay className="max-w-full max-h-full rounded-3xl" />
+            <video
+              src={viewerSrc.url}
+              controls
+              autoPlay
+              className="max-w-full max-h-full rounded-3xl"
+            />
           ) : viewerSrc.type === 'audio' ? (
             <div className="w-full max-w-md bg-white/10 backdrop-blur-2xl rounded-3xl p-6 shadow-2xl">
               <audio src={viewerSrc.url} controls autoPlay className="w-full" />
             </div>
           ) : null}
-          <button onClick={() => setViewerSrc(null)}
-            className={cn('absolute top-5 right-5 p-2 rounded-full', 'bg-white/15 backdrop-blur-xl border border-white/20 text-white flex')}>
+          <button
+            onClick={() => setViewerSrc(null)}
+            className={cn(
+              'absolute top-5 right-5 p-2 rounded-full',
+              'bg-white/15 backdrop-blur-xl border border-white/20 text-white flex'
+            )}
+          >
             <X size={18} />
           </button>
-          <a href={viewerSrc.url} download target="_blank" rel="noopener noreferrer"
+          <a
+            href={viewerSrc.url}
+            download
+            target="_blank"
+            rel="noopener noreferrer"
             onClick={(e) => e.stopPropagation()}
-            className={cn('absolute bottom-7 right-5 p-2.5 rounded-full', 'bg-white/15 backdrop-blur-xl border border-white/20 text-white flex')}>
+            className={cn(
+              'absolute bottom-7 right-5 p-2.5 rounded-full',
+              'bg-white/15 backdrop-blur-xl border border-white/20 text-white flex'
+            )}
+          >
             <Download size={18} />
           </a>
         </div>
       )}
 
       {/* ── Input Bar ── */}
-      <div className={cn('shrink-0', glassUltraThin,
-        'rounded-none border-x-0 border-b-0 border-t border-white/10',
-        'px-3.5 pt-2.5',
-        'pb-[max(10px,env(safe-area-inset-bottom))]')}>
+      <div
+        className={cn(
+          'shrink-0',
+          glassUltraThin,
+          'rounded-none border-x-0 border-b-0 border-t border-white/10',
+          'px-3.5 pt-2.5',
+          'pb-[max(10px,env(safe-area-inset-bottom))]'
+        )}
+      >
         {uploadedFiles.length > 0 && (
           <div className="flex gap-2 mb-2 flex-wrap">
             {uploadedFiles.map((f, i) => (
-              <div key={i} className={cn('relative w-15 h-15 rounded-xl overflow-hidden', 'border border-white/18 shadow-[inset_0_1px_0_rgba(255,255,255,0.15)]')}>
+              <div
+                key={i}
+                className={cn(
+                  'relative w-15 h-15 rounded-xl overflow-hidden',
+                  'border border-white/18 shadow-[inset_0_1px_0_rgba(255,255,255,0.15)]'
+                )}
+              >
                 {f.type === 'image' ? (
-                  <img src={f.url} alt="" className="w-full h-full object-cover" />
+                  <img
+                    src={f.url}
+                    alt=""
+                    className="w-full h-full object-cover"
+                  />
                 ) : (
                   <div className="w-full h-full bg-white/[.07] flex items-center justify-center text-[22px]">
                     {f.type === 'video' ? '🎬' : '🎵'}
                   </div>
                 )}
-                <button onClick={() => removeFile(i)}
-                  className="absolute top-0.75 right-0.75 w-4.5 h-4.5 bg-black/55 backdrop-blur-lg rounded-full flex items-center justify-center text-white">
+                <button
+                  onClick={() => removeFile(i)}
+                  className="absolute top-0.75 right-0.75 w-4.5 h-4.5 bg-black/55 backdrop-blur-lg rounded-full flex items-center justify-center text-white"
+                >
                   <X size={10} />
                 </button>
               </div>
@@ -698,11 +942,30 @@ export default function ChatPage() {
         <div className="flex items-end gap-2">
           {canAttachMedia && (
             <>
-              <button onClick={() => fileInputRef.current?.click()} disabled={upload.isPending}
-                className={cn('shrink-0 w-9.5 h-9.5 flex items-center justify-center rounded-full', glassRegular, spring, 'active:scale-[0.88]', upload.isPending && 'opacity-50')}>
-                {upload.isPending ? <Loader2 size={16} className="animate-spin text-white/50" /> : <ImagePlus size={16} className="text-white/50" />}
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={upload.isPending}
+                className={cn(
+                  'shrink-0 w-9.5 h-9.5 flex items-center justify-center rounded-full',
+                  glassRegular,
+                  spring,
+                  'active:scale-[0.88]',
+                  upload.isPending && 'opacity-50'
+                )}
+              >
+                {upload.isPending ? (
+                  <Loader2 size={16} className="animate-spin text-white/50" />
+                ) : (
+                  <ImagePlus size={16} className="text-white/50" />
+                )}
               </button>
-              <input type="file" ref={fileInputRef} accept={acceptTypes} onChange={handleFileUpload} className="hidden" />
+              <input
+                type="file"
+                ref={fileInputRef}
+                accept={acceptTypes}
+                onChange={handleFileUpload}
+                className="hidden"
+              />
             </>
           )}
           <textarea
@@ -710,7 +973,9 @@ export default function ChatPage() {
             value={text}
             onChange={(e) => setText(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder={isHistoryLoading ? t('loadingPlaceholder') : t('placeholder')}
+            placeholder={
+              isHistoryLoading ? t('loadingPlaceholder') : t('placeholder')
+            }
             rows={1}
             className={cn(
               'flex-1 resize-none outline-none',
@@ -724,9 +989,22 @@ export default function ChatPage() {
             // ← фикс zoom на iOS: font-size минимум 16px
             style={{ fontSize: 16 }}
           />
-          <button onClick={() => handleSend()} disabled={isSendDisabled}
-            className={cn('shrink-0 w-9.5 h-9.5 flex items-center justify-center rounded-full text-white', glassBlueBtn, spring, 'active:scale-[0.88]', isSendDisabled && 'opacity-40')}>
-            {generate.isPending ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
+          <button
+            onClick={() => handleSend()}
+            disabled={isSendDisabled}
+            className={cn(
+              'shrink-0 w-9.5 h-9.5 flex items-center justify-center rounded-full text-white',
+              glassBlueBtn,
+              spring,
+              'active:scale-[0.88]',
+              isSendDisabled && 'opacity-40'
+            )}
+          >
+            {generate.isPending ? (
+              <Loader2 size={16} className="animate-spin" />
+            ) : (
+              <Send size={16} />
+            )}
           </button>
         </div>
       </div>

@@ -143,7 +143,9 @@ export const Chats = () => {
           'shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]'
         )}
       >
-        <span className="text-[22px] font-bold tracking-[-0.5px]">{t('title')}</span>
+        <span className="text-[22px] font-bold tracking-[-0.5px]">
+          {t('title')}
+        </span>
         <button
           onClick={() => {
             haptic.light();

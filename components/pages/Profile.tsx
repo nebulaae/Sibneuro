@@ -56,7 +56,9 @@ const GlassCard = ({
   </div>
 );
 
-const getStatusMap = (t: any): Record<string, { icon: string; color: string; label: string }> => ({
+const getStatusMap = (
+  t: any
+): Record<string, { icon: string; color: string; label: string }> => ({
   completed: { icon: '✅', color: '#34C759', label: t('statusCompleted') },
   error: { icon: '❌', color: '#FF3B30', label: t('statusError') },
   processing: { icon: '⏳', color: '#FF9500', label: t('statusProcessing') },
@@ -170,7 +172,9 @@ export const Profile = () => {
           'shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]'
         )}
       >
-        <span className="text-base font-bold tracking-[-0.5px]">{t('title')}</span>
+        <span className="text-base font-bold tracking-[-0.5px]">
+          {t('title')}
+        </span>
         <div className="flex items-center gap-2">
           <LanguageSwitcher />
           <button
@@ -222,7 +226,10 @@ export const Profile = () => {
               )}
               {isPremium && premiumEnd && (
                 <p className="text-[12px] text-white/30 mt-0.5">
-                  до {new Date(premiumEnd * 1000).toLocaleDateString(t('locale') === 'en' ? 'en-US' : 'ru-RU')}
+                  до{' '}
+                  {new Date(premiumEnd * 1000).toLocaleDateString(
+                    t('locale') === 'en' ? 'en-US' : 'ru-RU'
+                  )}
                 </p>
               )}
             </div>
@@ -290,7 +297,9 @@ export const Profile = () => {
             </span>
           )}
           <span className="text-[11px] text-white/50">
-            {t('earned', { amount: refStats?.earned ?? refStats?.total_tokens ?? 0 })}
+            {t('earned', {
+              amount: refStats?.earned ?? refStats?.total_tokens ?? 0,
+            })}
           </span>
         </button>
       </div>
@@ -359,9 +368,7 @@ export const Profile = () => {
         </div>
 
         {!apiTokens || apiTokens.length === 0 ? (
-          <p className="text-[13px] text-white/50 px-1">
-            {t('noTokens')}
-          </p>
+          <p className="text-[13px] text-white/50 px-1">{t('noTokens')}</p>
         ) : (
           <div className="flex flex-col gap-2">
             {apiTokens.map((t: any) => (
