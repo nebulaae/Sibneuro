@@ -200,6 +200,17 @@
       "input_fidelity": {
         "low": "Low",
         "high": "High"
+      },
+      "output_format": {
+        "jpeg": "JPEG",
+        "png": "PNG",
+        "webp": "WebP"
+      },
+      "image_size": {
+        "auto": "Auto",
+        "1024x1024": "1024×1024",
+        "1536x1024": "1536×1024",
+        "1024x1536": "1024×1536"
       }
     }
   },

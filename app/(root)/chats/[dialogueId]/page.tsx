@@ -365,18 +365,24 @@ export default function ChatPage() {
 
   /* ── Заголовок чата ── */
   const chatTitle = (() => {
+    // Если есть реальная история — берём только из неё, игнорируем URL
+    if (msgs.length > 0) {
+      const modelName = currentModel?.model_name;
+      if (modelName && activeVersion) return `${modelName} · ${activeVersion}`;
+      if (modelName) return modelName;
+      if (activeVersion) return activeVersion;
+      return msgs[0].version || msgs[0].model || t('dialogue');
+    }
+
+    // Только для пустого/нового чата — смотрим URL
     const modelName = currentModel?.model_name;
     if (modelName && activeVersion) return `${modelName} · ${activeVersion}`;
     if (modelName) return modelName;
-    if (activeVersion) return activeVersion;
-    // ← Фикс: если модель ещё не загрузилась из allModels,
-    //   но есть urlModel — показываем его, а не устаревший кеш
     if (urlModel) {
       const ver = urlVersion || activeVersion;
       return ver ? `${urlModel} · ${ver}` : urlModel;
     }
-    if (msgs.length > 0)
-      return msgs[0].version || msgs[0].model || t('dialogue');
+
     return t('dialogue');
   })();
 

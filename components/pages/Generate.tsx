@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useAIModels, useModelParams } from '@/hooks/useModels';
 import { convertMediaToInputs, useGenerateAI } from '@/hooks/useGenerations';
 import { useUpload } from '@/hooks/useApiExtras';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   Loader2,
@@ -23,6 +23,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/api';
 import { useHaptic } from '@/hooks/useHaptic';
 import { cn } from '@/lib/utils';
+import { getParamLabel, getParamValueLabel } from '@/lib/paramHelpers';
 
 /* ── Polling ── */
 function useGenerationStatus(dialogueId: string | null, enabled: boolean) {
@@ -172,6 +173,7 @@ const ModelRow = ({ m, onClick }: { m: any; onClick: () => void }) => {
 /* ── Main ── */
 export const Generate = () => {
   const t = useTranslations('Generate');
+  const locale = useLocale();
   const router = useRouter();
   const searchParams = useSearchParams();
   const modelParam = searchParams.get('model');
@@ -535,7 +537,7 @@ export const Generate = () => {
                         .map((p: any) => (
                           <div key={p.name}>
                             <label className="block text-[12px] text-white/50 mb-1.5">
-                              {paramLabel(p.name, t)}
+                              {getParamLabel(p.name, locale)}
                             </label>
                             {p.type === 'select' && p.values ? (
                               <div className="flex flex-wrap gap-1.5">
@@ -552,7 +554,7 @@ export const Generate = () => {
                                       }))
                                     }
                                   >
-                                    {paramValueLabel(p.name, val, t)}
+                                    {getParamValueLabel(p.name, val, locale)}
                                   </PillBtn>
                                 ))}
                               </div>
