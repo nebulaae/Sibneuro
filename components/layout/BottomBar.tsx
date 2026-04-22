@@ -1,5 +1,5 @@
+// sibneuro bottombar
 'use client';
-
 import Link from 'next/link';
 import { useEffect, useState, useCallback } from 'react';
 import { usePathname } from 'next/navigation';
@@ -27,6 +27,7 @@ export const BottomBar = () => {
   const handleScroll = useCallback(() => {
     let lastY = 0;
     let timer: ReturnType<typeof setTimeout>;
+
     const onScroll = () => {
       const curr = window.scrollY;
       setVisible(curr <= lastY || curr < 80);
@@ -34,6 +35,7 @@ export const BottomBar = () => {
       clearTimeout(timer);
       timer = setTimeout(() => setVisible(true), 1500);
     };
+
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => {
       window.removeEventListener('scroll', onScroll);
@@ -44,10 +46,12 @@ export const BottomBar = () => {
   useEffect(() => {
     if (isChat) return;
     const cleanup = handleScroll();
+
     const onActivity = () => setVisible(true);
     ['touchstart', 'mousedown'].forEach((e) =>
       window.addEventListener(e, onActivity, { passive: true })
     );
+
     return () => {
       cleanup();
       ['touchstart', 'mousedown'].forEach((e) =>
@@ -78,12 +82,7 @@ export const BottomBar = () => {
         !visible && 'translate-y-[120%]'
       )}
     >
-      <div className="flex items-center gap-2 px-2.5 py-2
-        rounded-[28px]
-        bg-black/72 backdrop-blur-3xl backdrop-saturate-200
-        border border-white/[.14]
-        shadow-[inset_0_1px_0_rgba(255,255,255,0.12),0_20px_60px_rgba(0,0,0,0.65),0_4px_16px_rgba(0,0,0,0.4)]"
-      >
+      <div className="flex items-center gap-2 px-2.5 py-2">
         {/* Home bubble */}
         <Link
           href={homeItem.href}
@@ -91,16 +90,11 @@ export const BottomBar = () => {
           className={cn(
             'w-14 h-14 rounded-full flex flex-col items-center justify-center gap-0.5',
             'select-none no-underline transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)]',
-            'active:scale-90 border',
+            'active:scale-90',
+            "bg-black/20 backdrop-blur-3xl backdrop-saturate-200",
+            "border border-white/[.14]",
+            "shadow-[inset_0_1px_0_rgba(255,255,255,0.12),0_20px_60px_rgba(0,0,0,0.65),0_4px_16px_rgba(0,0,0,0.4)]"
           )}
-          style={isActive(homeItem.href) ? {
-            background: 'rgba(0,194,168,0.16)',
-            borderColor: 'rgba(0,194,168,0.38)',
-            boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.18), 0 0 22px rgba(0,194,168,0.25)',
-          } : {
-            background: 'rgba(255,255,255,0.05)',
-            borderColor: 'rgba(255,255,255,0.08)',
-          }}
         >
           <Home
             size={20}
@@ -110,21 +104,22 @@ export const BottomBar = () => {
           />
           <span
             className="text-[9px] font-medium leading-none transition-all duration-250"
-            style={{ color: isActive(homeItem.href) ? 'rgba(255,255,255,0.90)' : 'rgba(255,255,255,0.35)' }}
+            style={{ color: isActive(homeItem.href) ? ACCENT : 'rgba(255,255,255,0.35)' }}
           >
             {homeItem.label}
           </span>
         </Link>
 
-        {/* Divider */}
-        <div className="w-px h-7 bg-white/[.10] rounded-full flex-shrink-0" />
-
         {/* Mid items */}
-        <div className="flex items-center">
+        <div className={cn("flex items-center justify-center gap-1 px-1 py-1 rounded-3xl",
+          "bg-black/20 backdrop-blur-3xl backdrop-saturate-200",
+          "border border-white/[.14]",
+          "shadow-[inset_0_1px_0_rgba(255,255,255,0.12),0_20px_60px_rgba(0,0,0,0.65),0_4px_16px_rgba(0,0,0,0.4)]")}>
           {midItems.map((item) => {
             const active = isActive(item.href);
             const isCreate = item.id === 3;
             const Icon = item.icon;
+
             return (
               <Link
                 key={item.id}
@@ -134,24 +129,24 @@ export const BottomBar = () => {
                   else haptic.selection();
                 }}
                 className={cn(
-                  'flex flex-col items-center gap-1 px-3 py-2.5 rounded-2xl',
+                  'flex flex-col items-center gap-1 px-3 py-2 rounded-2xl',
                   'select-none no-underline transition-all duration-280 ease-[cubic-bezier(0.32,0.72,0,1)]',
                   'active:scale-[0.88]',
                 )}
-                style={active || isCreate ? {
-                  background: 'rgba(0,194,168,0.10)',
+                style={active ? {
+                  background: 'rgba(0,194,168,0.12)',
                   boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.10)',
                 } : {}}
               >
                 <Icon
                   size={18}
-                  strokeWidth={active || isCreate ? 2.2 : 1.5}
-                  style={{ color: active || isCreate ? ACCENT : 'rgba(255,255,255,0.40)' }}
+                  strokeWidth={active ? 2.2 : 1.5}
+                  style={{ color: active ? ACCENT : 'rgba(255,255,255,0.40)' }}
                   className="transition-all duration-250"
                 />
                 <span
                   className="text-[9.5px] font-medium leading-none whitespace-nowrap transition-all duration-250"
-                  style={{ color: active || isCreate ? 'rgba(255,255,255,0.85)' : 'rgba(255,255,255,0.30)' }}
+                  style={{ color: active ? ACCENT : 'rgba(255,255,255,0.30)' }}
                 >
                   {item.label}
                 </span>
@@ -160,9 +155,6 @@ export const BottomBar = () => {
           })}
         </div>
 
-        {/* Divider */}
-        <div className="w-px h-7 bg-white/[.10] rounded-full flex-shrink-0" />
-
         {/* Profile bubble */}
         <Link
           href={profileItem.href}
@@ -170,16 +162,11 @@ export const BottomBar = () => {
           className={cn(
             'w-14 h-14 rounded-full flex flex-col items-center justify-center gap-0.5',
             'select-none no-underline transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)]',
-            'active:scale-90 border',
+            'active:scale-90',
+            "bg-black/20 backdrop-blur-3xl backdrop-saturate-200",
+            "border border-white/[.14]",
+            "shadow-[inset_0_1px_0_rgba(255,255,255,0.12),0_20px_60px_rgba(0,0,0,0.65),0_4px_16px_rgba(0,0,0,0.4)]"
           )}
-          style={isActive(profileItem.href) ? {
-            background: 'rgba(0,194,168,0.16)',
-            borderColor: 'rgba(0,194,168,0.38)',
-            boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.18), 0 0 22px rgba(0,194,168,0.25)',
-          } : {
-            background: 'rgba(255,255,255,0.05)',
-            borderColor: 'rgba(255,255,255,0.08)',
-          }}
         >
           <UserRound
             size={20}
@@ -189,7 +176,7 @@ export const BottomBar = () => {
           />
           <span
             className="text-[9px] font-medium leading-none transition-all duration-250"
-            style={{ color: isActive(profileItem.href) ? 'rgba(255,255,255,0.90)' : 'rgba(255,255,255,0.35)' }}
+            style={{ color: isActive(profileItem.href) ? ACCENT : 'rgba(255,255,255,0.35)' }}
           >
             {profileItem.label}
           </span>
