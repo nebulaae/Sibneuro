@@ -147,7 +147,7 @@ export const Home = () => {
         }}
       >
         <span
-          style={{ fontSize: 22, fontWeight: 700, letterSpacing: '-0.5px' }}
+          style={{ fontSize: 24, fontWeight: 700, letterSpacing: '-0.5px' }}
         >
           Sibneuro
         </span>
@@ -199,8 +199,8 @@ export const Home = () => {
         >
           <span
             style={{
-              fontSize: 11,
-              fontWeight: 700,
+              fontSize: 14,
+              fontWeight: 500,
               letterSpacing: '0.7px',
               textTransform: 'uppercase',
               color: 'var(--sys-label-secondary)',
@@ -211,7 +211,7 @@ export const Home = () => {
           <button
             onClick={() => router.push('/models')}
             style={{
-              fontSize: 13,
+              fontSize: 14,
               fontWeight: 600,
               color: 'var(--tint-blue)',
               background: 'none',
@@ -299,8 +299,8 @@ export const Home = () => {
                   </div>
                   <span
                     style={{
-                      fontSize: 10,
-                      fontWeight: 500,
+                      fontSize: 12,
+                      fontWeight: 400,
                       color: 'var(--sys-label-secondary)',
                       maxWidth: 56,
                       textAlign: 'center',
@@ -338,8 +338,8 @@ export const Home = () => {
         >
           <span
             style={{
-              fontSize: 11,
-              fontWeight: 700,
+              fontSize: 14,
+              fontWeight: 500,
               letterSpacing: '0.7px',
               textTransform: 'uppercase',
               color: 'var(--sys-label-secondary)',
@@ -350,8 +350,8 @@ export const Home = () => {
           <button
             onClick={() => router.push('/chats')}
             style={{
-              fontSize: 13,
-              fontWeight: 600,
+              fontSize: 15,
+              fontWeight: 500,
               color: 'var(--tint-blue)',
               background: 'none',
               border: 'none',
@@ -438,7 +438,7 @@ export const Home = () => {
                   </div>
                   <span
                     style={{
-                      fontSize: 10,
+                      fontSize: 12,
                       fontWeight: 500,
                       color: 'var(--sys-label-secondary)',
                       width: '100%',
@@ -469,8 +469,8 @@ export const Home = () => {
         <span
           style={{
             display: 'block',
-            fontSize: 11,
-            fontWeight: 700,
+            fontSize: 14,
+            fontWeight: 500,
             letterSpacing: '0.7px',
             textTransform: 'uppercase',
             color: 'var(--sys-label-secondary)',

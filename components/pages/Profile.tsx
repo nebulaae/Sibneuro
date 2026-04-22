@@ -172,7 +172,7 @@ export const Profile = () => {
           'shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]'
         )}
       >
-        <span className="text-base font-bold tracking-[-0.5px]">
+        <span className="text-[24px] font-bold tracking-[-0.5px]">
           {t('title')}
         </span>
         <div className="flex items-center gap-2">
@@ -211,21 +211,21 @@ export const Profile = () => {
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-0.5">
-                <p className="text-[18px] font-bold tracking-[-0.3px] truncate">
+                <p className="text-[20px] font-bold tracking-[-0.3px] truncate">
                   {name}
                 </p>
                 {isPremium && (
-                  <div className="inline-flex items-center gap-[3px] px-2 py-[2px] rounded-full bg-[rgba(255,204,0,0.18)] border border-[rgba(255,204,0,0.30)] backdrop-blur-xl text-[10px] font-bold text-[#b38600] flex-shrink-0">
+                  <div className="inline-flex items-center gap-[3px] px-2 py-[2px] rounded-full bg-[rgba(255,204,0,0.18)] border border-[rgba(255,204,0,0.30)] backdrop-blur-xl text-[12px] font-bold text-[#b38600] flex-shrink-0">
                     <Star size={9} fill="currentColor" />
                     Premium
                   </div>
                 )}
               </div>
               {username && (
-                <p className="text-[14px] text-white/50">@{username}</p>
+                <p className="text-[16px] text-white/50">@{username}</p>
               )}
               {isPremium && premiumEnd && (
-                <p className="text-[12px] text-white/30 mt-0.5">
+                <p className="text-[14px] text-white/30 mt-0.5">
                   до{' '}
                   {new Date(premiumEnd * 1000).toLocaleDateString(
                     t('locale') === 'en' ? 'en-US' : 'ru-RU'
@@ -250,7 +250,7 @@ export const Profile = () => {
           )}
         >
           <div className="flex justify-between items-center">
-            <span className="text-[11px] font-semibold tracking-[0.4px] uppercase text-white/50">
+            <span className="text-[12px] font-semibold tracking-[0.4px] uppercase text-white/50">
               {t('tokens')}
             </span>
             <ExternalLink size={12} className="text-white/30" />
@@ -265,7 +265,7 @@ export const Profile = () => {
               <span className="text-[14px] mb-0.5">💎</span>
             </div>
           )}
-          <span className="text-[11px] font-semibold text-[#0A84FF]">
+          <span className="text-[12px] font-semibold text-[#0A84FF]">
             {t('topUp')}
           </span>
         </button>
@@ -284,7 +284,7 @@ export const Profile = () => {
           )}
         >
           <div className="flex justify-between items-center">
-            <span className="text-[11px] font-semibold tracking-[0.4px] uppercase text-white/50">
+            <span className="text-[12px] font-semibold tracking-[0.4px] uppercase text-white/50">
               {t('referrals')}
             </span>
             <Users size={12} className="text-white/30" />
@@ -296,7 +296,7 @@ export const Profile = () => {
               {refStats?.total ?? refStats?.total_referrals ?? 0}
             </span>
           )}
-          <span className="text-[11px] text-white/50">
+          <span className="text-[12px] text-white/50">
             {t('earned', {
               amount: refStats?.earned ?? refStats?.total_tokens ?? 0,
             })}
@@ -308,7 +308,7 @@ export const Profile = () => {
       {referralLink && (
         <div className="px-5 pb-5">
           <div className="flex items-center justify-between mb-3">
-            <span className="text-[11px] font-bold tracking-[0.7px] uppercase text-white/50">
+            <span className="text-[12px] font-bold tracking-[0.7px] uppercase text-white/50">
               {t('referralLink')}
             </span>
             <LinkIcon size={12} className="text-white/30" />
@@ -332,7 +332,7 @@ export const Profile = () => {
               )}
             </button>
           </GlassCard>
-          <p className="text-[11px] text-white/30 mt-2 px-1">
+          <p className="text-[12px] text-white/30 mt-2 px-1">
             {t('shareLink')}
           </p>
         </div>
@@ -343,7 +343,7 @@ export const Profile = () => {
       {/* ── API Tokens ── */}
       <div className="px-5 pb-5">
         <div className="flex items-center justify-between mb-3">
-          <span className="text-[11px] font-bold tracking-[0.7px] uppercase text-white/50">
+          <span className="text-[12px] font-bold tracking-[0.7px] uppercase text-white/50">
             {t('apiTokens')}
           </span>
           <button
@@ -368,7 +368,7 @@ export const Profile = () => {
         </div>
 
         {!apiTokens || apiTokens.length === 0 ? (
-          <p className="text-[13px] text-white/50 px-1">{t('noTokens')}</p>
+          <p className="text-[14px] text-white/50 px-1">{t('noTokens')}</p>
         ) : (
           <div className="flex flex-col gap-2">
             {apiTokens.map((t: any) => (
@@ -379,7 +379,7 @@ export const Profile = () => {
                 <code className="flex-1 text-[12px] text-white/50 overflow-hidden text-ellipsis whitespace-nowrap font-mono">
                   {t.token}
                 </code>
-                <span className="text-[10px] text-white/30 flex-shrink-0">
+                <span className="text-[12px] text-white/30 flex-shrink-0">
                   {t.generations} reqs
                 </span>
                 <button
@@ -406,7 +406,7 @@ export const Profile = () => {
 
       {/* ── History ── */}
       <div className="px-5">
-        <span className="block text-[11px] font-bold tracking-[0.7px] uppercase text-white/50 mb-3">
+        <span className="block text-[12px] font-bold tracking-[0.7px] uppercase text-white/50 mb-3">
           {t('generationHistory')}
         </span>
 
@@ -452,21 +452,21 @@ export const Profile = () => {
                   </div>
                   <div className="flex-1 min-w-0">
                     {/* Показываем model как есть — это читаемое название из API */}
-                    <p className="text-[14px] font-semibold truncate">
+                    <p className="text-[15px] font-semibold truncate">
                       {req.version}
                     </p>
-                    <p className="text-[12px] text-white/50 mt-0.5">
+                    <p className="text-[13px] text-white/50 mt-0.5">
                       {req.id} · {timeAgo(req.created_at)}
                     </p>
                   </div>
                   <div className="flex flex-col items-end gap-[3px] flex-shrink-0">
                     <span
-                      className="text-[12px] font-semibold"
+                      className="text-[13px] font-semibold"
                       style={{ color: st.color }}
                     >
                       {st.label}
                     </span>
-                    <span className="text-[11px] text-white/30">
+                    <span className="text-[14px] text-white/30">
                       {req.cost} 💎
                     </span>
                   </div>

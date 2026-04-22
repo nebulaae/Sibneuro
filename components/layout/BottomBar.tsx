@@ -70,7 +70,7 @@ export const BottomBar = () => {
   const profileItem = items[4];
 
   // Teal accent
-  const ACCENT = '#00C2A8';
+  const ACCENT = 'oklch(62.3% 0.214 259.815)';
 
   return (
     <nav
@@ -134,7 +134,7 @@ export const BottomBar = () => {
                   'active:scale-[0.88]',
                 )}
                 style={active ? {
-                  background: 'rgba(0,194,168,0.12)',
+                  background: 'oklch(62.3% 0.214 259.815 / 0.12)',
                   boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.10)',
                 } : {}}
               >

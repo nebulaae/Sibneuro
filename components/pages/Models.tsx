@@ -133,7 +133,7 @@ export const Models = () => {
         )}
       >
         <div className="max-w-190 mx-auto">
-          <span className="text-[22px] font-bold tracking-[-0.5px]">
+          <span className="text-[24px] font-bold tracking-[-0.5px]">
             {t('title')}
           </span>
         </div>
@@ -159,7 +159,7 @@ export const Models = () => {
                 }}
                 className={cn(
                   'shrink-0 px-4 py-1.5 rounded-full',
-                  'text-[13px] font-semibold tracking-[-0.1px] cursor-pointer whitespace-nowrap',
+                  'text-[14px] font-semibold tracking-[-0.1px] cursor-pointer whitespace-nowrap',
                   spring,
                   'active:scale-[0.93]',
                   active
@@ -212,7 +212,7 @@ export const Models = () => {
                   <div className="w-11.5 h-11.5 rounded-[14px] overflow-hidden shrink-0 border border-white/[.14] shadow-[inset_0_1px_0_rgba(255,255,255,0.15)]">
                     <Avatar className="size-full">
                       <AvatarImage src={avatarUrl} />
-                      <AvatarFallback className="text-[12px] font-bold bg-white/10 text-white">
+                      <AvatarFallback className="text-[14px] font-bold bg-white/10 text-white">
                         {m.model_name.slice(0, 2)}
                       </AvatarFallback>
                     </Avatar>
@@ -220,10 +220,10 @@ export const Models = () => {
 
                   {/* Info */}
                   <div className="flex-1 min-w-0">
-                    <p className="text-[15px] font-semibold text-white truncate tracking-[-0.2px]">
+                    <p className="text-[16px] font-semibold text-white truncate tracking-[-0.2px]">
                       {m.model_name}
                     </p>
-                    <p className="text-[12px] text-white/50 mt-0.5 flex items-center gap-1.5">
+                    <p className="text-[12px] text-white/40 mt-0.5 flex items-center gap-1.5">
                       <span>{catIcon}</span>
                       <span>{catLabel}</span>
                       {m.versions && m.versions.length > 1 && (
@@ -241,7 +241,7 @@ export const Models = () => {
                   <div className="flex items-center gap-2.5 shrink-0">
                     <div
                       className={cn(
-                        'inline-flex items-center gap-1 px-2.5 py-0.75 rounded-full text-[12px] font-semibold text-white/50',
+                        'inline-flex items-center gap-1 px-2.5 py-0.75 rounded-full text-[13px] font-semibold text-white/50',
                         glassThin
                       )}
                     >

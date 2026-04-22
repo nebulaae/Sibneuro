@@ -106,7 +106,7 @@ const PillBtn = ({
         onClick();
       }}
       className={cn(
-        'px-[14px] py-1.5 rounded-full text-[13px] font-semibold cursor-pointer flex-shrink-0',
+        'px-[14px] py-1.5 rounded-full text-[14px] font-semibold cursor-pointer flex-shrink-0',
         spring,
         'active:scale-[0.92]',
         active ? glassBlue + ' text-white' : glassThin + ' text-white/50'
@@ -143,16 +143,16 @@ const ModelRow = ({ m, onClick }: { m: any; onClick: () => void }) => {
       <div className="w-[46px] h-[46px] rounded-[14px] overflow-hidden flex-shrink-0 border border-white/[.14] shadow-[inset_0_1px_0_rgba(255,255,255,0.15)]">
         <Avatar className="size-full">
           <AvatarImage src={avatarUrl} />
-          <AvatarFallback className="text-[12px] font-bold bg-white/[.10] text-white">
+          <AvatarFallback className="text-[14px] font-bold bg-white/[.10] text-white">
             {m.model_name.slice(0, 2)}
           </AvatarFallback>
         </Avatar>
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-[15px] font-semibold text-white truncate tracking-[-0.2px]">
+        <p className="text-[16px] font-semibold text-white truncate tracking-[-0.2px]">
           {m.model_name}
         </p>
-        <p className="text-[12px] text-white/50 mt-0.5">
+        <p className="text-[13px] text-white/40 mt-0.5">
           {m.versions?.length > 1
             ? t('versions', { count: m.versions.length })
             : m.versions?.[0]?.label || ''}
@@ -334,7 +334,7 @@ export const Generate = () => {
           )}
         </div>
         <div className="flex flex-col gap-1.5">
-          <p className="text-[20px] font-bold tracking-[-0.4px]">
+          <p className="text-[240px] font-bold tracking-[-0.4px]">
             {status === 'completed'
               ? t('doneTitle')
               : status === 'error'
@@ -364,7 +364,7 @@ export const Generate = () => {
             setPendingId(null);
             router.push(`/chats/${pendingId}`);
           }}
-          className="text-[13px] text-white/50 bg-none border-none cursor-pointer underline underline-offset-4"
+          className="text-[14px] text-white/50 bg-none border-none cursor-pointer underline underline-offset-4"
         >
           {t('goToChat')}
         </button>
@@ -408,7 +408,7 @@ export const Generate = () => {
                 setShowParams(false);
               }}
               className={cn(
-                'flex items-center gap-1 text-[15px] font-medium text-[#0A84FF] bg-none border-none cursor-pointer px-2 py-1 rounded-lg',
+                'flex items-center gap-1 text-[16px] font-medium text-[#0A84FF] bg-none border-none cursor-pointer px-2 py-1 rounded-lg',
                 spring,
                 'active:scale-[0.92]'
               )}
@@ -429,7 +429,7 @@ export const Generate = () => {
                   </AvatarFallback>
                 </Avatar>
               </div>
-              <span className="text-[15px] font-semibold tracking-[-0.2px]">
+              <span className="text-[16px] font-semibold tracking-[-0.2px]">
                 {selected.model_name}
               </span>
             </div>
@@ -476,7 +476,7 @@ export const Generate = () => {
                 className={cn(
                   'w-full resize-none outline-none px-4 py-[14px] rounded-2xl',
                   glassRegular,
-                  'text-[15px] leading-[1.55] text-white placeholder:text-white/30',
+                  'text-[16px] leading-[1.55] text-white placeholder:text-white/30',
                   'box-border font-[var(--font-sf)]',
                   spring,
                   'focus:border-[rgba(0,122,255,0.40)] focus:shadow-[inset_0_1px_0_rgba(255,255,255,0.20),0_0_0_3px_rgba(0,122,255,0.12)]'
@@ -518,7 +518,7 @@ export const Generate = () => {
                       haptic.selection();
                       setShowParams(!showParams);
                     }}
-                    className="flex items-center gap-1.5 text-[13px] text-white/50 bg-none border-none cursor-pointer py-1.5"
+                    className="flex items-center gap-1.5 text-[14px] text-white/50 bg-none border-none cursor-pointer py-1.5"
                   >
                     <Settings2 size={14} />
                     {t('advancedParams')}
@@ -595,7 +595,7 @@ export const Generate = () => {
                     onClick={() => fileInputRef.current?.click()}
                     disabled={upload.isPending}
                     className={cn(
-                      'flex items-center gap-1.5 text-[13px] font-semibold text-[#0A84FF] bg-none border-none cursor-pointer',
+                      'flex items-center gap-1.5 text-[14px] font-semibold text-[#0A84FF] bg-none border-none cursor-pointer',
                       spring,
                       upload.isPending && 'opacity-50'
                     )}
@@ -662,7 +662,7 @@ export const Generate = () => {
                 upload.isPending
               }
               className={cn(
-                'w-full py-4 px-6 rounded-full text-[17px] font-bold text-white',
+                'w-full py-4 px-4 rounded-full text-[16px] font-bold text-white',
                 'flex items-center justify-center gap-2',
                 glassBlue,
                 spring,
@@ -709,10 +709,10 @@ export const Generate = () => {
         )}
       >
         <div className="max-w-[760px] mx-auto">
-          <p className="text-[22px] font-bold tracking-[-0.5px]">
+          <p className="text-[24px] font-bold tracking-[-0.5px]">
             {t('title')}
           </p>
-          <p className="text-[13px] text-white/50 mt-0.5">{t('subtitle')}</p>
+          <p className="text-[14px] text-white/50 mt-0.5">{t('subtitle')}</p>
         </div>
       </header>
 
@@ -754,7 +754,7 @@ export const Generate = () => {
                 return (
                   <div key={cat}>
                     <div className="px-5 py-[10px] bg-white/[.04] backdrop-blur-xl border-b border-white/[.06]">
-                      <p className="text-[11px] font-bold tracking-[0.6px] uppercase text-white/50">
+                      <p className="text-[12px] font-bold tracking-[0.6px] uppercase text-white/50">
                         {catLabels[cat]}
                       </p>
                     </div>
