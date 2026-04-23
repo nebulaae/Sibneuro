@@ -321,20 +321,20 @@ export const Generate = () => {
       <div className="flex flex-col items-center justify-center min-h-[100svh] gap-7 px-5 text-center">
         <div
           className={cn(
-            'w-20 h-20 rounded-[28px] flex items-center justify-center',
+            'w-10 h-10 rounded-[14px] flex items-center justify-center',
             glassThick
           )}
         >
           {status === 'completed' ? (
-            <CheckCircle size={32} className="text-[#34C759]" />
+            <CheckCircle size={16} className="text-[#34C759]" />
           ) : status === 'error' ? (
-            <AlertCircle size={32} className="text-[#FF3B30]" />
+            <AlertCircle size={16} className="text-[#FF3B30]" />
           ) : (
-            <Loader2 size={32} className="animate-spin text-white/50" />
+            <Loader2 size={16} className="animate-spin text-white/50" />
           )}
         </div>
         <div className="flex flex-col gap-1.5">
-          <p className="text-[240px] font-bold tracking-[-0.4px]">
+          <p className="text-[24px] font-bold tracking-[-0.4px]">
             {status === 'completed'
               ? t('doneTitle')
               : status === 'error'

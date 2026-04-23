@@ -76,19 +76,18 @@ export const BottomBar = () => {
     <nav
       aria-label={t('ariaLabel')}
       className={cn(
-        'flex sm:hidden fixed bottom-0 left-0 right-0 z-50 justify-center px-4',
-        'pb-[max(12px,env(safe-area-inset-bottom))]',
+        'flex sm:hidden fixed bottom-2 left-0 right-0 z-50 justify-center px-2',
         'transition-transform duration-380 ease-[cubic-bezier(0.32,0.72,0,1)]',
         !visible && 'translate-y-[120%]'
       )}
     >
-      <div className="flex items-center gap-2 px-2.5 py-2">
+      <div className="flex items-center gap-1 justify-center w-full">
         {/* Home bubble */}
         <Link
           href={homeItem.href}
           onClick={() => haptic.selection()}
           className={cn(
-            'w-14 h-14 rounded-full flex flex-col items-center justify-center gap-0.5',
+            'max-w-18 w-full h-12 rounded-full flex flex-col items-center justify-center gap-0.5',
             'select-none no-underline transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)]',
             'active:scale-90',
             "bg-black/20 backdrop-blur-3xl backdrop-saturate-200",
@@ -111,7 +110,7 @@ export const BottomBar = () => {
         </Link>
 
         {/* Mid items */}
-        <div className={cn("flex items-center justify-center gap-1 px-1 py-1 rounded-3xl",
+        <div className={cn("flex items-center justify-center gap-0.5 rounded-3xl",
           "bg-black/20 backdrop-blur-3xl backdrop-saturate-200",
           "border border-white/[.14]",
           "shadow-[inset_0_1px_0_rgba(255,255,255,0.12),0_20px_60px_rgba(0,0,0,0.65),0_4px_16px_rgba(0,0,0,0.4)]")}>
@@ -129,7 +128,7 @@ export const BottomBar = () => {
                   else haptic.selection();
                 }}
                 className={cn(
-                  'flex flex-col items-center gap-1 px-3 py-2 rounded-2xl',
+                  'flex flex-col items-center gap-1 px-4 py-2 rounded-2xl',
                   'select-none no-underline transition-all duration-280 ease-[cubic-bezier(0.32,0.72,0,1)]',
                   'active:scale-[0.88]',
                 )}
@@ -160,7 +159,7 @@ export const BottomBar = () => {
           href={profileItem.href}
           onClick={() => haptic.selection()}
           className={cn(
-            'w-14 h-14 rounded-full flex flex-col items-center justify-center gap-0.5',
+            'max-w-18 w-full h-12 rounded-full flex flex-col items-center justify-center gap-0.5',
             'select-none no-underline transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)]',
             'active:scale-90',
             "bg-black/20 backdrop-blur-3xl backdrop-saturate-200",
