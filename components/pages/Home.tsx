@@ -9,6 +9,7 @@ import { useTranslations } from 'next-intl';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ErrorComponent } from '@/components/states/Error';
 import { localize } from '@/lib/utils';
+import Image from 'next/image';
 
 /* ── Skeleton shimmer ── */
 const GlassSkeleton = ({
@@ -125,11 +126,43 @@ export const Home = () => {
   return (
     <div
       style={{
+        position: 'relative',
+        minHeight: '100vh',
         paddingBottom: 'calc(80px + max(16px, env(safe-area-inset-bottom)))',
         maxWidth: 1280,
         marginInline: 'auto',
       }}
     >
+      {/* ── Background ── */}
+      <div
+        style={{
+          position: 'fixed',
+          inset: 0,
+          zIndex: -1,
+          overflow: 'hidden',
+          pointerEvents: 'none',
+        }}
+      >
+        <Image
+          src="/background.jpg"
+          alt="background"
+          fill
+          style={{
+            objectFit: 'cover',
+            opacity: 1,
+            filter: 'blur(5px) brightness(0.3) saturate(1.2)',
+          }}
+          priority
+        />
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            background:
+              'linear-gradient(to bottom, rgba(0,0,0,0.6), transparent 40%, rgba(0,0,0,0.8))',
+          }}
+        />
+      </div>
       {/* ── Navigation Bar ── */}
       <header
         style={{

@@ -16,6 +16,8 @@ export const metadata: Metadata = {
   description: 'AI Platform',
 };
 
+import { DynamicScripts } from '@/components/DynamicScripts';
+
 export default async function RootLayout({
   children,
 }: {
@@ -27,20 +29,13 @@ export default async function RootLayout({
   return (
     <html lang={locale} className="dark">
       <head>
-        <Script
-          src="https://telegram.org/js/telegram-web-app.js"
-          strategy="beforeInteractive"
-        />
-        <Script
-          src="https://st.max.ru/js/max-web-app.js"
-          strategy="beforeInteractive"
-        />
         <meta
           name="viewport"
           content="width=device-width, initial-scale=1, viewport-fit=cover"
         />
       </head>
       <body style={{ fontFamily: 'var(--font-sf)', margin: 0 }}>
+        <DynamicScripts />
         <QueryProvider>
           <BotProvider>
             <AuthProvider>

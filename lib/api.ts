@@ -52,6 +52,21 @@ function getBotId(): number | string | undefined {
   return process.env.NEXT_PUBLIC_BOT_ID;
 }
 
+function getSource(): string | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const source = params.get('source');
+    if (source) {
+      localStorage.setItem('app_source', source);
+      return source;
+    }
+    return localStorage.getItem('app_source');
+  } catch {
+    return null;
+  }
+}
+
 const api = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL,
   headers: { 'Content-Type': 'application/json' },
@@ -71,10 +86,12 @@ api.interceptors.request.use((config) => {
 
     const botId = getBotId();
     const userId = getUserId();
+    const source = getSource();
 
     config.params = config.params || {};
     if (botId && !config.params.bot_id) config.params.bot_id = botId;
     if (userId && !config.params.user_id) config.params.user_id = userId;
+    if (source && !config.params.source) config.params.source = source;
   }
   return config;
 });

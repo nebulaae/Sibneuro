@@ -18,6 +18,13 @@ type LoginView = 'main' | 'email-login' | 'email-register';
 
 function detectEnv(): AppEnv {
   if (typeof window === 'undefined') return 'browser';
+  
+  const params = new URLSearchParams(window.location.search);
+  const source = params.get('source') || localStorage.getItem('app_source');
+  
+  if (source === 'tg') return 'telegram';
+  if (source === 'max') return 'max';
+
   const tg = (window as any)?.Telegram?.WebApp;
   if (tg?.initData) return 'telegram';
   const maxWA = (window as any)?.WebApp;
@@ -126,10 +133,10 @@ const PageWrapper = ({ children }: { children: React.ReactNode }) => (
         src="/background.jpg"
         alt="background"
         fill
-        className="object-cover opacity-25"
+        className="object-cover opacity-[0.15] brightness-[0.3] saturate-[1.2]"
         priority
       />
-      <div className="absolute inset-0 bg-gradient-to-t from-[var(--page-bg)] via-[color-mix(in_srgb,var(--page-bg)_55%,transparent)] to-transparent" />
+      <div className="absolute inset-0 bg-linear-to-b from-black/60 via-transparent to-black/80" />
     </div>
     <div className="relative z-10 w-full max-w-[380px]">{children}</div>
   </div>
@@ -525,60 +532,66 @@ export const Login = () => {
       </div>
 
       <div className="flex flex-col gap-3">
-        <div className={cn(glassCard, 'p-5')}>
-          <div className="flex items-center gap-2 mb-3">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-              <circle cx="12" cy="12" r="12" fill="#229ED9" />
-              <path
-                d="M5.5 11.5l2.8 1 1.1 3.4 1.7-2 3.4 2.5 2.5-9.4-11.5 4.5z"
-                fill="white"
-              />
-              <path d="M8.3 12.5l.3 3.4 1.7-2" fill="#B0D8F5" />
-            </svg>
-            <span className="text-[15px] font-semibold">
-              {t('telegramSection')}
-            </span>
+        {env === 'telegram' && (
+          <div className={cn(glassCard, 'p-5')}>
+            <div className="flex items-center gap-2 mb-3">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                <circle cx="12" cy="12" r="12" fill="#229ED9" />
+                <path
+                  d="M5.5 11.5l2.8 1 1.1 3.4 1.7-2 3.4 2.5 2.5-9.4-11.5 4.5z"
+                  fill="white"
+                />
+                <path d="M8.3 12.5l.3 3.4 1.7-2" fill="#B0D8F5" />
+              </svg>
+              <span className="text-[15px] font-semibold">
+                {t('telegramSection')}
+              </span>
+            </div>
+            {bot?.bot_username ? (
+              <div className="flex justify-center">
+                <LoginButton
+                  botUsername={bot.bot_username}
+                  onAuthCallback={handleTelegramAuth}
+                  showAvatar={false}
+                  buttonSize="large"
+                  cornerRadius={12}
+                  lang={locale === 'ru' ? 'ru' : 'en'}
+                />
+              </div>
+            ) : (
+              <div className="flex justify-center py-2">
+                <Loader2 size={20} className="animate-spin text-white/30" />
+              </div>
+            )}
           </div>
-          {bot?.bot_username ? (
-            <div className="flex justify-center">
-              <LoginButton
-                botUsername={bot.bot_username}
-                onAuthCallback={handleTelegramAuth}
-                showAvatar={false}
-                buttonSize="large"
-                cornerRadius={12}
-                lang={locale === 'ru' ? 'ru' : 'en'}
-              />
-            </div>
-          ) : (
-            <div className="flex justify-center py-2">
-              <Loader2 size={20} className="animate-spin text-white/30" />
-            </div>
-          )}
-        </div>
+        )}
 
-        <button
-          onClick={() => {
-            haptic.light();
-            toast(t('maxToast'));
-          }}
-          className={cn(
-            glassCard,
-            'p-5 w-full text-left cursor-pointer flex flex-col gap-1.5',
-            spring,
-            'active:scale-[0.985]'
-          )}
-        >
-          <div className="flex items-center gap-2">
-            <div className="w-5 h-5 rounded-full bg-[#0077FF] flex items-center justify-center flex-shrink-0">
-              <span className="text-white font-bold text-[11px]">M</span>
+        {env === 'max' && (
+          <button
+            onClick={() => {
+              haptic.light();
+              toast(t('maxToast'));
+            }}
+            className={cn(
+              glassCard,
+              'p-5 w-full text-left cursor-pointer flex flex-col gap-1.5',
+              spring,
+              'active:scale-[0.985]'
+            )}
+          >
+            <div className="flex items-center gap-2">
+              <div className="w-5 h-5 rounded-full bg-[#0077FF] flex items-center justify-center flex-shrink-0">
+                <span className="text-white font-bold text-[11px]">M</span>
+              </div>
+              <span className="text-[15px] font-semibold">
+                {t('maxSection')}
+              </span>
             </div>
-            <span className="text-[15px] font-semibold">{t('maxSection')}</span>
-          </div>
-          <p className="text-[13px] text-white/50 leading-[1.4]">
-            {t('maxDescription')}
-          </p>
-        </button>
+            <p className="text-[13px] text-white/50 leading-[1.4]">
+              {t('maxDescription')}
+            </p>
+          </button>
+        )}
 
         <button
           onClick={() => {
