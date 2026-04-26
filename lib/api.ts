@@ -61,7 +61,14 @@ function getSource(): string | null {
       localStorage.setItem('app_source', source);
       return source;
     }
-    return localStorage.getItem('app_source');
+    const stored = localStorage.getItem('app_source');
+    if (stored) return stored;
+
+    if (typeof navigator !== 'undefined') {
+      const ua = navigator.userAgent.toLowerCase();
+      if (ua.includes('telegram')) return 'tg';
+    }
+    return null;
   } catch {
     return null;
   }
@@ -87,8 +94,8 @@ api.interceptors.request.use((config) => {
     const initData = tg?.initData || maxWA?.initData;
 
     if (initData) {
-      if (!config.headers['X-Init-Data']) config.headers['X-Init-Data'] = initData;
-      if (!config.headers['x-init-data']) config.headers['x-init-data'] = initData;
+      config.headers.set('X-Init-Data', initData);
+      config.headers.set('x-init-data', initData);
     }
 
     const botId = getBotId();
@@ -96,12 +103,12 @@ api.interceptors.request.use((config) => {
     const source = getSource();
 
     if (botId) {
-      if (!config.headers['X-Bot-Id']) config.headers['X-Bot-Id'] = String(botId);
-      if (!config.headers['x-bot-id']) config.headers['x-bot-id'] = String(botId);
+      config.headers.set('X-Bot-Id', String(botId));
+      config.headers.set('x-bot-id', String(botId));
     }
     if (source) {
-      if (!config.headers['X-Platform']) config.headers['X-Platform'] = source;
-      if (!config.headers['x-platform']) config.headers['x-platform'] = source;
+      config.headers.set('X-Platform', source);
+      config.headers.set('x-platform', source);
     }
 
     config.params = config.params || {};

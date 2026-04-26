@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import api from '@/lib/api';
 import { useAuth } from '@/hooks/useAuth';
@@ -15,6 +15,12 @@ export const TelegramProvider = ({
   const { bot } = useBot(); // 👈 берём bot_id из провайдера
   const pathname = usePathname();
   const expanded = useRef(false);
+  const [retry, setRetry] = useState(0);
+ 
+  useEffect(() => {
+    const t = setInterval(() => setRetry((r) => r + 1), 1000);
+    return () => clearInterval(t);
+  }, []);
 
   useEffect(() => {
     const tg = (window as any)?.Telegram?.WebApp;
@@ -48,7 +54,7 @@ export const TelegramProvider = ({
         login(data.user);
       })
       .catch(() => {});
-  }, [pathname, user, bot]); // 👈 зависимость от bot
+  }, [pathname, user, bot, retry]); // 👈 зависимость от bot и retry
 
   return <>{children}</>;
 };
