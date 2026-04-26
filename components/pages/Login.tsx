@@ -153,6 +153,7 @@ export const Login = () => {
   const [autoLogging, setAutoLogging] = useState(false);
   const [autoError, setAutoError] = useState(false);
   const [view, setView] = useState<LoginView>('main');
+  const [retry, setRetry] = useState(0);
   const attempted = useRef(false);
 
   const [email, setEmail] = useState('');
@@ -169,6 +170,15 @@ export const Login = () => {
 
   useEffect(() => {
     setEnv(detectEnv());
+    // Периодически проверяем, не появились ли скрипты (если они грузятся асинхронно)
+    const t = setInterval(() => {
+      setEnv((prev) => {
+        const next = detectEnv();
+        return next !== prev ? next : prev;
+      });
+      setRetry((r) => r + 1);
+    }, 500);
+    return () => clearInterval(t);
   }, []);
 
   useEffect(() => {
@@ -228,7 +238,7 @@ export const Login = () => {
         setAutoError(true);
         attempted.current = false;
       });
-  }, [env, authLoading, user, bot]); // 👈 зависимость от bot
+  }, [env, authLoading, user, bot, retry]); // 👈 добавили retry в зависимости
 
   const handleTelegramAuth = async (tgUser: any) => {
     try {

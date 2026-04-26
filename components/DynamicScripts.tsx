@@ -14,6 +14,13 @@ export const DynamicScripts = () => {
     } else {
       s = localStorage.getItem('app_source');
     }
+
+    // fallback detection if source is missing
+    if (!s && typeof navigator !== 'undefined') {
+      const ua = navigator.userAgent.toLowerCase();
+      if (ua.includes('telegram')) s = 'tg';
+    }
+
     setSource(s);
   }, []);
 

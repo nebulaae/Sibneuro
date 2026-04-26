@@ -77,16 +77,32 @@ api.interceptors.request.use((config) => {
     const url = config.url || '';
     const isFree = isAuthFreePath(url);
 
-    if (!isFree) {
-      const token = localStorage.getItem('auth_token');
-      if (token) config.headers.Authorization = `Bearer ${token}`;
-      const tg = (window as any)?.Telegram?.WebApp;
-      if (!token && tg?.initData) config.headers['X-Init-Data'] = tg.initData;
+    const token = localStorage.getItem('auth_token');
+    if (token && !isFree) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+
+    const tg = (window as any)?.Telegram?.WebApp;
+    const maxWA = (window as any)?.WebApp;
+    const initData = tg?.initData || maxWA?.initData;
+
+    if (initData) {
+      if (!config.headers['X-Init-Data']) config.headers['X-Init-Data'] = initData;
+      if (!config.headers['x-init-data']) config.headers['x-init-data'] = initData;
     }
 
     const botId = getBotId();
     const userId = getUserId();
     const source = getSource();
+
+    if (botId) {
+      if (!config.headers['X-Bot-Id']) config.headers['X-Bot-Id'] = String(botId);
+      if (!config.headers['x-bot-id']) config.headers['x-bot-id'] = String(botId);
+    }
+    if (source) {
+      if (!config.headers['X-Platform']) config.headers['X-Platform'] = source;
+      if (!config.headers['x-platform']) config.headers['x-platform'] = source;
+    }
 
     config.params = config.params || {};
     if (botId && !config.params.bot_id) config.params.bot_id = botId;
