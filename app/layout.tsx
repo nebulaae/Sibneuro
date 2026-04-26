@@ -1,4 +1,3 @@
-import Script from 'next/script';
 import type { Metadata } from 'next';
 import { Toaster } from 'sonner';
 import { TelegramProvider } from './providers/TelegramProvider';
@@ -8,6 +7,7 @@ import { AuthProvider } from './providers/AuthProvider';
 import { BotProvider } from './providers/BotProvider';
 import { NextIntlClientProvider } from 'next-intl';
 import { getLocale, getMessages } from 'next-intl/server';
+import { PlatformScripts } from './providers/PlatformScripts';
 
 import './globals.css';
 
@@ -15,8 +15,6 @@ export const metadata: Metadata = {
   title: 'Sibneuro',
   description: 'AI Platform',
 };
-
-import { DynamicScripts } from '@/components/DynamicScripts';
 
 export default async function RootLayout({
   children,
@@ -29,13 +27,13 @@ export default async function RootLayout({
   return (
     <html lang={locale} className="dark">
       <head>
+        <PlatformScripts />
         <meta
           name="viewport"
           content="width=device-width, initial-scale=1, viewport-fit=cover"
         />
       </head>
       <body style={{ fontFamily: 'var(--font-sf)', margin: 0 }}>
-        <DynamicScripts />
         <QueryProvider>
           <BotProvider>
             <AuthProvider>

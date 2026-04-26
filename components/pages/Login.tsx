@@ -10,43 +10,26 @@ import { useBot } from '@/app/providers/BotProvider';
 import { useEffect, useState, useRef } from 'react';
 import { Loader2, Mail, Eye, EyeOff, ArrowLeft } from 'lucide-react';
 import { useHaptic } from '@/hooks/useHaptic';
-import { useTranslations, useLocale } from 'next-intl';
 import { cn } from '@/lib/utils';
+import { useTranslations, useLocale } from 'next-intl';
+
+import { getAppSource } from '@/lib/source';
 
 type AppEnv = 'telegram' | 'max' | 'browser';
 type LoginView = 'main' | 'email-login' | 'email-register';
 
-function detectEnv(): AppEnv {
-  if (typeof window === 'undefined') return 'browser';
-  
-  const params = new URLSearchParams(window.location.search);
-  const source = params.get('source') || localStorage.getItem('app_source');
-  
-  if (source === 'tg') return 'telegram';
-  if (source === 'max') return 'max';
-
+function getPlatformInitData(): string | null {
+  if (typeof window === 'undefined') return null;
   const tg = (window as any)?.Telegram?.WebApp;
-  if (tg?.initData) return 'telegram';
+  if (tg?.initData) return tg.initData;
   const maxWA = (window as any)?.WebApp;
-  if (maxWA?.initData) return 'max';
-  return 'browser';
-}
-
-function getMaxInitData(): string | null {
-  return (window as any)?.WebApp?.initData || null;
+  return maxWA?.initData || null;
 }
 
 function saveSessionAuth(
   hash: string,
   sd: { id: number; time: number },
-  u: {
-    id: number;
-    first_name: string;
-    last_name?: string;
-    username?: string;
-    photo_url?: string;
-    name?: string;
-  }
+  u: any
 ) {
   localStorage.setItem('session_hash', hash);
   localStorage.setItem('session_data', JSON.stringify(sd));
@@ -64,25 +47,15 @@ function saveSessionAuth(
   localStorage.setItem('auth_user_id', String(u.id));
 }
 
-/* ── Shared classes ── */
-const glassCard = cn(
-  'bg-white/[.10] dark:bg-black/[.55] backdrop-blur-[50px] backdrop-saturate-180',
-  'border border-white/[.18]',
-  'shadow-[inset_0_1px_0_rgba(255,255,255,0.20),0_8px_32px_rgba(0,0,0,0.28)]',
-  'rounded-[22px]'
-);
-const glassThin = cn(
-  'bg-white/[.07] dark:bg-black/[.45] backdrop-blur-xl backdrop-saturate-150',
-  'border border-white/[.14]',
-  'shadow-[inset_0_1px_0_rgba(255,255,255,0.15)]'
-);
-const glassBlue = cn(
-  'bg-[rgba(0,122,255,0.85)] backdrop-blur-xl',
-  'border border-[rgba(0,122,255,0.30)]',
-  'shadow-[inset_0_1px_0_rgba(255,255,255,0.35),0_6px_24px_rgba(0,122,255,0.40)]'
-);
+/* ─── Design tokens ─── */
+const g = {
+  card: 'bg-zinc-900/55 backdrop-blur-[50px] backdrop-saturate-180 border border-white/[.11] shadow-[inset_0_1px_0_rgba(255,255,255,0.09),0_8px_32px_rgba(0,0,0,0.35)] rounded-[22px]',
+  thin: 'bg-zinc-900/40 backdrop-blur-xl border border-white/[.10] shadow-[inset_0_1px_0_rgba(255,255,255,0.07)]',
+  primary:
+    'bg-white/[.10] backdrop-blur-xl border border-white/[.20] shadow-[inset_0_1px_0_rgba(255,255,255,0.20),0_6px_24px_rgba(0,0,0,0.25)]',
+};
 const spring =
-  'transition-all duration-[280ms] [transition-timing-function:cubic-bezier(0.32,0.72,0,1)]';
+  'transition-all duration-[260ms] [transition-timing-function:cubic-bezier(0.32,0.72,0,1)]';
 
 const GlassInput = ({
   type = 'text',
@@ -92,15 +65,7 @@ const GlassInput = ({
   onKeyDown,
   autoComplete,
   rightSlot,
-}: {
-  type?: string;
-  placeholder: string;
-  value: string;
-  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  onKeyDown?: (e: React.KeyboardEvent<HTMLInputElement>) => void;
-  autoComplete?: string;
-  rightSlot?: React.ReactNode;
-}) => (
+}: any) => (
   <div className="relative">
     <input
       type={type}
@@ -110,16 +75,16 @@ const GlassInput = ({
       onKeyDown={onKeyDown}
       autoComplete={autoComplete}
       className={cn(
-        'w-full box-border py-[13px] rounded-[14px] text-[16px] outline-none text-white',
-        rightSlot ? 'pl-4 pr-12' : 'px-4',
-        glassThin,
+        'w-full box-border py-[13px] rounded-[14px] text-[15px] outline-none text-white/90',
+        rightSlot ? 'pl-4 pr-11' : 'px-4',
+        g.thin,
         spring,
-        'placeholder:text-white/30',
-        'focus:border-[rgba(0,122,255,0.45)] focus:shadow-[inset_0_1px_0_rgba(255,255,255,0.15),0_0_0_3px_rgba(0,122,255,0.12)] focus:bg-white/[.10]'
+        'placeholder:text-white/25',
+        'focus:border-white/[.22] focus:bg-white/[.07]'
       )}
     />
     {rightSlot && (
-      <div className="absolute right-[14px] top-1/2 -translate-y-1/2">
+      <div className="absolute right-[13px] top-1/2 -translate-y-1/2">
         {rightSlot}
       </div>
     )}
@@ -127,7 +92,7 @@ const GlassInput = ({
 );
 
 const PageWrapper = ({ children }: { children: React.ReactNode }) => (
-  <div className="relative flex flex-col items-center justify-center min-h-[100svh] overflow-x-hidden px-5 py-6">
+  <div className="relative flex flex-col items-center justify-center min-h-[100svh] overflow-x-hidden px-5 py-8">
     <div className="absolute inset-0 z-0 pointer-events-none">
       <Image
         src="/background.jpg"
@@ -136,32 +101,29 @@ const PageWrapper = ({ children }: { children: React.ReactNode }) => (
         className="object-cover opacity-[0.15] brightness-[0.3] saturate-[1.2]"
         priority
       />
-      <div className="absolute inset-0 bg-linear-to-b from-black/60 via-transparent to-black/80" />
+      <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/70 to-zinc-950/30" />
     </div>
-    <div className="relative z-10 w-full max-w-[380px]">{children}</div>
+    <div className="relative z-10 w-full max-w-[360px]">{children}</div>
   </div>
 );
 
 export const Login = () => {
-  const t = useTranslations('Login');
-  const locale = useLocale();
   const router = useRouter();
   const { user, login, isLoading: authLoading } = useAuth();
-  const { bot, isLoading: botLoading } = useBot(); // 👈
+  const { bot, isLoading: botLoading } = useBot();
   const haptic = useHaptic();
-  const [env, setEnv] = useState<AppEnv>('browser');
+  const t = useTranslations('Login');
+  const locale = useLocale();
+  const [source, setSource] = useState<string | null>(null);
   const [autoLogging, setAutoLogging] = useState(false);
   const [autoError, setAutoError] = useState(false);
   const [view, setView] = useState<LoginView>('main');
-  const [retry, setRetry] = useState(0);
   const attempted = useRef(false);
-
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPass, setShowPass] = useState(false);
   const [emailLoading, setEmailLoading] = useState(false);
   const [name, setName] = useState('');
-
   const isLoading = authLoading || botLoading;
 
   useEffect(() => {
@@ -169,47 +131,36 @@ export const Login = () => {
   }, [user, authLoading, router]);
 
   useEffect(() => {
-    setEnv(detectEnv());
-    // Периодически проверяем, не появились ли скрипты (если они грузятся асинхронно)
-    const t = setInterval(() => {
-      setEnv((prev) => {
-        const next = detectEnv();
-        return next !== prev ? next : prev;
-      });
-      setRetry((r) => r + 1);
-    }, 500);
-    return () => clearInterval(t);
+    const s = getAppSource();
+    setSource(s);
   }, []);
 
   useEffect(() => {
-    if (env !== 'max') return;
+    if (source !== 'max') return;
     const maxWA = (window as any)?.WebApp;
     if (!maxWA) return;
     try {
       maxWA.ready?.();
       maxWA.expand?.();
     } catch {}
-  }, [env]);
+  }, [source]);
 
-  // Авто-вход через TMA — ждём пока bot загрузится
   useEffect(() => {
-    if (env === 'browser' || attempted.current || authLoading || user) return;
-    if (!bot?.bot_id) return; // 👈 ждём bot_id
+    if (!source || source === 'browser' || attempted.current || authLoading || user) return;
+    if (!bot?.bot_id) return;
 
+    const env = source as AppEnv;
     const tg = (window as any)?.Telegram?.WebApp;
-    const initData = env === 'telegram' ? tg?.initData : getMaxInitData();
+    const initData = env === 'telegram' ? tg?.initData : getPlatformInitData();
     if (!initData) return;
-
     attempted.current = true;
     setAutoLogging(true);
-
     if (env === 'telegram') {
       try {
         tg.ready();
         tg.expand();
       } catch {}
     }
-
     api
       .post(
         '/api/auth/tma',
@@ -238,37 +189,41 @@ export const Login = () => {
         setAutoError(true);
         attempted.current = false;
       });
-  }, [env, authLoading, user, bot, retry]); // 👈 добавили retry в зависимости
+  }, [source, authLoading, user, bot, login, router]);
 
   const handleTelegramAuth = async (tgUser: any) => {
     try {
       const { data } = await api.post('/api/auth/telegram', {
         ...tgUser,
-        bot_id: bot?.bot_id, // 👈 динамически
+        bot_id: bot?.bot_id,
       });
       localStorage.setItem('auth_token', data.token);
       if (data.user?.id)
         localStorage.setItem('auth_user_id', String(data.user.id));
       login(data.user);
       haptic.success();
-      toast.success(t('loginSuccess'));
+      toast.success(t('authSuccess'));
       router.replace('/');
     } catch {
       haptic.error();
-      toast.error(t('loginError'));
+      toast.error(t('errorLoginTelegram'));
     }
   };
 
   const handleEmailLogin = async () => {
     if (!email.trim() || !password.trim()) {
-      toast.error(t('emailRequired'));
+      toast.error(t('errorEmailPasswordRequired'));
       return;
     }
     setEmailLoading(true);
     try {
       const { data } = await api.post(
-        `/api/auth/login/email?bot_id=${bot?.bot_id}`, // 👈 динамически
-        { email: email.trim(), password }
+        `/api/auth/login/email?bot_id=${bot?.bot_id}`,
+        {
+          email: email.trim(),
+          password,
+          initData: getPlatformInitData(),
+        }
       );
       if (data.token) {
         localStorage.setItem('auth_token', data.token);
@@ -276,31 +231,31 @@ export const Login = () => {
         if (u.id) localStorage.setItem('auth_user_id', String(u.id));
         login(u);
         haptic.success();
-        toast.success(t('loginSuccess'));
+        toast.success(t('authSuccess'));
         router.replace('/');
       } else if (data.session_hash && data.session_data) {
         const sd =
           typeof data.session_data === 'string'
             ? JSON.parse(data.session_data)
             : data.session_data;
-        const displayName =
+        const dn =
           data.user?.name || data.user?.first_name || email.split('@')[0];
         saveSessionAuth(data.session_hash, sd, {
           id: sd.id,
-          first_name: displayName,
+          first_name: dn,
           photo_url: data.user?.photo_url,
         });
-        login({ id: sd.id, first_name: displayName, auth_date: 0 });
+        login({ id: sd.id, first_name: dn, auth_date: 0 });
         haptic.success();
-        toast.success(t('loginSuccess'));
+        toast.success(t('authSuccess'));
         router.replace('/');
-      } else throw new Error(data.error || 'Неверный ответ сервера');
+      } else throw new Error(data.error || t('unknownError'));
     } catch (e: any) {
       haptic.error();
       const msg =
         e?.response?.status === 401
-          ? t('emailRequired') // Close enough
-          : e?.response?.data?.error || e?.message || t('loginError');
+          ? t('errorInvalidCredentials')
+          : e?.response?.data?.error || e?.message || t('errorLogin');
       toast.error(msg);
     } finally {
       setEmailLoading(false);
@@ -309,18 +264,24 @@ export const Login = () => {
 
   const handleEmailRegister = async () => {
     if (!email.trim() || !password.trim() || !name.trim()) {
-      toast.error(t('emailRequired')); // Close enough
+      toast.error(t('errorFillAllFields'));
       return;
     }
     setEmailLoading(true);
     try {
       const { data } = await api.post(
         `/api/auth/create/email?bot_id=${bot?.bot_id}`,
-        { email: email.trim(), password, name: name.trim(), lang: 'ru' }
+        {
+          email: email.trim(),
+          password,
+          name: name.trim(),
+          lang: locale,
+          initData: getPlatformInitData(),
+        }
       );
-      if (!data.success) throw new Error(data.error || t('loginError'));
+      if (!data.success) throw new Error(data.error || t('errorRegister'));
       haptic.success();
-      toast.success(t('loginSuccess'));
+      toast.success(t('accountCreated'));
       if (data.session_hash && data.session_data) {
         const sd =
           typeof data.session_data === 'string'
@@ -334,14 +295,14 @@ export const Login = () => {
         router.replace('/');
       } else {
         setView('email-login');
-        toast(t('registerSuccess'));
+        toast(t('loginWithNewAccount'));
       }
     } catch (e: any) {
       haptic.error();
-      if (e?.response?.status === 409) toast.error(t('emailExists'));
+      if (e?.response?.status === 409) toast.error(t('errorEmailExists'));
       else
         toast.error(
-          e?.response?.data?.error || e?.message || t('registerError')
+          e?.response?.data?.error || e?.message || t('errorRegister')
         );
     } finally {
       setEmailLoading(false);
@@ -351,18 +312,17 @@ export const Login = () => {
   if (isLoading || autoLogging)
     return (
       <PageWrapper>
-        <div className="flex flex-col items-center gap-4">
+        <div className="flex flex-col items-center gap-3">
           <div
             className={cn(
-              'w-[52px] h-[52px] rounded-[18px] flex items-center justify-center',
-              'bg-white/[.13] dark:bg-black/[.65] backdrop-blur-3xl border border-white/[.22]',
-              'shadow-[inset_0_1px_0_rgba(255,255,255,0.25),0_8px_32px_rgba(0,0,0,0.28)]'
+              'w-12 h-12 rounded-2xl flex items-center justify-center',
+              g.card
             )}
           >
-            <Loader2 size={22} className="animate-spin text-white/50" />
+            <Loader2 size={20} className="animate-spin text-white/40" />
           </div>
-          <p className="text-[14px] text-white/50">
-            {autoLogging ? t('autoLoginLoading') : t('loading')}
+          <p className="text-[13px] text-white/40">
+            {autoLogging ? t('loggingIn') : t('loading')}
           </p>
         </div>
       </PageWrapper>
@@ -377,12 +337,12 @@ export const Login = () => {
         onClick();
       }}
       className={cn(
-        'inline-flex items-center gap-1 text-[15px] font-medium text-[#0A84FF] bg-none border-none cursor-pointer py-1.5 mb-6',
+        'inline-flex items-center gap-1.5 text-[14px] font-medium text-white/50 bg-transparent border-none cursor-pointer py-1.5 mb-6',
         spring,
-        'active:scale-[0.92]'
+        'active:scale-[0.94]'
       )}
     >
-      <ArrowLeft size={17} /> {t('back')}
+      <ArrowLeft size={15} /> {t('back')}
     </button>
   );
 
@@ -391,33 +351,33 @@ export const Login = () => {
       <PageWrapper>
         <BackBtn onClick={() => setView('main')} />
         <div className="mb-7">
-          <h2 className="text-[28px] font-bold tracking-[-0.6px] mb-1">
+          <h2 className="text-[26px] font-bold tracking-[-0.5px] mb-1 text-white/90">
             {t('emailLoginTitle')}
           </h2>
-          <p className="text-[14px] text-white/50">{t('emailLoginSubtitle')}</p>
+          <p className="text-[13px] text-white/40">{t('emailLoginSubtitle')}</p>
         </div>
-        <div className={cn(glassCard, 'p-5 flex flex-col gap-3')}>
+        <div className={cn(g.card, 'p-5 flex flex-col gap-3')}>
           <GlassInput
             type="email"
-            placeholder="Email"
+            placeholder={t('emailPlaceholder')}
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={(e: any) => setEmail(e.target.value)}
             autoComplete="email"
           />
           <GlassInput
             type={showPass ? 'text' : 'password'}
             placeholder={t('passwordPlaceholder')}
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            onChange={(e: any) => setPassword(e.target.value)}
             autoComplete="current-password"
-            onKeyDown={(e) => e.key === 'Enter' && handleEmailLogin()}
+            onKeyDown={(e: any) => e.key === 'Enter' && handleEmailLogin()}
             rightSlot={
               <button
                 type="button"
                 onClick={() => setShowPass(!showPass)}
-                className="bg-none border-none cursor-pointer flex text-white/30"
+                className="text-white/30 bg-transparent border-none cursor-pointer flex"
               >
-                {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
+                {showPass ? <EyeOff size={15} /> : <Eye size={15} />}
               </button>
             }
           />
@@ -425,25 +385,25 @@ export const Login = () => {
             onClick={handleEmailLogin}
             disabled={emailLoading}
             className={cn(
-              'w-full py-[14px] rounded-[14px] text-[16px] font-bold text-white mt-1 flex items-center justify-center gap-2',
-              glassBlue,
+              'w-full py-[13px] rounded-[14px] text-[15px] font-semibold text-white/90 mt-1 flex items-center justify-center gap-2',
+              g.primary,
               spring,
               'active:scale-[0.97]',
-              emailLoading && 'opacity-60'
+              emailLoading && 'opacity-50'
             )}
           >
-            {emailLoading && <Loader2 size={16} className="animate-spin" />}{' '}
+            {emailLoading && <Loader2 size={15} className="animate-spin" />}{' '}
             {t('signIn')}
           </button>
         </div>
-        <p className="text-center text-[13px] text-white/50 mt-5">
+        <p className="text-center text-[12px] text-white/35 mt-5">
           {t('noAccount')}{' '}
           <button
             onClick={() => {
               haptic.light();
               setView('email-register');
             }}
-            className="bg-none border-none cursor-pointer text-[#0A84FF] font-semibold text-[13px]"
+            className="bg-transparent border-none cursor-pointer text-white/60 font-semibold text-[12px]"
           >
             {t('register')}
           </button>
@@ -456,39 +416,39 @@ export const Login = () => {
       <PageWrapper>
         <BackBtn onClick={() => setView('email-login')} />
         <div className="mb-7">
-          <h2 className="text-[28px] font-bold tracking-[-0.6px] mb-1">
+          <h2 className="text-[26px] font-bold tracking-[-0.5px] mb-1 text-white/90">
             {t('registerTitle')}
           </h2>
-          <p className="text-[14px] text-white/50">{t('registerSubtitle')}</p>
+          <p className="text-[13px] text-white/40">{t('registerSubtitle')}</p>
         </div>
-        <div className={cn(glassCard, 'p-5 flex flex-col gap-3')}>
+        <div className={cn(g.card, 'p-5 flex flex-col gap-3')}>
           <GlassInput
             type="text"
             placeholder={t('namePlaceholder')}
             value={name}
-            onChange={(e) => setName(e.target.value)}
+            onChange={(e: any) => setName(e.target.value)}
           />
           <GlassInput
             type="email"
-            placeholder="Email"
+            placeholder={t('emailPlaceholder')}
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={(e: any) => setEmail(e.target.value)}
             autoComplete="email"
           />
           <GlassInput
             type={showPass ? 'text' : 'password'}
             placeholder={t('passwordPlaceholder')}
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            onChange={(e: any) => setPassword(e.target.value)}
             autoComplete="new-password"
-            onKeyDown={(e) => e.key === 'Enter' && handleEmailRegister()}
+            onKeyDown={(e: any) => e.key === 'Enter' && handleEmailRegister()}
             rightSlot={
               <button
                 type="button"
                 onClick={() => setShowPass(!showPass)}
-                className="bg-none border-none cursor-pointer flex text-white/30"
+                className="text-white/30 bg-transparent border-none cursor-pointer flex"
               >
-                {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
+                {showPass ? <EyeOff size={15} /> : <Eye size={15} />}
               </button>
             }
           />
@@ -496,25 +456,25 @@ export const Login = () => {
             onClick={handleEmailRegister}
             disabled={emailLoading}
             className={cn(
-              'w-full py-[14px] rounded-[14px] text-[16px] font-bold text-white mt-1 flex items-center justify-center gap-2',
-              glassBlue,
+              'w-full py-[13px] rounded-[14px] text-[15px] font-semibold text-white/90 mt-1 flex items-center justify-center gap-2',
+              g.primary,
               spring,
               'active:scale-[0.97]',
-              emailLoading && 'opacity-60'
+              emailLoading && 'opacity-50'
             )}
           >
-            {emailLoading && <Loader2 size={16} className="animate-spin" />}{' '}
+            {emailLoading && <Loader2 size={15} className="animate-spin" />}{' '}
             {t('createAccount')}
           </button>
         </div>
-        <p className="text-center text-[13px] text-white/50 mt-5">
+        <p className="text-center text-[12px] text-white/35 mt-5">
           {t('alreadyHaveAccount')}{' '}
           <button
             onClick={() => {
               haptic.light();
               setView('email-login');
             }}
-            className="bg-none border-none cursor-pointer text-[#0A84FF] font-semibold text-[13px]"
+            className="bg-transparent border-none cursor-pointer text-white/60 font-semibold text-[12px]"
           >
             {t('signIn')}
           </button>
@@ -524,7 +484,8 @@ export const Login = () => {
 
   return (
     <PageWrapper>
-      <div className="text-center mb-11">
+      {/* Hero */}
+      <div className="text-center mb-10">
         <div
           className={cn(
             'w-[72px] h-[72px] rounded-[22px] mx-auto mb-4 flex items-center justify-center text-[30px]',
@@ -535,26 +496,24 @@ export const Login = () => {
         >
           🧠
         </div>
-        <h1 className="text-[32px] font-extrabold tracking-[-0.8px] mb-1">
+        <h1 className="text-[32px] font-extrabold tracking-[-0.8px] mb-1 text-white/90">
           Sibneuro
         </h1>
         <p className="text-[15px] text-white/50">{t('tagline')}</p>
       </div>
 
       <div className="flex flex-col gap-3">
-        {env === 'telegram' && (
-          <div className={cn(glassCard, 'p-5')}>
-            <div className="flex items-center gap-2 mb-3">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                <circle cx="12" cy="12" r="12" fill="#229ED9" />
-                <path
-                  d="M5.5 11.5l2.8 1 1.1 3.4 1.7-2 3.4 2.5 2.5-9.4-11.5 4.5z"
-                  fill="white"
-                />
-                <path d="M8.3 12.5l.3 3.4 1.7-2" fill="#B0D8F5" />
-              </svg>
-              <span className="text-[15px] font-semibold">
-                {t('telegramSection')}
+        {/* Telegram */}
+        {source === 'tg' && (
+          <div className={cn(g.card, 'p-5')}>
+            <div className="flex items-center gap-2 mb-3.5">
+              <div className="w-5 h-5 rounded-full bg-white/10 flex items-center justify-center">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="white">
+                  <path d="M5.5 11.5l2.8 1 1.1 3.4 1.7-2 3.4 2.5 2.5-9.4-11.5 4.5z" />
+                </svg>
+              </div>
+              <span className="text-[14px] font-semibold text-white/80">
+                Telegram
               </span>
             </div>
             {bot?.bot_username ? (
@@ -569,71 +528,75 @@ export const Login = () => {
                 />
               </div>
             ) : (
-              <div className="flex justify-center py-2">
-                <Loader2 size={20} className="animate-spin text-white/30" />
+              <div className="flex justify-center py-1.5">
+                <Loader2 size={18} className="animate-spin text-white/25" />
               </div>
             )}
           </div>
         )}
 
-        {env === 'max' && (
+        {/* Max */}
+        {source === 'max' && (
           <button
             onClick={() => {
               haptic.light();
               toast(t('maxToast'));
             }}
             className={cn(
-              glassCard,
+              g.card,
               'p-5 w-full text-left cursor-pointer flex flex-col gap-1.5',
               spring,
               'active:scale-[0.985]'
             )}
           >
             <div className="flex items-center gap-2">
-              <div className="w-5 h-5 rounded-full bg-[#0077FF] flex items-center justify-center flex-shrink-0">
-                <span className="text-white font-bold text-[11px]">M</span>
+              <div className="w-5 h-5 rounded-full bg-white/10 flex items-center justify-center">
+                <span className="text-white/80 font-bold text-[10px]">M</span>
               </div>
-              <span className="text-[15px] font-semibold">
-                {t('maxSection')}
+              <span className="text-[14px] font-semibold text-white/80">
+                Max Messenger
               </span>
             </div>
-            <p className="text-[13px] text-white/50 leading-[1.4]">
+            <p className="text-[12px] text-white/35 leading-[1.4]">
               {t('maxDescription')}
             </p>
           </button>
         )}
 
+        {/* Email */}
         <button
           onClick={() => {
             haptic.light();
             setView('email-login');
           }}
           className={cn(
-            glassCard,
-            'p-5 w-full cursor-pointer flex items-center gap-2.5',
+            g.card,
+            'p-4 w-full cursor-pointer flex items-center gap-3',
             spring,
             'active:scale-[0.985]'
           )}
         >
           <div
             className={cn(
-              'w-[34px] h-[34px] rounded-[10px] flex items-center justify-center flex-shrink-0',
-              glassThin
+              'w-8 h-8 rounded-[10px] flex items-center justify-center flex-shrink-0',
+              g.thin
             )}
           >
-            <Mail size={16} className="text-white/50" />
+            <Mail size={14} className="text-white/40" />
           </div>
-          <span className="text-[15px] font-semibold">{t('emailLogin')}</span>
+          <span className="text-[14px] font-semibold text-white/70">
+            {t('emailLogin')}
+          </span>
         </button>
 
         {autoError && (
-          <p className="text-center text-[13px] text-[#FF3B30]">
+          <p className="text-center text-[12px] text-red-400/80">
             {t('autoLoginError')}
           </p>
         )}
       </div>
 
-      <p className="text-center text-[12px] text-white/30 mt-7 leading-[1.5]">
+      <p className="text-center text-[11px] text-white/25 mt-8 leading-[1.6]">
         {t('terms')}
       </p>
     </PageWrapper>
