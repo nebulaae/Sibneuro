@@ -10,6 +10,7 @@ import { getLocale, getMessages } from 'next-intl/server';
 import { PlatformScripts } from './providers/PlatformScripts';
 
 import './globals.css';
+import ErudaInit from './providers/ErudaInit';
 
 export const metadata: Metadata = {
   title: 'Sibneuro',
@@ -40,6 +41,7 @@ export default async function RootLayout({
               <TelegramProvider>
                 <MaxProvider>
                   <NextIntlClientProvider locale={locale} messages={messages}>
+                    <ErudaInit />
                     {children}
                     <Toaster
                       position="top-center"
