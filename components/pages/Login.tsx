@@ -1,7 +1,6 @@
 'use client';
 
 import api from '@/lib/api';
-import Image from 'next/image';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 import { LoginButton } from '@telegram-auth/react';
@@ -14,17 +13,10 @@ import { cn } from '@/lib/utils';
 import { useTranslations, useLocale } from 'next-intl';
 
 import { getAppSource } from '@/lib/source';
+import { getPlatformInitData, waitForPlatformInitData } from '@/lib/platform';
 
 type AppEnv = 'telegram' | 'max' | 'browser';
 type LoginView = 'main' | 'email-login' | 'email-register';
-
-function getPlatformInitData(): string | null {
-  if (typeof window === 'undefined') return null;
-  const tg = (window as any)?.Telegram?.WebApp;
-  if (tg?.initData) return tg.initData;
-  const maxWA = (window as any)?.WebApp;
-  return maxWA?.initData || null;
-}
 
 function saveSessionAuth(
   hash: string,
@@ -94,13 +86,6 @@ const GlassInput = ({
 const PageWrapper = ({ children }: { children: React.ReactNode }) => (
   <div className="relative flex flex-col items-center justify-center min-h-[100svh] overflow-x-hidden px-5 py-8">
     <div className="absolute inset-0 z-0 pointer-events-none">
-      <Image
-        src="/background.jpg"
-        alt="background"
-        fill
-        className="object-cover opacity-[0.15] brightness-[0.3] saturate-[1.2]"
-        priority
-      />
       <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/70 to-zinc-950/30" />
     </div>
     <div className="relative z-10 w-full max-w-[360px]">{children}</div>
@@ -126,70 +111,101 @@ export const Login = () => {
   const [name, setName] = useState('');
   const isLoading = authLoading || botLoading;
 
+  // Редирект если уже авторизован
   useEffect(() => {
     if (!authLoading && user) router.replace('/');
   }, [user, authLoading, router]);
 
+  // Определяем source один раз при маунте
   useEffect(() => {
     const s = getAppSource();
     setSource(s);
   }, []);
 
+  // Expand для Max
   useEffect(() => {
     if (source !== 'max') return;
-    const maxWA = (window as any)?.WebApp;
-    if (!maxWA) return;
     try {
-      maxWA.ready?.();
-      maxWA.expand?.();
-    } catch {}
+      const maxWA = (window as any)?.WebApp;
+      maxWA?.ready?.();
+      maxWA?.expand?.();
+    } catch { }
   }, [source]);
 
+  // ─── Авто-логин через TMA (Telegram / Max) ───
   useEffect(() => {
-    if (!source || source === 'browser' || attempted.current || authLoading || user) return;
+    // Ждём пока source определится
+    if (!source) return;
+    // Только для TMA-окружений
+    if (source === 'browser') return;
+    // Если уже залогинен или грузится — выходим
+    if (authLoading || user) return;
+    // Ждём bot_id
     if (!bot?.bot_id) return;
+    // Не запускаем повторно если попытка уже идёт
+    if (attempted.current) return;
 
-    const env = source as AppEnv;
-    const tg = (window as any)?.Telegram?.WebApp;
-    const initData = env === 'telegram' ? tg?.initData : getPlatformInitData();
-    if (!initData) return;
     attempted.current = true;
     setAutoLogging(true);
-    if (env === 'telegram') {
+
+    const env = source as AppEnv;
+
+    // Expand/ready сразу — не ждём initData
+    if (source === 'tg' || source === 'telegram') {
       try {
-        tg.ready();
-        tg.expand();
-      } catch {}
+        (window as any)?.Telegram?.WebApp?.ready?.();
+        (window as any)?.Telegram?.WebApp?.expand?.();
+      } catch { }
     }
-    api
-      .post(
-        '/api/auth/tma',
-        {
-          initData,
-          platform: env,
-          bot_id: bot.bot_id,
-        },
-        {
-          headers: {
-            'x-init-data': initData,
-            'x-bot-id': bot.bot_id,
-            'x-platform': env,
-          },
-        }
-      )
-      .then(({ data }) => {
-        localStorage.setItem('auth_token', data.token);
-        if (data.user?.id)
-          localStorage.setItem('auth_user_id', String(data.user.id));
-        login(data.user);
-        router.replace('/');
-      })
-      .catch(() => {
+    if (source === 'max') {
+      try {
+        const maxWA = (window as any)?.WebApp;
+        maxWA?.ready?.();
+        maxWA?.expand?.();
+      } catch { }
+    }
+
+    // Ждём появления initData — до 5 секунд
+    waitForPlatformInitData(5000).then((initData) => {
+      if (!initData) {
+        // За 5 секунд initData так и не появился
+        attempted.current = false;
         setAutoLogging(false);
         setAutoError(true);
-        attempted.current = false;
-      });
-  }, [source, authLoading, user, bot, login, router]);
+        console.warn('[Login] initData not available after 5s timeout');
+        return;
+      }
+
+      api
+        .post(
+          '/api/auth/tma',
+          {
+            initData,
+            platform: env,
+            bot_id: bot.bot_id,
+          },
+          {
+            headers: {
+              'x-init-data': initData,
+              'x-bot-id': bot.bot_id,
+              'x-platform': env,
+            },
+          }
+        )
+        .then(({ data }) => {
+          localStorage.setItem('auth_token', data.token);
+          if (data.user?.id)
+            localStorage.setItem('auth_user_id', String(data.user.id));
+          login(data.user);
+          router.replace('/');
+        })
+        .catch(() => {
+          attempted.current = false;
+          setAutoLogging(false);
+          setAutoError(true);
+        });
+    });
+  }, [source, authLoading, user, bot]);
 
   const handleTelegramAuth = async (tgUser: any) => {
     try {
@@ -249,7 +265,9 @@ export const Login = () => {
         haptic.success();
         toast.success(t('authSuccess'));
         router.replace('/');
-      } else throw new Error(data.error || t('unknownError'));
+      } else {
+        throw new Error(data.error || t('unknownError'));
+      }
     } catch (e: any) {
       haptic.error();
       const msg =
@@ -309,7 +327,8 @@ export const Login = () => {
     }
   };
 
-  if (isLoading || autoLogging)
+  // ─── Loading / auto-login spinner ───
+  if (isLoading || autoLogging) {
     return (
       <PageWrapper>
         <div className="flex flex-col items-center gap-3">
@@ -322,11 +341,12 @@ export const Login = () => {
             <Loader2 size={20} className="animate-spin text-white/40" />
           </div>
           <p className="text-[13px] text-white/40">
-            {autoLogging ? t('loggingIn') : t('loading')}
+            {autoLogging ? t('autoLoginLoading') : t('loading')}
           </p>
         </div>
       </PageWrapper>
     );
+  }
 
   if (user) return null;
 
@@ -346,7 +366,8 @@ export const Login = () => {
     </button>
   );
 
-  if (view === 'email-login')
+  // ─── Email login view ───
+  if (view === 'email-login') {
     return (
       <PageWrapper>
         <BackBtn onClick={() => setView('main')} />
@@ -410,8 +431,10 @@ export const Login = () => {
         </p>
       </PageWrapper>
     );
+  }
 
-  if (view === 'email-register')
+  // ─── Email register view ───
+  if (view === 'email-register') {
     return (
       <PageWrapper>
         <BackBtn onClick={() => setView('email-login')} />
@@ -481,29 +504,29 @@ export const Login = () => {
         </p>
       </PageWrapper>
     );
+  }
 
+  // ─── Main view ───
   return (
     <PageWrapper>
       {/* Hero */}
       <div className="text-center mb-10">
         <div
           className={cn(
-            'w-[72px] h-[72px] rounded-[22px] mx-auto mb-4 flex items-center justify-center text-[30px]',
-            'bg-white/[.13] dark:bg-black/[.65] backdrop-blur-3xl',
-            'border border-white/[.22]',
-            'shadow-[inset_0_1px_0_rgba(255,255,255,0.25),0_8px_32px_rgba(0,0,0,0.38)]'
+            'w-16 h-16 rounded-[22px] mx-auto mb-5 flex items-center justify-center',
+            g.card
           )}
         >
-          🧠
+          <span className="text-[26px]">🧠</span>
         </div>
-        <h1 className="text-[32px] font-extrabold tracking-[-0.8px] mb-1 text-white/90">
+        <h1 className="text-[30px] font-extrabold tracking-[-0.7px] mb-1.5 text-white/90">
           Sibneuro
         </h1>
-        <p className="text-[15px] text-white/50">{t('tagline')}</p>
+        <p className="text-[14px] text-white/40">{t('tagline')}</p>
       </div>
 
       <div className="flex flex-col gap-3">
-        {/* Telegram */}
+        {/* Telegram Widget Login (только в браузере с source=tg) */}
         {source === 'tg' && (
           <div className={cn(g.card, 'p-5')}>
             <div className="flex items-center gap-2 mb-3.5">
@@ -513,7 +536,7 @@ export const Login = () => {
                 </svg>
               </div>
               <span className="text-[14px] font-semibold text-white/80">
-                Telegram
+                {t('telegramSection')}
               </span>
             </div>
             {bot?.bot_username ? (
@@ -554,7 +577,7 @@ export const Login = () => {
                 <span className="text-white/80 font-bold text-[10px]">M</span>
               </div>
               <span className="text-[14px] font-semibold text-white/80">
-                Max Messenger
+                {t('maxSection')}
               </span>
             </div>
             <p className="text-[12px] text-white/35 leading-[1.4]">
@@ -590,7 +613,7 @@ export const Login = () => {
         </button>
 
         {autoError && (
-          <p className="text-center text-[12px] text-red-400/80">
+          <p className="text-center text-[12px] text-red-400/80 mt-1">
             {t('autoLoginError')}
           </p>
         )}

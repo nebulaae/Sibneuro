@@ -18,6 +18,11 @@ function ScriptsInner() {
       <Script
         src="https://telegram.org/js/telegram-web-app.js"
         strategy="afterInteractive"
+        onLoad={() => {
+          try {
+            (window as any)?.Telegram?.WebApp?.ready?.();
+          } catch { }
+        }}
       />
     );
   }
@@ -27,6 +32,11 @@ function ScriptsInner() {
       <Script
         src="https://st.max.ru/js/max-web-app.js"
         strategy="afterInteractive"
+        onLoad={() => {
+          try {
+            (window as any)?.WebApp?.ready?.();
+          } catch { }
+        }}
       />
     );
   }
