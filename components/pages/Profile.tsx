@@ -102,7 +102,9 @@ export const Profile = () => {
       ? `https://t.me/${bot.bot_username}?start=${userId}`
       : null;
 
-  const handleTopUp = () => {
+  const PAYMENT_LINK_KEY = `payment_link_${bot?.bot_id || 'default'}`;
+
+  const handleTopUp = async () => {
     haptic.medium();
 
     if (!bot?.bot_id) {
@@ -110,22 +112,35 @@ export const Profile = () => {
       return;
     }
 
-    import('@/lib/api').then(({ default: api }) => {
-      api
-        .get('/api/payment-link', {
-          params: {
-            bot_id: bot.bot_id,
-          },
-        })
-        .then(({ data }) => {
-          if (data.success && data.url) {
-            window.open(data.url, '_blank');
-          } else {
-            toast.error(t('paymentLinkUnavailable'));
-          }
-        })
-        .catch(() => toast.error(t('paymentLinkError')));
-    });
+    try {
+      // 1. Проверяем localStorage
+      const saved = localStorage.getItem(PAYMENT_LINK_KEY);
+
+      if (saved) {
+        window.open(saved, '_blank', 'noopener,noreferrer');
+        return;
+      }
+
+      // 2. Если нет — делаем запрос
+      const { default: api } = await import('@/lib/api');
+
+      const { data } = await api.get('/api/payment-link', {
+        params: { bot_id: bot.bot_id },
+      });
+
+      if (data?.success && data?.url) {
+        // сохраняем
+        localStorage.setItem(PAYMENT_LINK_KEY, data.url);
+
+        // открываем
+        window.open(data.url, '_blank', 'noopener,noreferrer');
+        return;
+      }
+
+      toast.error(t('paymentLinkUnavailable'));
+    } catch (error) {
+      toast.error(t('paymentLinkError'));
+    }
   };
 
   const handleCopyToken = (token: string) => {
