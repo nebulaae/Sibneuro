@@ -66,45 +66,14 @@ export const Home = () => {
   const tokens = userData?.user?.tokens ?? 0;
 
   const handleModelClick = (techName: string, mainCategory?: string) =>
-    mainCategory === 'text'
-      ? router.push(`/chats?model=${techName}`)
-      : router.push(`/generate?model=${techName}`);
+    router.push(`/generate?model=${techName}`);
 
   const handleRoleClick = (id: number) => router.push(`/chats?role=${id}`);
 
-  // FIX 1: Trends теперь корректно роутят по tech_name из данных API
-  // Данные тренда имеют поля: tech_name, version, title, image, description
-  // tech_name типа "nexus/nano-banana" -> /generate, "openrouter/gpt" -> /chats
   const handleTrendClick = (item: any) => {
     if (item.tech_name) {
-      // Определяем категорию по tech_name или по наличию model в API
-      // Если не знаем — ищем в моделях
       const model = models?.find((m) => m.tech_name === item.tech_name);
-      if (model) {
-        if (model.mainCategory === 'text') {
-          router.push(`/chats?model=${item.tech_name}`);
-        } else {
-          router.push(`/generate?model=${item.tech_name}`);
-        }
-      } else {
-        // Эвристика: если tech_name содержит 'gpt', 'claude', 'gemini' — это text
-        const textKeywords = [
-          'gpt',
-          'claude',
-          'gemini',
-          'llama',
-          'mistral',
-          'chat',
-        ];
-        const isText = textKeywords.some((kw) =>
-          item.tech_name.toLowerCase().includes(kw)
-        );
-        if (isText) {
-          router.push(`/chats?model=${item.tech_name}`);
-        } else {
-          router.push(`/generate?model=${item.tech_name}`);
-        }
-      }
+      router.push(`/generate?model=${item.tech_name}`);
     } else if (item.model) {
       router.push(`/generate?model=${item.model}`);
     } else if (item.role_id) {

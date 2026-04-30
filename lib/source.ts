@@ -37,7 +37,7 @@ export const getAppSource = (): string | null => {
           return 'tg';
         }
       }
-    } catch { }
+    } catch {}
 
     // 4. Авто-детект по наличию WebApp объектов в window
     // ВАЖНО: этот детект может не работать в момент первого рендера,
@@ -49,7 +49,7 @@ export const getAppSource = (): string | null => {
 
     // Max WebApp — глобальный объект WebApp (не Telegram)
     const maxWA = (window as any)?.WebApp;
-    if (maxWA && maxWA?.initData && !((window as any)?.Telegram)) {
+    if (maxWA && maxWA?.initData && !(window as any)?.Telegram) {
       sessionStorage.setItem('app_source', 'max');
       return 'max';
     }
@@ -61,8 +61,8 @@ export const getAppSource = (): string | null => {
         sessionStorage.setItem('app_source', 'tg');
         return 'tg';
       }
-    } catch { }
-  } catch { }
+    } catch {}
+  } catch {}
 
   return null;
 };
@@ -88,7 +88,7 @@ export const setAppSource = (source: string): void => {
     if (normalized) {
       sessionStorage.setItem('app_source', normalized);
     }
-  } catch { }
+  } catch {}
 };
 
 /**
@@ -96,7 +96,9 @@ export const setAppSource = (source: string): void => {
  * для более точного авто-детекта.
  * Используется в провайдерах при неизвестном source.
  */
-export async function detectAppSourceAsync(timeoutMs = 3000): Promise<string | null> {
+export async function detectAppSourceAsync(
+  timeoutMs = 3000
+): Promise<string | null> {
   // Сначала пробуем синхронно
   const sync = getAppSource();
   if (sync) return sync;

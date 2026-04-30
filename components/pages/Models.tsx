@@ -111,9 +111,7 @@ export const Models = () => {
 
   const handleModelClick = (techName: string, mainCategory?: string) => {
     haptic.light();
-    mainCategory === 'text'
-      ? router.push(`/chats?model=${techName}`)
-      : router.push(`/generate?model=${techName}`);
+    router.push(`/generate?model=${techName}`);
   };
 
   return (

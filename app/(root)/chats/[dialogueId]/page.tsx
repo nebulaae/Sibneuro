@@ -67,7 +67,7 @@ function readStoredModel(id: string) {
         version: string;
         role_id: number | null;
       };
-  } catch { }
+  } catch {}
   return null;
 }
 
@@ -82,7 +82,7 @@ function writeStoredModel(
       STORAGE_KEY(id),
       JSON.stringify({ model, version, role_id })
     );
-  } catch { }
+  } catch {}
 }
 
 function getDialogueModel(
@@ -625,7 +625,7 @@ export default function ChatPage() {
                         spring,
                         'active:scale-[0.97]',
                         selectedRoleId === role.id &&
-                        'border-[rgba(0,122,255,0.5)] bg-[rgba(0,122,255,0.10)]'
+                          'border-[rgba(0,122,255,0.5)] bg-[rgba(0,122,255,0.10)]'
                       )}
                     >
                       <div className="w-9 h-9 rounded-xl overflow-hidden border border-white/[.14] shrink-0">

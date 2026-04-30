@@ -196,9 +196,7 @@ export const Generate = () => {
   const generate = useGenerateAI();
   const upload = useUpload();
 
-  const models = (allModels || []).filter(
-    (m) => !m.categories?.includes('text')
-  );
+  const models = allModels || [];
   const selected = models.find((m) => m.tech_name === selectedTech);
   const currentVersion =
     selectedVersion ||
@@ -247,6 +245,17 @@ export const Generate = () => {
 
   const handleGenerate = () => {
     if (!selected) return;
+
+    const isTextModel =
+      selected.mainCategory === 'text' || selected.categories?.includes('text');
+    if (isTextModel) {
+      haptic.medium();
+      router.push(
+        `/chats/new?model=${selected.tech_name}&version=${currentVersion || ''}`
+      );
+      return;
+    }
+
     if (!prompt.trim() && media.length === 0) {
       toast.error(t('enterDescription'));
       return;
@@ -382,6 +391,8 @@ export const Generate = () => {
     const canAttach = selected.input?.some((i) =>
       ['image', 'video', 'audio'].includes(i)
     );
+    const isTextModel =
+      selected.mainCategory === 'text' || selected.categories?.includes('text');
     const aspectParam = (params || []).find(
       (p: any) => p.name === 'aspect_ratio'
     );
@@ -465,25 +476,26 @@ export const Generate = () => {
               </div>
             )}
 
-            {/* Prompt */}
-            <div>
-              <SectionLabel>{t('description')}</SectionLabel>
-              <textarea
-                value={prompt}
-                onChange={(e) => setPrompt(e.target.value)}
-                placeholder={t('descriptionPlaceholder')}
-                rows={4}
-                className={cn(
-                  'w-full resize-none outline-none px-4 py-[14px] rounded-2xl',
-                  glassRegular,
-                  'text-[16px] leading-[1.55] text-white placeholder:text-white/30',
-                  'box-border font-[var(--font-sf)]',
-                  spring,
-                  'focus:border-[rgba(0,122,255,0.40)] focus:shadow-[inset_0_1px_0_rgba(255,255,255,0.20),0_0_0_3px_rgba(0,122,255,0.12)]'
-                )}
-                style={{ fontSize: 16 }}
-              />
-            </div>
+            {!isTextModel && (
+              <div>
+                <SectionLabel>{t('prompt')}</SectionLabel>
+                <textarea
+                  value={prompt}
+                  onChange={(e) => setPrompt(e.target.value)}
+                  placeholder={t('placeholder')}
+                  rows={4}
+                  className={cn(
+                    'w-full resize-none outline-none px-4 py-[14px] rounded-2xl',
+                    glassRegular,
+                    'text-[16px] leading-[1.55] text-white placeholder:text-white/30',
+                    'box-border font-[var(--font-sf)]',
+                    spring,
+                    'focus:border-[rgba(0,122,255,0.40)] focus:shadow-[inset_0_1px_0_rgba(255,255,255,0.20),0_0_0_3px_rgba(0,122,255,0.12)]'
+                  )}
+                  style={{ fontSize: 16 }}
+                />
+              </div>
+            )}
 
             {/* Aspect ratio */}
             {aspectParam && (
@@ -587,7 +599,7 @@ export const Generate = () => {
               )}
 
             {/* Media */}
-            {canAttach && (
+            {canAttach && !isTextModel && (
               <div>
                 <div className="flex items-center justify-between mb-2.5">
                   <SectionLabel>{t('media')}</SectionLabel>
@@ -657,7 +669,7 @@ export const Generate = () => {
             <button
               onClick={handleGenerate}
               disabled={
-                (!prompt.trim() && media.length === 0) ||
+                (!isTextModel && !prompt.trim() && media.length === 0) ||
                 generate.isPending ||
                 upload.isPending
               }
@@ -667,7 +679,7 @@ export const Generate = () => {
                 glassBlue,
                 spring,
                 'active:scale-[0.97]',
-                ((!prompt.trim() && media.length === 0) ||
+                ((!isTextModel && !prompt.trim() && media.length === 0) ||
                   generate.isPending ||
                   upload.isPending) &&
                   'opacity-45'
@@ -693,6 +705,7 @@ export const Generate = () => {
   /* ── Model picker ── */
   const catOrder = ['image', 'video', 'audio'] as const;
   const catLabels: Record<string, string> = {
+    text: t('catText') || 'Text',
     image: t('catImageEmoji'),
     video: t('catVideoEmoji'),
     audio: t('catAudioEmoji'),

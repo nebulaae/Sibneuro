@@ -48,7 +48,7 @@ export default async function RootLayout({
               <TelegramProvider>
                 <MaxProvider>
                   <NextIntlClientProvider locale={locale} messages={messages}>
-                    <ErudaInit />
+                    {/* <ErudaInit /> */}
                     {children}
                     <Toaster
                       position="top-center"

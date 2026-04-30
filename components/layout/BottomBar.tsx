@@ -90,30 +90,42 @@ export const BottomBar = () => {
             'max-w-18 w-full h-12 rounded-full flex flex-col items-center justify-center gap-0.5',
             'select-none no-underline transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)]',
             'active:scale-90',
-            "bg-black/20 backdrop-blur-3xl backdrop-saturate-200",
-            "border border-white/[.14]",
-            "shadow-[inset_0_1px_0_rgba(255,255,255,0.12),0_20px_60px_rgba(0,0,0,0.65),0_4px_16px_rgba(0,0,0,0.4)]"
+            'bg-black/20 backdrop-blur-3xl backdrop-saturate-200',
+            'border border-white/[.14]',
+            'shadow-[inset_0_1px_0_rgba(255,255,255,0.12),0_20px_60px_rgba(0,0,0,0.65),0_4px_16px_rgba(0,0,0,0.4)]'
           )}
         >
           <Home
             size={20}
             strokeWidth={isActive(homeItem.href) ? 2.2 : 1.6}
-            style={{ color: isActive(homeItem.href) ? ACCENT : 'rgba(255,255,255,0.45)' }}
+            style={{
+              color: isActive(homeItem.href)
+                ? ACCENT
+                : 'rgba(255,255,255,0.45)',
+            }}
             className="transition-all duration-250"
           />
           <span
             className="text-[9px] font-medium leading-none transition-all duration-250"
-            style={{ color: isActive(homeItem.href) ? ACCENT : 'rgba(255,255,255,0.35)' }}
+            style={{
+              color: isActive(homeItem.href)
+                ? ACCENT
+                : 'rgba(255,255,255,0.35)',
+            }}
           >
             {homeItem.label}
           </span>
         </Link>
 
         {/* Mid items */}
-        <div className={cn("flex items-center justify-center gap-0.5 rounded-3xl",
-          "bg-black/20 backdrop-blur-3xl backdrop-saturate-200",
-          "border border-white/[.14]",
-          "shadow-[inset_0_1px_0_rgba(255,255,255,0.12),0_20px_60px_rgba(0,0,0,0.65),0_4px_16px_rgba(0,0,0,0.4)]")}>
+        <div
+          className={cn(
+            'flex items-center justify-center gap-0.5 rounded-3xl',
+            'bg-black/20 backdrop-blur-3xl backdrop-saturate-200',
+            'border border-white/[.14]',
+            'shadow-[inset_0_1px_0_rgba(255,255,255,0.12),0_20px_60px_rgba(0,0,0,0.65),0_4px_16px_rgba(0,0,0,0.4)]'
+          )}
+        >
           {midItems.map((item) => {
             const active = isActive(item.href);
             const isCreate = item.id === 3;
@@ -130,12 +142,16 @@ export const BottomBar = () => {
                 className={cn(
                   'flex flex-col items-center gap-1 px-4 py-2 rounded-2xl',
                   'select-none no-underline transition-all duration-280 ease-[cubic-bezier(0.32,0.72,0,1)]',
-                  'active:scale-[0.88]',
+                  'active:scale-[0.88]'
                 )}
-                style={active ? {
-                  background: 'oklch(62.3% 0.214 259.815 / 0.12)',
-                  boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.10)',
-                } : {}}
+                style={
+                  active
+                    ? {
+                        background: 'oklch(62.3% 0.214 259.815 / 0.12)',
+                        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.10)',
+                      }
+                    : {}
+                }
               >
                 <Icon
                   size={18}
@@ -162,20 +178,28 @@ export const BottomBar = () => {
             'max-w-18 w-full h-12 rounded-full flex flex-col items-center justify-center gap-0.5',
             'select-none no-underline transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)]',
             'active:scale-90',
-            "bg-black/20 backdrop-blur-3xl backdrop-saturate-200",
-            "border border-white/[.14]",
-            "shadow-[inset_0_1px_0_rgba(255,255,255,0.12),0_20px_60px_rgba(0,0,0,0.65),0_4px_16px_rgba(0,0,0,0.4)]"
+            'bg-black/20 backdrop-blur-3xl backdrop-saturate-200',
+            'border border-white/[.14]',
+            'shadow-[inset_0_1px_0_rgba(255,255,255,0.12),0_20px_60px_rgba(0,0,0,0.65),0_4px_16px_rgba(0,0,0,0.4)]'
           )}
         >
           <UserRound
             size={20}
             strokeWidth={isActive(profileItem.href) ? 2.2 : 1.6}
-            style={{ color: isActive(profileItem.href) ? ACCENT : 'rgba(255,255,255,0.45)' }}
+            style={{
+              color: isActive(profileItem.href)
+                ? ACCENT
+                : 'rgba(255,255,255,0.45)',
+            }}
             className="transition-all duration-250"
           />
           <span
             className="text-[9px] font-medium leading-none transition-all duration-250"
-            style={{ color: isActive(profileItem.href) ? ACCENT : 'rgba(255,255,255,0.35)' }}
+            style={{
+              color: isActive(profileItem.href)
+                ? ACCENT
+                : 'rgba(255,255,255,0.35)',
+            }}
           >
             {profileItem.label}
           </span>

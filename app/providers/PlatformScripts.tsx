@@ -26,11 +26,13 @@ export const PlatformScripts = () => {
         onLoad={() => {
           try {
             (window as any)?.Telegram?.WebApp?.ready?.();
-          } catch { }
+          } catch {}
         }}
         onError={() => {
           // Игнорируем — при source=max страница работает без этого скрипта
-          console.warn('[PlatformScripts] telegram-web-app.js failed to load (expected if Telegram IPs are blocked)');
+          console.warn(
+            '[PlatformScripts] telegram-web-app.js failed to load (expected if Telegram IPs are blocked)'
+          );
         }}
       />
 
@@ -41,7 +43,7 @@ export const PlatformScripts = () => {
         onLoad={() => {
           try {
             (window as any)?.WebApp?.ready?.();
-          } catch { }
+          } catch {}
         }}
         onError={() => {
           console.warn('[PlatformScripts] max-web-app.js failed to load');
