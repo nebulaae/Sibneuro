@@ -9,8 +9,8 @@ import { NextIntlClientProvider } from 'next-intl';
 import { getLocale, getMessages } from 'next-intl/server';
 import { PlatformScripts } from './providers/PlatformScripts';
 
-import './globals.css';
 import ErudaInit from './providers/ErudaInit';
+import './globals.css';
 
 export const metadata: Metadata = {
   title: 'Sibneuro',
@@ -28,6 +28,13 @@ export default async function RootLayout({
   return (
     <html lang={locale} className="dark">
       <head>
+        {/*
+          PlatformScripts грузит SDK Telegram и Max безусловно.
+          Это устраняет гонку между загрузкой скрипта и попыткой
+          прочитать initData в провайдерах.
+          Если telegram.org недоступен (source=max) — onError игнорируется,
+          страница работает через Max SDK.
+        */}
         <PlatformScripts />
         <meta
           name="viewport"
