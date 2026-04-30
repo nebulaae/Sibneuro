@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useCallback } from 'react';
 import { usePathname } from 'next/navigation';
 import api from '@/lib/api';
 import { useAuth } from '@/hooks/useAuth';
@@ -14,6 +14,65 @@ export const MaxProvider = ({ children }: { children: React.ReactNode }) => {
   const pathname = usePathname();
   const expanded = useRef(false);
   const attempted = useRef(false);
+  const retryTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const retryCount = useRef(0);
+  const MAX_RETRIES = 3;
+
+  const doAuth = useCallback(async (botId: number) => {
+    if (attempted.current) return;
+    attempted.current = true;
+
+    // Expand/ready сразу
+    if (!expanded.current) {
+      try {
+        const maxWA = (window as any)?.WebApp;
+        maxWA?.ready?.();
+        maxWA?.expand?.();
+      } catch { }
+      expanded.current = true;
+    }
+
+    // Ждём initData — до 8 секунд
+    const initData = await waitForPlatformInitData(8000);
+
+    if (!initData) {
+      console.warn(
+        `[MaxProvider] initData not available (attempt ${retryCount.current + 1}/${MAX_RETRIES})`
+      );
+      attempted.current = false;
+      retryCount.current++;
+
+      if (retryCount.current < MAX_RETRIES) {
+        retryTimeout.current = setTimeout(() => {
+          doAuth(botId);
+        }, 1000);
+      }
+      return;
+    }
+
+    try {
+      const { data } = await api.post('/api/auth/tma', {
+        initData,
+        platform: 'max',
+        bot_id: botId,
+      });
+      localStorage.setItem('auth_token', data.token);
+      if (data.user?.id) {
+        localStorage.setItem('auth_user_id', String(data.user.id));
+      }
+      login(data.user);
+    } catch (err) {
+      console.error('[MaxProvider] auth/tma error:', err);
+      attempted.current = false;
+      retryCount.current++;
+
+      if (retryCount.current < MAX_RETRIES) {
+        retryTimeout.current = setTimeout(() => {
+          doAuth(botId);
+        }, 1500);
+      }
+    }
+  }, [login]);
 
   useEffect(() => {
     const source = getAppSource();
@@ -27,48 +86,14 @@ export const MaxProvider = ({ children }: { children: React.ReactNode }) => {
 
     if (!bot?.bot_id) return;
 
-    // Не запускаем повторно если попытка уже идёт
-    if (attempted.current) return;
-    attempted.current = true;
+    doAuth(bot.bot_id);
 
-    // Expand/ready вызываем сразу, не дожидаясь initData
-    if (!expanded.current) {
-      try {
-        const maxWA = (window as any)?.WebApp;
-        maxWA?.ready?.();
-        maxWA?.expand?.();
-      } catch { }
-      expanded.current = true;
-    }
-
-    // Ждём появления initData — до 5 секунд с интервалом 100ms
-    waitForPlatformInitData(5000).then((initData) => {
-      if (!initData) {
-        // initData так и не появился за 5 секунд — сбрасываем флаг
-        attempted.current = false;
-        console.warn('[MaxProvider] initData not available after 5s timeout');
-        return;
+    return () => {
+      if (retryTimeout.current) {
+        clearTimeout(retryTimeout.current);
       }
-
-      api
-        .post('/api/auth/tma', {
-          initData,
-          platform: 'max',
-          bot_id: bot.bot_id,
-        })
-        .then(({ data }) => {
-          localStorage.setItem('auth_token', data.token);
-          if (data.user?.id)
-            localStorage.setItem('auth_user_id', String(data.user.id));
-          login(data.user);
-        })
-        .catch((err) => {
-          console.error('[MaxProvider] auth/tma error:', err);
-          // Сбрасываем флаг чтобы можно было попробовать снова
-          attempted.current = false;
-        });
-    });
-  }, [pathname, user, bot]);
+    };
+  }, [pathname, user, bot, doAuth]);
 
   return <>{children}</>;
 };

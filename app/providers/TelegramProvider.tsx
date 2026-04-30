@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useCallback } from 'react';
 import { usePathname } from 'next/navigation';
 import api from '@/lib/api';
 import { useAuth } from '@/hooks/useAuth';
@@ -18,6 +18,84 @@ export const TelegramProvider = ({
   const pathname = usePathname();
   const expanded = useRef(false);
   const attempted = useRef(false);
+  const retryTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const retryCount = useRef(0);
+  const MAX_RETRIES = 3;
+
+  const doAuth = useCallback(async (botId: number) => {
+    if (attempted.current) return;
+    attempted.current = true;
+
+    // Expand/ready сразу
+    if (!expanded.current) {
+      try {
+        (window as any)?.Telegram?.WebApp?.ready?.();
+        (window as any)?.Telegram?.WebApp?.expand?.();
+      } catch { }
+      expanded.current = true;
+    }
+
+    // Ждём initData — до 8 секунд
+    const initData = await waitForPlatformInitData(8000);
+
+    if (!initData) {
+      console.warn(
+        `[TelegramProvider] initData not available (attempt ${retryCount.current + 1}/${MAX_RETRIES})`
+      );
+      attempted.current = false;
+      retryCount.current++;
+
+      if (retryCount.current < MAX_RETRIES) {
+        // Ретрай через 1 секунду
+        retryTimeout.current = setTimeout(() => {
+          doAuth(botId);
+        }, 1000);
+      }
+      return;
+    }
+
+    // Expand ещё раз после получения initData
+    if (!expanded.current) {
+      try {
+        (window as any)?.Telegram?.WebApp?.ready?.();
+        (window as any)?.Telegram?.WebApp?.expand?.();
+      } catch { }
+      expanded.current = true;
+    }
+
+    try {
+      const { data } = await api.post(
+        '/api/auth/tma',
+        {
+          initData,
+          platform: 'telegram',
+          bot_id: botId,
+        },
+        {
+          headers: {
+            'x-init-data': initData,
+            'x-bot-id': String(botId),
+            'x-platform': 'telegram',
+          },
+        }
+      );
+      localStorage.setItem('auth_token', data.token);
+      if (data.user?.id) {
+        localStorage.setItem('auth_user_id', String(data.user.id));
+      }
+      login(data.user);
+    } catch (err) {
+      console.error('[TelegramProvider] auth/tma error:', err);
+      attempted.current = false;
+      retryCount.current++;
+
+      if (retryCount.current < MAX_RETRIES) {
+        retryTimeout.current = setTimeout(() => {
+          doAuth(botId);
+        }, 1500);
+      }
+    }
+  }, [login]);
 
   useEffect(() => {
     const source = getAppSource();
@@ -31,66 +109,14 @@ export const TelegramProvider = ({
 
     if (!bot?.bot_id) return;
 
-    // Не запускаем повторно если попытка уже идёт
-    if (attempted.current) return;
-    attempted.current = true;
+    doAuth(bot.bot_id);
 
-    // Expand/ready вызываем сразу, не дожидаясь initData
-    if (!expanded.current) {
-      try {
-        (window as any)?.Telegram?.WebApp?.ready?.();
-        (window as any)?.Telegram?.WebApp?.expand?.();
-      } catch { }
-      expanded.current = true;
-    }
-
-    // Ждём появления initData — до 5 секунд с интервалом 100ms
-    waitForPlatformInitData(5000).then((initData) => {
-      if (!initData) {
-        // initData так и не появился за 5 секунд — сбрасываем флаг
-        attempted.current = false;
-        console.warn('[TelegramProvider] initData not available after 5s timeout');
-        return;
+    return () => {
+      if (retryTimeout.current) {
+        clearTimeout(retryTimeout.current);
       }
-
-      // После получения initData — ещё раз expand на случай если раньше не сработало
-      if (!expanded.current) {
-        try {
-          (window as any)?.Telegram?.WebApp?.ready?.();
-          (window as any)?.Telegram?.WebApp?.expand?.();
-        } catch { }
-        expanded.current = true;
-      }
-
-      api
-        .post(
-          '/api/auth/tma',
-          {
-            initData,
-            platform: 'telegram',
-            bot_id: bot.bot_id,
-          },
-          {
-            headers: {
-              'x-init-data': initData,
-              'x-bot-id': String(bot.bot_id),
-              'x-platform': 'telegram',
-            },
-          }
-        )
-        .then(({ data }) => {
-          localStorage.setItem('auth_token', data.token);
-          if (data.user?.id)
-            localStorage.setItem('auth_user_id', String(data.user.id));
-          login(data.user);
-        })
-        .catch((err) => {
-          console.error('[TelegramProvider] auth/tma error:', err);
-          // Сбрасываем флаг чтобы можно было попробовать снова при следующем рендере
-          attempted.current = false;
-        });
-    });
-  }, [pathname, user, bot]);
+    };
+  }, [pathname, user, bot, doAuth]);
 
   return <>{children}</>;
 };

@@ -6,13 +6,13 @@ import { useRouter } from 'next/navigation';
 import { LoginButton } from '@telegram-auth/react';
 import { useAuth } from '@/hooks/useAuth';
 import { useBot } from '@/app/providers/BotProvider';
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { Loader2, Mail, Eye, EyeOff, ArrowLeft } from 'lucide-react';
 import { useHaptic } from '@/hooks/useHaptic';
 import { cn } from '@/lib/utils';
 import { useTranslations, useLocale } from 'next-intl';
 
-import { getAppSource } from '@/lib/source';
+import { getAppSource, setAppSource } from '@/lib/source';
 import { getPlatformInitData, waitForPlatformInitData } from '@/lib/platform';
 
 type AppEnv = 'telegram' | 'max' | 'browser';
@@ -99,11 +99,18 @@ export const Login = () => {
   const haptic = useHaptic();
   const t = useTranslations('Login');
   const locale = useLocale();
+
   const [source, setSource] = useState<string | null>(null);
   const [autoLogging, setAutoLogging] = useState(false);
   const [autoError, setAutoError] = useState(false);
   const [view, setView] = useState<LoginView>('main');
+
+  // Флаг попытки авто-логина — не блокирует ретраи
   const attempted = useRef(false);
+  // Количество ретраев
+  const retryCount = useRef(0);
+  const MAX_RETRIES = 3;
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPass, setShowPass] = useState(false);
@@ -116,96 +123,161 @@ export const Login = () => {
     if (!authLoading && user) router.replace('/');
   }, [user, authLoading, router]);
 
-  // Определяем source один раз при маунте
+  // Определяем source при маунте — с небольшой задержкой для SDK
   useEffect(() => {
-    const s = getAppSource();
-    setSource(s);
+    // Сначала синхронно
+    const syncSource = getAppSource();
+    if (syncSource) {
+      setSource(syncSource);
+      return;
+    }
+
+    // SDK может ещё не загрузиться — ждём до 2 секунд
+    let cancelled = false;
+    const timer = setInterval(() => {
+      if (cancelled) return;
+      const s = getAppSource();
+      if (s) {
+        clearInterval(timer);
+        setSource(s);
+      }
+    }, 100);
+
+    const timeout = setTimeout(() => {
+      clearInterval(timer);
+      if (!cancelled && !source) {
+        // Если source так и не определился — проверяем ещё раз
+        const finalCheck = getAppSource();
+        setSource(finalCheck);
+      }
+    }, 2000);
+
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+      clearTimeout(timeout);
+    };
   }, []);
 
-  // Expand для Max
+  // Expand для Max — сразу при определении source
   useEffect(() => {
     if (source !== 'max') return;
     try {
       const maxWA = (window as any)?.WebApp;
       maxWA?.ready?.();
       maxWA?.expand?.();
-    } catch { }
+    } catch {}
+  }, [source]);
+
+  // Expand для Telegram — сразу при определении source
+  useEffect(() => {
+    if (source !== 'tg') return;
+    try {
+      (window as any)?.Telegram?.WebApp?.ready?.();
+      (window as any)?.Telegram?.WebApp?.expand?.();
+    } catch {}
   }, [source]);
 
   // ─── Авто-логин через TMA (Telegram / Max) ───
-  useEffect(() => {
-    // Ждём пока source определится
-    if (!source) return;
-    // Только для TMA-окружений
-    if (source === 'browser') return;
-    // Если уже залогинен или грузится — выходим
+  const attemptTMALogin = useCallback(async () => {
+    if (!source || source === 'browser') return;
     if (authLoading || user) return;
-    // Ждём bot_id
     if (!bot?.bot_id) return;
-    // Не запускаем повторно если попытка уже идёт
     if (attempted.current) return;
+    if (retryCount.current >= MAX_RETRIES) return;
 
     attempted.current = true;
+    retryCount.current++;
     setAutoLogging(true);
+    setAutoError(false);
 
-    const env = source as AppEnv;
+    const env = source === 'tg' ? 'telegram' : source as AppEnv;
 
-    // Expand/ready сразу — не ждём initData
-    if (source === 'tg' || source === 'telegram') {
-      try {
+    // Вызываем ready/expand до ожидания initData
+    try {
+      if (source === 'tg') {
         (window as any)?.Telegram?.WebApp?.ready?.();
         (window as any)?.Telegram?.WebApp?.expand?.();
-      } catch { }
-    }
-    if (source === 'max') {
-      try {
-        const maxWA = (window as any)?.WebApp;
-        maxWA?.ready?.();
-        maxWA?.expand?.();
-      } catch { }
-    }
+      } else if (source === 'max') {
+        (window as any)?.WebApp?.ready?.();
+        (window as any)?.WebApp?.expand?.();
+      }
+    } catch {}
 
-    // Ждём появления initData — до 5 секунд
-    waitForPlatformInitData(5000).then((initData) => {
-      if (!initData) {
-        // За 5 секунд initData так и не появился
-        attempted.current = false;
+    // Ждём initData — увеличенный таймаут для надёжности
+    const initData = await waitForPlatformInitData(8000);
+
+    if (!initData) {
+      console.warn(
+        `[Login] initData not available after timeout (attempt ${retryCount.current}/${MAX_RETRIES})`
+      );
+      attempted.current = false;
+
+      if (retryCount.current < MAX_RETRIES) {
+        // Ретрай через 1 секунду
+        setAutoLogging(false);
+        setTimeout(() => {
+          attemptTMALogin();
+        }, 1000);
+      } else {
         setAutoLogging(false);
         setAutoError(true);
-        console.warn('[Login] initData not available after 5s timeout');
-        return;
       }
+      return;
+    }
 
-      api
-        .post(
-          '/api/auth/tma',
-          {
-            initData,
-            platform: env,
-            bot_id: bot.bot_id,
+    try {
+      const { data } = await api.post(
+        '/api/auth/tma',
+        {
+          initData,
+          platform: env,
+          bot_id: bot.bot_id,
+        },
+        {
+          headers: {
+            'x-init-data': initData,
+            'x-bot-id': String(bot.bot_id),
+            'x-platform': env,
           },
-          {
-            headers: {
-              'x-init-data': initData,
-              'x-bot-id': bot.bot_id,
-              'x-platform': env,
-            },
-          }
-        )
-        .then(({ data }) => {
-          localStorage.setItem('auth_token', data.token);
-          if (data.user?.id)
-            localStorage.setItem('auth_user_id', String(data.user.id));
-          login(data.user);
-          router.replace('/');
-        })
-        .catch(() => {
-          attempted.current = false;
-          setAutoLogging(false);
-          setAutoError(true);
-        });
-    });
-  }, [source, authLoading, user, bot]);
+        }
+      );
+
+      localStorage.setItem('auth_token', data.token);
+      if (data.user?.id) {
+        localStorage.setItem('auth_user_id', String(data.user.id));
+      }
+      login(data.user);
+      router.replace('/');
+    } catch (err: any) {
+      console.error('[Login] auth/tma error:', err);
+      attempted.current = false;
+
+      if (retryCount.current < MAX_RETRIES) {
+        setAutoLogging(false);
+        setTimeout(() => {
+          attemptTMALogin();
+        }, 1500);
+      } else {
+        setAutoLogging(false);
+        setAutoError(true);
+      }
+    }
+  }, [source, authLoading, user, bot, login, router]);
+
+  useEffect(() => {
+    // Ждём пока source определится, authLoading завершится и bot загрузится
+    if (!source) return;
+    if (source === 'browser') return;
+    if (authLoading || user) return;
+    if (!bot?.bot_id) return;
+    if (attempted.current) return;
+
+    const token = localStorage.getItem('auth_token');
+    if (token) return;
+
+    attemptTMALogin();
+  }, [source, authLoading, user, bot, attemptTMALogin]);
 
   const handleTelegramAuth = async (tgUser: any) => {
     try {
@@ -214,21 +286,22 @@ export const Login = () => {
         bot_id: bot?.bot_id,
       });
       localStorage.setItem('auth_token', data.token);
-      if (data.user?.id)
+      if (data.user?.id) {
         localStorage.setItem('auth_user_id', String(data.user.id));
+      }
       login(data.user);
       haptic.success();
-      toast.success(t('authSuccess'));
+      toast.success(t('loginSuccess'));
       router.replace('/');
     } catch {
       haptic.error();
-      toast.error(t('errorLoginTelegram'));
+      toast.error(t('loginError'));
     }
   };
 
   const handleEmailLogin = async () => {
     if (!email.trim() || !password.trim()) {
-      toast.error(t('errorEmailPasswordRequired'));
+      toast.error(t('emailRequired'));
       return;
     }
     setEmailLoading(true);
@@ -247,7 +320,7 @@ export const Login = () => {
         if (u.id) localStorage.setItem('auth_user_id', String(u.id));
         login(u);
         haptic.success();
-        toast.success(t('authSuccess'));
+        toast.success(t('loginSuccess'));
         router.replace('/');
       } else if (data.session_hash && data.session_data) {
         const sd =
@@ -263,17 +336,17 @@ export const Login = () => {
         });
         login({ id: sd.id, first_name: dn, auth_date: 0 });
         haptic.success();
-        toast.success(t('authSuccess'));
+        toast.success(t('loginSuccess'));
         router.replace('/');
       } else {
-        throw new Error(data.error || t('unknownError'));
+        throw new Error(data.error || 'Unknown error');
       }
     } catch (e: any) {
       haptic.error();
       const msg =
         e?.response?.status === 401
-          ? t('errorInvalidCredentials')
-          : e?.response?.data?.error || e?.message || t('errorLogin');
+          ? t('emailLoginTitle') // fallback
+          : e?.response?.data?.error || e?.message || t('emailRequired');
       toast.error(msg);
     } finally {
       setEmailLoading(false);
@@ -282,7 +355,7 @@ export const Login = () => {
 
   const handleEmailRegister = async () => {
     if (!email.trim() || !password.trim() || !name.trim()) {
-      toast.error(t('errorFillAllFields'));
+      toast.error(t('emailEmpty'));
       return;
     }
     setEmailLoading(true);
@@ -297,9 +370,9 @@ export const Login = () => {
           initData: getPlatformInitData(),
         }
       );
-      if (!data.success) throw new Error(data.error || t('errorRegister'));
+      if (!data.success) throw new Error(data.error || 'Register error');
       haptic.success();
-      toast.success(t('accountCreated'));
+      toast.success(t('registerSuccess'));
       if (data.session_hash && data.session_data) {
         const sd =
           typeof data.session_data === 'string'
@@ -313,18 +386,25 @@ export const Login = () => {
         router.replace('/');
       } else {
         setView('email-login');
-        toast(t('loginWithNewAccount'));
       }
     } catch (e: any) {
       haptic.error();
-      if (e?.response?.status === 409) toast.error(t('errorEmailExists'));
+      if (e?.response?.status === 409) toast.error(t('emailExists'));
       else
         toast.error(
-          e?.response?.data?.error || e?.message || t('errorRegister')
+          e?.response?.data?.error || e?.message || t('emailEmpty')
         );
     } finally {
       setEmailLoading(false);
     }
+  };
+
+  // ─── Ручной ретрай авто-логина ───
+  const handleRetryAutoLogin = () => {
+    if (attempted.current) return;
+    retryCount.current = 0;
+    setAutoError(false);
+    attemptTMALogin();
   };
 
   // ─── Loading / auto-login spinner ───
@@ -341,7 +421,7 @@ export const Login = () => {
             <Loader2 size={20} className="animate-spin text-white/40" />
           </div>
           <p className="text-[13px] text-white/40">
-            {autoLogging ? t('autoLoginLoading') : t('loading')}
+            {autoLogging ? t('autoLoginLoading') : t('autoLoginLoading')}
           </p>
         </div>
       </PageWrapper>
@@ -517,7 +597,7 @@ export const Login = () => {
             g.card
           )}
         >
-          <span className="text-[26px]">🧠</span>
+          <span className="text-[26px]">✦</span>
         </div>
         <h1 className="text-[30px] font-extrabold tracking-[-0.7px] mb-1.5 text-white/90">
           Sibneuro
@@ -526,7 +606,7 @@ export const Login = () => {
       </div>
 
       <div className="flex flex-col gap-3">
-        {/* Telegram Widget Login (только в браузере с source=tg) */}
+        {/* Telegram Widget Login (только в браузере, когда source=tg) */}
         {source === 'tg' && (
           <div className={cn(g.card, 'p-5')}>
             <div className="flex items-center gap-2 mb-3.5">
@@ -612,10 +692,26 @@ export const Login = () => {
           </span>
         </button>
 
+        {/* Ошибка авто-логина + ручной ретрай */}
         {autoError && (
-          <p className="text-center text-[12px] text-red-400/80 mt-1">
-            {t('autoLoginError')}
-          </p>
+          <div className="flex flex-col items-center gap-2 mt-1">
+            <p className="text-center text-[12px] text-red-400/80">
+              {t('autoLoginError')}
+            </p>
+            {(source === 'tg' || source === 'max') && (
+              <button
+                onClick={handleRetryAutoLogin}
+                className={cn(
+                  'text-[12px] text-white/50 px-4 py-2 rounded-xl',
+                  g.thin,
+                  spring,
+                  'active:scale-[0.94]'
+                )}
+              >
+                Попробовать снова
+              </button>
+            )}
+          </div>
         )}
       </div>
 
