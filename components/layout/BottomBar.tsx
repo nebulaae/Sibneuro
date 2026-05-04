@@ -43,12 +43,8 @@ export const BottomBar = () => {
   ] as const;
 
   return (
-    <nav
-      aria-label={t('ariaLabel')}
-      className="flex sm:hidden fixed bottom-3 left-0 right-0 z-50 justify-center px-3"
-    >
+    <nav className="flex sm:hidden fixed bottom-3 left-0 right-0 z-50 justify-center px-3">
       <div className="flex items-center gap-2 w-full max-w-sm">
-
         {/* ── Home bubble ── */}
         <Link
           href="/"
@@ -109,7 +105,7 @@ export const BottomBar = () => {
           style={{ ...glass, borderRadius: 28, flex: 1 }}
           className="h-14 flex items-center justify-around px-px relative overflow-hidden"
         >
-          {midItems.map(item => {
+          {midItems.map((item) => {
             const active = isActive(item.href);
             const Icon = item.icon;
             const isCreate = item.id === 3;
@@ -132,7 +128,11 @@ export const BottomBar = () => {
                       initial={{ opacity: 0, scale: 0.75 }}
                       animate={{ opacity: 1, scale: 1 }}
                       exit={{ opacity: 0, scale: 0.75 }}
-                      transition={{ type: 'spring', stiffness: 500, damping: 35 }}
+                      transition={{
+                        type: 'spring',
+                        stiffness: 500,
+                        damping: 35,
+                      }}
                       style={{
                         position: 'absolute',
                         inset: 4,
@@ -234,7 +234,6 @@ export const BottomBar = () => {
             {t('profile')}
           </motion.span>
         </Link>
-
       </div>
     </nav>
   );

@@ -443,3 +443,28 @@ export const useSetChatTitle = () => {
     },
   });
 };
+
+// GET /api/recurrent/get
+export const useRecurrentStatus = () => {
+  return useQuery({
+    queryKey: ['recurrent-status'],
+    queryFn: async () => {
+      const { data } = await api.get('/api/recurrent/get');
+      return data as { recurrent: boolean };
+    },
+  });
+};
+
+// POST /api/recurrent/cancel
+export const useCancelRecurrent = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      const { data } = await api.post('/api/recurrent/cancel');
+      return data as { ok: boolean };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['recurrent-status'] });
+    },
+  });
+};

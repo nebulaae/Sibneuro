@@ -164,6 +164,24 @@ function extractResultMedia(result: Message['result']) {
   return result?.media ? normalizeResultMedia(result.media) : [];
 }
 
+const handleDownload = async (url: string, filename?: string) => {
+  try {
+    const response = await fetch(url);
+    const blob = await response.blob();
+    const blobUrl = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = blobUrl;
+    link.download = filename || url.split('/').pop() || 'download';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(blobUrl);
+  } catch (error) {
+    console.error('Download failed:', error);
+    window.open(url, '_blank');
+  }
+};
+
 /* ── AudioPlayer (без изменений) ── */
 function AudioPlayer({ src }: { src: string }) {
   const audioRef = useRef<HTMLAudioElement>(null);
@@ -531,7 +549,7 @@ export default function ChatPage() {
 
   return (
     <div
-      className="flex flex-col h-svh"
+      className="flex flex-col h-svh max-w-4xl mx-auto border-x border-white/5 shadow-2xl"
       style={{ background: 'var(--page-bg)' }}
     >
       {/* ── Header ── */}
@@ -794,21 +812,20 @@ export default function ChatPage() {
                                       className="max-w-65 max-h-65 rounded-2xl"
                                     />
                                   )}
-                                  <a
-                                    href={m.url}
-                                    download
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    onClick={(e) => e.stopPropagation()}
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleDownload(m.url);
+                                    }}
                                     className={cn(
                                       'absolute top-2 right-2 p-1.5 rounded-full',
                                       'bg-black/45 backdrop-blur-xl border border-white/15',
                                       'text-white flex items-center justify-center',
-                                      'opacity-0 group-hover:opacity-100 transition-opacity'
+                                      'sm:opacity-0 group-hover:opacity-100 transition-opacity'
                                     )}
                                   >
                                     <Download size={14} />
-                                  </a>
+                                  </button>
                                 </div>
                               );
                             })}
@@ -870,19 +887,18 @@ export default function ChatPage() {
           >
             <X size={18} />
           </button>
-          <a
-            href={viewerSrc.url}
-            download
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={(e) => e.stopPropagation()}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              handleDownload(viewerSrc.url);
+            }}
             className={cn(
               'absolute bottom-7 right-5 p-2.5 rounded-full',
               'bg-white/15 backdrop-blur-xl border border-white/20 text-white flex'
             )}
           >
             <Download size={18} />
-          </a>
+          </button>
         </div>
       )}
 

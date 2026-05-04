@@ -1,38 +1,35 @@
-/* app/(root)/layout.tsx */
+'use client';
+
 import { BottomBar } from '@/components/layout/BottomBar';
 import { SidebarProvider } from '@/components/ui/sidebar';
-import { AppSidebar } from '@/components/layout/Sidebar';
+import { AppSidebar } from '@/components/layout/AppSidebar';
 import { AuthGuard } from '@/components/layout/AuthGuard';
+import { useEffect, useState } from 'react';
 
 export default function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const [open, setOpen] = useState(true);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setOpen(window.innerWidth >= 1024);
+    };
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   return (
     <AuthGuard>
-      <SidebarProvider open={false}>
+      <SidebarProvider open={open} onOpenChange={setOpen}>
         <AppSidebar />
-
-        {/*
-          page-content: на мобилке занимает весь экран без горизонтального overflow.
-          На десктопе ограничиваем контент max-width'ом чтобы он не растягивался
-          на весь широкий экран, но ограничение выглядит органично —
-          просто через margin auto внутри самих страниц (max-w: 760px).
-        */}
-        <main
-          className="page-content"
-          style={{
-            /* Prevent any horizontal scroll leaking from children */
-            overflowX: 'hidden',
-            /* Ensure full viewport height for sticky headers etc. */
-            minHeight: '100svh',
-          }}
-        >
-          {children}
-        </main>
-
-        <BottomBar />
+        <main className="flex-1 relative overflow-x-hidden">{children}</main>
+        <div className="md:hidden">
+          <BottomBar />
+        </div>
       </SidebarProvider>
     </AuthGuard>
   );

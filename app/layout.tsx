@@ -9,7 +9,6 @@ import { NextIntlClientProvider } from 'next-intl';
 import { getLocale, getMessages } from 'next-intl/server';
 import { PlatformScripts } from './providers/PlatformScripts';
 
-import ErudaInit from './providers/ErudaInit';
 import './globals.css';
 
 export const metadata: Metadata = {

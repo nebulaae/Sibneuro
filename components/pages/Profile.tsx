@@ -8,6 +8,8 @@ import {
   useReferrals,
   useApiTokens,
   useGenerateApiToken,
+  useRecurrentStatus,
+  useCancelRecurrent,
 } from '@/hooks/useApiExtras';
 import { useBot } from '@/app/providers/BotProvider';
 import { useTranslations } from 'next-intl';
@@ -82,6 +84,8 @@ export const Profile = () => {
     hasNextPage,
     isFetchingNextPage,
   } = useRequests();
+  const { data: recurrentData } = useRecurrentStatus();
+  const cancelRecurrent = useCancelRecurrent();
 
   const [copiedToken, setCopiedToken] = useState<string | null>(null);
   const [copiedRef, setCopiedRef] = useState(false);
@@ -113,26 +117,19 @@ export const Profile = () => {
     }
 
     try {
-      // 1. Проверяем localStorage
       const saved = localStorage.getItem(PAYMENT_LINK_KEY);
-
       if (saved) {
         window.open(saved, '_blank', 'noopener,noreferrer');
         return;
       }
 
-      // 2. Если нет — делаем запрос
       const { default: api } = await import('@/lib/api');
-
       const { data } = await api.get('/api/payment-link', {
         params: { bot_id: bot.bot_id },
       });
 
       if (data?.success && data?.url) {
-        // сохраняем
         localStorage.setItem(PAYMENT_LINK_KEY, data.url);
-
-        // открываем
         window.open(data.url, '_blank', 'noopener,noreferrer');
         return;
       }
@@ -176,14 +173,28 @@ export const Profile = () => {
     });
   };
 
+  const handleCancelRecurrent = () => {
+    haptic.warning();
+    if (window.confirm(t('confirmCancelSubscription'))) {
+      cancelRecurrent.mutate(undefined, {
+        onSuccess: () => {
+          toast.success(t('subscriptionCanceled'));
+        },
+        onError: () => {
+          toast.error(t('subscriptionCancelError'));
+        },
+      });
+    }
+  };
+
   return (
     <div className="pb-[calc(80px+max(16px,env(safe-area-inset-bottom)))] max-w-7xl mx-auto">
       {/* ── Nav Bar ── */}
       <header
         className={cn(
           'sticky top-0 z-40 flex items-center justify-between px-5 py-[14px]',
-          'bg-white/[.04] dark:bg-black/[.35] backdrop-blur-2xl backdrop-saturate-150',
-          'border-b border-white/[.10]',
+          'bg-white/4 dark:bg-black/35 backdrop-blur-2xl backdrop-saturate-150',
+          'border-b border-white/10',
           'shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]'
         )}
       >
@@ -353,7 +364,7 @@ export const Profile = () => {
         </div>
       )}
 
-      <div className="h-px bg-white/[.08] mb-5" />
+      <div className="h-px bg-white/8 mb-5" />
 
       {/* ── API Tokens ── */}
       <div className="px-5 pb-5">
@@ -417,7 +428,46 @@ export const Profile = () => {
         )}
       </div>
 
-      <div className="h-px bg-white/[.08] mb-5" />
+      {/* ── Recurrent Subscription ── */}
+      {recurrentData?.recurrent && (
+        <div className="px-5 pb-5">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-[12px] font-bold tracking-[0.7px] uppercase text-white/50">
+              {t('subscription')}
+            </span>
+          </div>
+          <GlassCard className="p-4 flex flex-col gap-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-[#34C759]" />
+                <span className="text-[14px] font-semibold">
+                  {t('activeSubscription')}
+                </span>
+              </div>
+              <button
+                onClick={handleCancelRecurrent}
+                disabled={cancelRecurrent.isPending}
+                className={cn(
+                  'px-3 py-1.5 rounded-full text-[12px] font-semibold',
+                  'bg-[rgba(255,59,48,0.12)] text-[#FF3B30] border border-[rgba(255,59,48,0.22)]',
+                  spring,
+                  'active:scale-[0.95]',
+                  cancelRecurrent.isPending && 'opacity-50'
+                )}
+              >
+                {cancelRecurrent.isPending ? (
+                  <Loader2 size={12} className="animate-spin" />
+                ) : (
+                  t('cancelSubscription')
+                )}
+              </button>
+            </div>
+            <p className="text-[12px] text-white/40">{t('subscriptionInfo')}</p>
+          </GlassCard>
+        </div>
+      )}
+
+      <div className="h-px bg-white/8 mb-5" />
 
       {/* ── History ── */}
       <div className="px-5">
@@ -455,7 +505,7 @@ export const Profile = () => {
               return (
                 <div
                   key={req.id}
-                  className="flex items-center gap-3 pb-[14px] mb-[14px] border-b border-white/[.06]"
+                  className="flex items-center gap-3 pb-[14px] mb-[14px] border-b border-white/6"
                 >
                   <div
                     className={cn(
@@ -466,7 +516,6 @@ export const Profile = () => {
                     {st.icon}
                   </div>
                   <div className="flex-1 min-w-0">
-                    {/* Показываем model как есть — это читаемое название из API */}
                     <p className="text-[15px] font-semibold truncate">
                       {req.version}
                     </p>

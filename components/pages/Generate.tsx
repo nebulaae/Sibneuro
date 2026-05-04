@@ -17,6 +17,8 @@ import {
   Settings2,
   ChevronDown,
   Sparkles,
+  Film,
+  Image as ImageIcon,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -41,54 +43,28 @@ function useGenerationStatus(dialogueId: string | null, enabled: boolean) {
   });
 }
 
-/* ── Param label helpers ── */
-function paramLabel(name: string, t: any): string {
-  try {
-    return t(`params.${name}`);
-  } catch {
-    return name;
-  }
-}
-function paramValueLabel(paramName: string, val: string, t: any): string {
-  try {
-    return t(`paramValues.${paramName}.${val}`);
-  } catch {
-    return val;
-  }
-}
+/* ── Is Kling Motion version ── */
+const isKlingMotion = (version?: string | null) =>
+  !!version && version.toLowerCase().includes('motion');
 
-/* ── Shared classes ── */
-const glassThin = cn(
-  'bg-white/[.07] dark:bg-black/[.45] backdrop-blur-xl backdrop-saturate-150',
-  'border border-white/[.14]',
-  'shadow-[inset_0_1px_0_rgba(255,255,255,0.15)]'
-);
-const glassRegular = cn(
-  'bg-white/[.10] dark:bg-black/[.55] backdrop-blur-2xl backdrop-saturate-180',
-  'border border-white/[.18]',
-  'shadow-[inset_0_1px_0_rgba(255,255,255,0.20),0_4px_16px_rgba(0,0,0,0.22)]'
-);
-const glassThick = cn(
-  'bg-white/[.13] dark:bg-black/[.65] backdrop-blur-3xl backdrop-saturate-200',
-  'border border-white/[.22]',
-  'shadow-[inset_0_1px_0_rgba(255,255,255,0.25),0_8px_32px_rgba(0,0,0,0.28)]'
-);
-const glassBlue = cn(
-  'bg-[rgba(0,122,255,0.85)] backdrop-blur-xl',
-  'border border-[rgba(0,122,255,0.30)]',
-  'shadow-[inset_0_1px_0_rgba(255,255,255,0.35),0_6px_24px_rgba(0,122,255,0.38)]'
-);
+/* ── Glass classes ── */
+const glassThin =
+  'bg-white/[.07] dark:bg-black/[.45] backdrop-blur-xl backdrop-saturate-150 border border-white/[.14] shadow-[inset_0_1px_0_rgba(255,255,255,0.15)]';
+const glassRegular =
+  'bg-white/[.10] dark:bg-black/[.55] backdrop-blur-2xl backdrop-saturate-180 border border-white/[.18] shadow-[inset_0_1px_0_rgba(255,255,255,0.20),0_4px_16px_rgba(0,0,0,0.22)]';
+const glassThick =
+  'bg-white/[.13] dark:bg-black/[.65] backdrop-blur-3xl backdrop-saturate-200 border border-white/[.22] shadow-[inset_0_1px_0_rgba(255,255,255,0.25),0_8px_32px_rgba(0,0,0,0.28)]';
+const glassBlue =
+  'bg-[rgba(0,122,255,0.85)] backdrop-blur-xl border border-[rgba(0,122,255,0.30)] shadow-[inset_0_1px_0_rgba(255,255,255,0.35),0_6px_24px_rgba(0,122,255,0.38)]';
 const spring =
   'transition-all duration-[280ms] [transition-timing-function:cubic-bezier(0.32,0.72,0,1)]';
 
-/* ── Section label ── */
 const SectionLabel = ({ children }: { children: React.ReactNode }) => (
   <p className="text-[11px] font-bold tracking-[0.6px] uppercase text-white/50 mb-2.5">
     {children}
   </p>
 );
 
-/* ── Pill button ── */
 const PillBtn = ({
   active,
   onClick,
@@ -117,7 +93,6 @@ const PillBtn = ({
   );
 };
 
-/* ── Model row ── */
 const ModelRow = ({ m, onClick }: { m: any; onClick: () => void }) => {
   const t = useTranslations('Generate');
   const haptic = useHaptic();
@@ -126,7 +101,6 @@ const ModelRow = ({ m, onClick }: { m: any; onClick: () => void }) => {
   const avatarUrl =
     m.avatar ||
     `https://ui-avatars.com/api/?name=${encodeURIComponent(m.model_name)}&background=1c1c1c&color=fff&size=128`;
-
   return (
     <button
       onClick={() => {
@@ -170,6 +144,190 @@ const ModelRow = ({ m, onClick }: { m: any; onClick: () => void }) => {
   );
 };
 
+/* ── Kling Motion dual upload ── */
+interface KlingMotionUploadProps {
+  photoUrl: string | null;
+  videoUrl: string | null;
+  photoFile: File | null;
+  videoFile: File | null;
+  onPhotoChange: (url: string, file: File) => void;
+  onVideoChange: (url: string, file: File) => void;
+  onPhotoClear: () => void;
+  onVideoClear: () => void;
+  isUploading: boolean;
+}
+
+const KlingMotionUpload = ({
+  photoUrl,
+  videoUrl,
+  photoFile,
+  videoFile,
+  onPhotoChange,
+  onVideoChange,
+  onPhotoClear,
+  onVideoClear,
+  isUploading,
+}: KlingMotionUploadProps) => {
+  const t = useTranslations('Generate');
+  const photoRef = useRef<HTMLInputElement>(null);
+  const videoRef = useRef<HTMLInputElement>(null);
+  const upload = useUpload();
+
+  const handlePhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    try {
+      const r = await upload.mutateAsync(f);
+      onPhotoChange(r.url, f);
+    } catch {
+      toast.error(t('photoUploadError'));
+    }
+    if (photoRef.current) photoRef.current.value = '';
+  };
+  const handleVideo = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    try {
+      const r = await upload.mutateAsync(f);
+      onVideoChange(r.url, f);
+    } catch {
+      toast.error(t('videoUploadError'));
+    }
+    if (videoRef.current) videoRef.current.value = '';
+  };
+
+  const SlotCard = ({
+    type,
+    url,
+    file,
+    onClear,
+    inputRef,
+    onChange,
+    accept,
+  }: {
+    type: 'image' | 'video';
+    url: string | null;
+    file: File | null;
+    onClear: () => void;
+    inputRef: React.RefObject<HTMLInputElement | null>;
+    onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+    accept: string;
+  }) => {
+    const isImg = type === 'image';
+    const t = useTranslations('Generate');
+    const previewSrc = file ? URL.createObjectURL(file) : url;
+    return (
+      <div
+        className={cn(
+          'flex-1 relative rounded-2xl overflow-hidden',
+          glassThin,
+          'min-h-[140px] flex flex-col items-center justify-center gap-2 cursor-pointer',
+          'transition-all duration-240 active:scale-[0.97]',
+          !url && 'hover:bg-white/[.11]'
+        )}
+        onClick={() => !url && inputRef.current?.click()}
+      >
+        <input
+          ref={inputRef!}
+          type="file"
+          accept={accept}
+          onChange={onChange}
+          className="hidden"
+        />
+
+        {url && previewSrc ? (
+          <>
+            {isImg ? (
+              <img
+                src={previewSrc}
+                alt=""
+                className="absolute inset-0 w-full h-full object-cover"
+              />
+            ) : (
+              <video
+                src={previewSrc}
+                className="absolute inset-0 w-full h-full object-cover"
+                muted
+              />
+            )}
+            {/* Overlay */}
+            <div className="absolute inset-0 bg-black/20" />
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onClear();
+              }}
+              className="absolute top-2 right-2 w-6 h-6 rounded-full bg-black/60 backdrop-blur flex items-center justify-center border-none cursor-pointer z-10"
+            >
+              <X size={11} className="text-white" />
+            </button>
+            <div className="absolute bottom-2 left-3 z-10">
+              <span className="text-[11px] font-semibold text-white/70 bg-black/40 backdrop-blur px-2 py-0.5 rounded-full">
+                {isImg ? t('photoLabel') : t('videoLabel')}
+              </span>
+            </div>
+          </>
+        ) : (
+          <>
+            <div
+              className={cn(
+                'w-10 h-10 rounded-xl flex items-center justify-center',
+                glassRegular
+              )}
+            >
+              {isImg ? (
+                <ImageIcon size={18} className="text-white/60" />
+              ) : (
+                <Film size={18} className="text-white/60" />
+              )}
+            </div>
+            <p className="text-[13px] font-semibold text-white/60">
+              {isImg ? t('addPhoto') : t('addVideo')}
+            </p>
+            <p className="text-[11px] text-white/30">
+              {isImg ? t('sourceFrame') : t('motionReference')}
+            </p>
+          </>
+        )}
+      </div>
+    );
+  };
+
+  return (
+    <div>
+      <SectionLabel>{t('klingMotionTitle')}</SectionLabel>
+      <p className="text-[12px] text-white/35 mb-3 leading-[1.5]">
+        {t('klingMotionDesc')}
+      </p>
+      <div className="flex gap-3">
+        <SlotCard
+          type="image"
+          url={photoUrl}
+          file={photoFile}
+          onClear={onPhotoClear}
+          inputRef={photoRef}
+          onChange={handlePhoto}
+          accept="image/*,.heic"
+        />
+        <SlotCard
+          type="video"
+          url={videoUrl}
+          file={videoFile}
+          onClear={onVideoClear}
+          inputRef={videoRef}
+          onChange={handleVideo}
+          accept="video/*"
+        />
+      </div>
+      {isUploading && (
+        <div className="flex items-center gap-2 mt-2 text-[12px] text-white/40">
+          <Loader2 size={11} className="animate-spin" /> {t('loading')}
+        </div>
+      )}
+    </div>
+  );
+};
+
 /* ── Main ── */
 export const Generate = () => {
   const t = useTranslations('Generate');
@@ -191,6 +349,16 @@ export const Generate = () => {
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [isWaiting, setIsWaiting] = useState(false);
 
+  // Kling Motion specific
+  const [motionPhoto, setMotionPhoto] = useState<{
+    url: string;
+    file: File;
+  } | null>(null);
+  const [motionVideo, setMotionVideo] = useState<{
+    url: string;
+    file: File;
+  } | null>(null);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { data: allModels, isLoading } = useAIModels();
   const generate = useGenerateAI();
@@ -202,6 +370,8 @@ export const Generate = () => {
     selectedVersion ||
     selected?.versions?.find((v) => v.default)?.label ||
     selected?.versions?.[0]?.label;
+
+  const motionMode = isKlingMotion(currentVersion);
 
   const { data: params } = useModelParams(selectedTech, currentVersion);
   const { data: lastMessage } = useGenerationStatus(pendingId, isWaiting);
@@ -215,6 +385,8 @@ export const Generate = () => {
       const def =
         selected.versions?.find((v) => v.default) || selected.versions?.[0];
       setSelectedVersion(def?.label || null);
+      setMotionPhoto(null);
+      setMotionVideo(null);
     }
   }, [selected?.tech_name]);
 
@@ -245,7 +417,6 @@ export const Generate = () => {
 
   const handleGenerate = () => {
     if (!selected) return;
-
     const isTextModel =
       selected.mainCategory === 'text' || selected.categories?.includes('text');
     if (isTextModel) {
@@ -256,17 +427,35 @@ export const Generate = () => {
       return;
     }
 
-    if (!prompt.trim() && media.length === 0) {
+    // Kling Motion validation
+    if (motionMode) {
+      if (!motionPhoto || !motionVideo) {
+        toast.error(t('klingMotionError'));
+        return;
+      }
+    } else if (!prompt.trim() && media.length === 0) {
       toast.error(t('enterDescription'));
       return;
     }
+
     haptic.medium();
-    const oldFormatMedia = media.map((m) => ({
-      type: m.type,
-      format: 'url',
-      input: m.url,
-    }));
-    const inputs = convertMediaToInputs(prompt.trim() || ' ', oldFormatMedia);
+
+    let inputs: any;
+    if (motionMode && motionPhoto && motionVideo) {
+      const motionMedia = [
+        { type: 'image', format: 'url', input: motionPhoto.url },
+        { type: 'video', format: 'url', input: motionVideo.url },
+      ];
+      inputs = convertMediaToInputs(prompt.trim() || ' ', motionMedia);
+    } else {
+      const oldFormatMedia = media.map((m) => ({
+        type: m.type,
+        format: 'url',
+        input: m.url,
+      }));
+      inputs = convertMediaToInputs(prompt.trim() || ' ', oldFormatMedia);
+    }
+
     generate.mutate(
       {
         tech_name: selected.tech_name,
@@ -397,6 +586,14 @@ export const Generate = () => {
       (p: any) => p.name === 'aspect_ratio'
     );
 
+    // Generate button disabled state
+    const generateDisabled =
+      generate.isPending ||
+      upload.isPending ||
+      (motionMode
+        ? !motionPhoto || !motionVideo
+        : !isTextModel && !prompt.trim() && media.length === 0);
+
     return (
       <div className="flex flex-col min-h-[100svh] pb-[calc(80px+max(16px,env(safe-area-inset-bottom)))] overflow-x-hidden">
         {/* Header */}
@@ -417,6 +614,8 @@ export const Generate = () => {
                 setMedia([]);
                 setExtraParams({});
                 setShowParams(false);
+                setMotionPhoto(null);
+                setMotionVideo(null);
               }}
               className={cn(
                 'flex items-center gap-1 text-[16px] font-medium text-[#0A84FF] bg-none border-none cursor-pointer px-2 py-1 rounded-lg',
@@ -455,7 +654,6 @@ export const Generate = () => {
           </div>
         </header>
 
-        {/* Body */}
         <div className="flex-1 overflow-y-auto">
           <div className="max-w-[760px] mx-auto flex flex-col gap-5 px-5 py-5">
             {/* Versions */}
@@ -467,7 +665,11 @@ export const Generate = () => {
                     <PillBtn
                       key={v.label}
                       active={currentVersion === v.label}
-                      onClick={() => setSelectedVersion(v.label)}
+                      onClick={() => {
+                        setSelectedVersion(v.label);
+                        setMotionPhoto(null);
+                        setMotionVideo(null);
+                      }}
                     >
                       {v.label} <span className="opacity-60">· {v.cost}💎</span>
                     </PillBtn>
@@ -476,13 +678,37 @@ export const Generate = () => {
               </div>
             )}
 
+            {/* Kling Motion hint badge */}
+            {motionMode && (
+              <div
+                className={cn(
+                  'flex items-center gap-2.5 px-4 py-3 rounded-2xl',
+                  glassThin,
+                  'border-[rgba(0,122,255,0.25)] bg-[rgba(0,122,255,0.10)]'
+                )}
+              >
+                <Film size={16} className="text-[#4FC3F7] shrink-0" />
+                <div>
+                  <p className="text-[13px] font-semibold text-white/80">
+                    Kling Motion
+                  </p>
+                  <p className="text-[12px] text-white/45 mt-0.5">
+                    {t('klingMotionHint')}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Prompt */}
             {!isTextModel && (
               <div>
                 <SectionLabel>{t('prompt')}</SectionLabel>
                 <textarea
                   value={prompt}
                   onChange={(e) => setPrompt(e.target.value)}
-                  placeholder={t('placeholder')}
+                  placeholder={
+                    motionMode ? t('promptOptionalMotion') : t('placeholder')
+                  }
                   rows={4}
                   className={cn(
                     'w-full resize-none outline-none px-4 py-[14px] rounded-2xl',
@@ -532,8 +758,7 @@ export const Generate = () => {
                     }}
                     className="flex items-center gap-1.5 text-[14px] text-white/50 bg-none border-none cursor-pointer py-1.5"
                   >
-                    <Settings2 size={14} />
-                    {t('advancedParams')}
+                    <Settings2 size={14} /> {t('advancedParams')}
                     <ChevronDown
                       size={14}
                       className={cn(
@@ -598,91 +823,97 @@ export const Generate = () => {
                 </div>
               )}
 
-            {/* Media */}
-            {canAttach && !isTextModel && (
-              <div>
-                <div className="flex items-center justify-between mb-2.5">
-                  <SectionLabel>{t('media')}</SectionLabel>
-                  <button
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={upload.isPending}
-                    className={cn(
-                      'flex items-center gap-1.5 text-[14px] font-semibold text-[#0A84FF] bg-none border-none cursor-pointer',
-                      spring,
-                      upload.isPending && 'opacity-50'
-                    )}
-                  >
-                    {upload.isPending ? (
-                      <Loader2 size={13} className="animate-spin" />
-                    ) : (
-                      <ImagePlus size={13} />
-                    )}
-                    {t('attach')}
-                  </button>
-                </div>
-                <input
-                  type="file"
-                  ref={fileInputRef}
-                  accept="image/*,.heic,video/*,audio/*"
-                  onChange={handleFileUpload}
-                  className="hidden"
+            {/* Kling Motion dual upload OR regular media */}
+            {!isTextModel &&
+              (motionMode ? (
+                <KlingMotionUpload
+                  photoUrl={motionPhoto?.url ?? null}
+                  videoUrl={motionVideo?.url ?? null}
+                  photoFile={motionPhoto?.file ?? null}
+                  videoFile={motionVideo?.file ?? null}
+                  onPhotoChange={(url, file) => setMotionPhoto({ url, file })}
+                  onVideoChange={(url, file) => setMotionVideo({ url, file })}
+                  onPhotoClear={() => setMotionPhoto(null)}
+                  onVideoClear={() => setMotionVideo(null)}
+                  isUploading={upload.isPending}
                 />
-                {media.length > 0 && (
-                  <div className="flex gap-2.5 flex-wrap">
-                    {media.map((m, i) => (
-                      <div
-                        key={i}
-                        className="relative w-20 h-20 rounded-2xl overflow-hidden border border-white/[.14]"
-                      >
-                        {m.type === 'image' ? (
-                          <img
-                            src={m.file ? URL.createObjectURL(m.file) : m.url}
-                            className="w-full h-full object-cover"
-                            alt=""
-                            onError={(e) => {
-                              (e.target as HTMLImageElement).src = m.url;
-                            }}
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center text-[28px] bg-white/[.07]">
-                            {m.type === 'video' ? '🎬' : '🎵'}
-                          </div>
-                        )}
-                        <button
-                          onClick={() =>
-                            setMedia((prev) =>
-                              prev.filter((_, idx) => idx !== i)
-                            )
-                          }
-                          className="absolute top-[5px] right-[5px] w-5 h-5 bg-black/55 backdrop-blur-lg rounded-full flex items-center justify-center text-white border-none cursor-pointer"
-                        >
-                          <X size={11} />
-                        </button>
-                      </div>
-                    ))}
+              ) : canAttach ? (
+                <div>
+                  <div className="flex items-center justify-between mb-2.5">
+                    <SectionLabel>{t('media')}</SectionLabel>
+                    <button
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={upload.isPending}
+                      className={cn(
+                        'flex items-center gap-1.5 text-[14px] font-semibold text-[#0A84FF] bg-none border-none cursor-pointer',
+                        spring,
+                        upload.isPending && 'opacity-50'
+                      )}
+                    >
+                      {upload.isPending ? (
+                        <Loader2 size={13} className="animate-spin" />
+                      ) : (
+                        <ImagePlus size={13} />
+                      )}
+                      {t('attach')}
+                    </button>
                   </div>
-                )}
-              </div>
-            )}
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    accept="image/*,.heic,video/*,audio/*"
+                    onChange={handleFileUpload}
+                    className="hidden"
+                  />
+                  {media.length > 0 && (
+                    <div className="flex gap-2.5 flex-wrap">
+                      {media.map((m, i) => (
+                        <div
+                          key={i}
+                          className="relative w-20 h-20 rounded-2xl overflow-hidden border border-white/[.14]"
+                        >
+                          {m.type === 'image' ? (
+                            <img
+                              src={m.file ? URL.createObjectURL(m.file) : m.url}
+                              className="w-full h-full object-cover"
+                              alt=""
+                              onError={(e) => {
+                                (e.target as HTMLImageElement).src = m.url;
+                              }}
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-[28px] bg-white/[.07]">
+                              {m.type === 'video' ? '🎬' : '🎵'}
+                            </div>
+                          )}
+                          <button
+                            onClick={() =>
+                              setMedia((prev) =>
+                                prev.filter((_, idx) => idx !== i)
+                              )
+                            }
+                            className="absolute top-[5px] right-[5px] w-5 h-5 bg-black/55 backdrop-blur-lg rounded-full flex items-center justify-center text-white border-none cursor-pointer"
+                          >
+                            <X size={11} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ) : null)}
 
-            {/* Generate button */}
+            {/* Generate */}
             <button
               onClick={handleGenerate}
-              disabled={
-                (!isTextModel && !prompt.trim() && media.length === 0) ||
-                generate.isPending ||
-                upload.isPending
-              }
+              disabled={generateDisabled}
               className={cn(
                 'w-full py-4 px-4 rounded-full text-[16px] font-bold text-white',
                 'flex items-center justify-center gap-2',
                 glassBlue,
                 spring,
                 'active:scale-[0.97]',
-                ((!isTextModel && !prompt.trim() && media.length === 0) ||
-                  generate.isPending ||
-                  upload.isPending) &&
-                  'opacity-45'
+                generateDisabled && 'opacity-45'
               )}
             >
               {generate.isPending || upload.isPending ? (
@@ -717,8 +948,7 @@ export const Generate = () => {
         className={cn(
           'sticky top-0 z-40 px-5 py-[14px]',
           'bg-white/[.04] dark:bg-black/[.35] backdrop-blur-2xl backdrop-saturate-150',
-          'border-b border-white/[.10]',
-          'shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]'
+          'border-b border-white/[.10] shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]'
         )}
       >
         <div className="max-w-[760px] mx-auto">
