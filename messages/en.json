@@ -59,7 +59,8 @@
     "heroAccent": "incredible",
     "heroSubtitle": "Choose a content type and start generating",
     "partnership": "Partnership program",
-    "partnershipSub": "Earn together with us"
+    "partnershipSub": "Earn together with us",
+    "topUp": "Top up"
   },
   "Login": {
     "tagline": "Next-generation AI platform",
@@ -281,6 +282,8 @@
     "salesAmount": "SALES AMOUNT",
     "myReferrals": "My referrals",
     "mostActive": "Most active",
+    "topUpBalance": "Top up balance",
+    "support": "Support",
     "level": "Level",
     "payments": "Payments",
     "regDate": "Registration date",

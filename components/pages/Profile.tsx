@@ -25,12 +25,16 @@ import {
   Copy,
   Check,
   Link as LinkIcon,
+  Zap,
+  ChevronRight,
+  Headset,
 } from 'lucide-react';
 import { timeAgo } from '@/lib/utils';
 import { toast } from 'sonner';
 import { useState } from 'react';
 import { useHaptic } from '@/hooks/useHaptic';
 import { cn } from '@/lib/utils';
+import Link from 'next/link';
 
 /* ── Shared ── */
 const glassRegular = cn(
@@ -217,7 +221,6 @@ export const Profile = () => {
               'active:scale-[0.94]'
             )}
           >
-            <LogOut size={13} />
             {t('logout')}
           </button>
         </div>
@@ -291,9 +294,6 @@ export const Profile = () => {
               <span className="text-[14px] mb-0.5">💎</span>
             </div>
           )}
-          <span className="text-[12px] font-semibold text-[#0A84FF]">
-            {t('topUp')}
-          </span>
         </button>
 
         {/* Referrals */}
@@ -322,14 +322,51 @@ export const Profile = () => {
               {refStats?.total ?? refStats?.total_referrals ?? 0}
             </span>
           )}
-          <span className="text-[12px] text-white/50">
-            {t('earned', {
-              amount: refStats?.earned ?? refStats?.total_tokens ?? 0,
-            })}
-          </span>
         </button>
       </div>
+      <div className='px-5 pb-5'>
+        <button
+          onClick={() => router.push('/profile/referral')}
+          style={{
+            width: '100%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 12,
+            padding: '16px',
+            borderRadius: 18,
+            background: 'rgba(0,122,255,0.12)',
+            border: '1px solid rgba(0,122,255,0.35)',
+            boxShadow:
+              'inset 0 1px 0 rgba(255,255,255,0.15), 0 8px 32px rgba(0,122,255,0.15)',
+            cursor: 'pointer',
+            transition: 'all 0.24s cubic-bezier(0.32,0.72,0,1)',
+            color: '#fff',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = 'rgba(0,122,255,0.18)';
+            e.currentTarget.style.transform = 'translateY(-2px)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = 'rgba(0,122,255,0.12)';
+            e.currentTarget.style.transform = 'none';
+          }}
+        >
+          <div style={{ textAlign: 'center' }}>
+            <p style={{ fontSize: 14, fontWeight: 700 }}>
+              {t('topUpBalance')}
+            </p>
+          </div>
+          <ChevronRight size={18} className="ml-auto opacity-30 text-white" />
+        </button>
 
+        <div className="pt-5 flex justify-start">
+          <Link href="https://t.me/SibNeuroSupport" className='w-full flex justify-start items-center gap-2 bg-muted/30 hover:bg-muted/50 border border-border/60 text-textPrimary 
+                   hover:border-border focus:ring-2 focus:ring-primary/30 px-3 py-3 rounded-xl text-sm'>
+            <Headset className='size-4' /> {t("support")}
+          </Link>
+        </div>
+      </div>
       {/* ── Referral Link ── */}
       {referralLink && (
         <div className="px-5 pb-5">

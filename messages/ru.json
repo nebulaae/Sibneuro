@@ -57,7 +57,8 @@
     "heroAccent": "невероятное",
     "heroSubtitle": "Выберите тип контента и начните генерацию",
     "partnership": "Партнёрская программа",
-    "partnershipSub": "Зарабатывайте вместе с нами"
+    "partnershipSub": "Зарабатывайте вместе с нами",
+    "topUp": "Пополнить"
   },
   "Login": {
     "tagline": "AI-платформа нового поколения",
@@ -267,7 +268,9 @@
     "tokenCreateError": "Не удалось создать токен",
     "statusCompleted": "Готово",
     "statusError": "Ошибка",
+    "topUpBalance": "Пополнить баланс",
     "statusProcessing": "Обработка",
+    "support": "Поддержка",
     "subscription": "Подписка",
     "activeSubscription": "Активная подписка",
     "cancelSubscription": "Отменить подписку",

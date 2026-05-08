@@ -143,7 +143,7 @@ export const Home = () => {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          padding: '13px 24px',
+          padding: '14px 16px',
           borderRadius: 0,
           borderTop: 'none',
           borderLeft: 'none',
@@ -153,8 +153,8 @@ export const Home = () => {
       >
         <span
           style={{
-            fontSize: 22,
-            fontWeight: 800,
+            fontSize: 18,
+            fontWeight: 700,
             letterSpacing: '-0.6px',
             color: '#fff',
           }}
@@ -162,27 +162,50 @@ export const Home = () => {
           Sibneuro
         </span>
 
-        {/* Token pill */}
-        <button
-          onClick={() => paymentUrl && window.open(paymentUrl, '_blank')}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 7,
-            padding: '7px 16px',
-            borderRadius: 999,
-            background: 'rgba(0,122,255,0.18)',
-            border: '1px solid rgba(0,122,255,0.35)',
-            fontSize: 14,
-            fontWeight: 700,
-            color: '#fff',
-            cursor: 'pointer',
-            transition: 'all 0.22s ease',
-          }}
-        >
-          <span style={{ fontSize: 12, color: '#4FC3F7' }}>◆</span>
-          <span>{tokens}</span>
-        </button>
+        <div className='flex items-center gap-1'>
+          <button
+            onClick={() => router.push('https://t.me/cubixvpnbot?start=HYDylP')}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 7,
+              padding: '8px 12px',
+              borderRadius: 999,
+              background: 'rgba(0,122,255,0.18)',
+              border: '1px solid rgba(0,122,255,0.35)',
+              fontSize: 14,
+              fontWeight: 700,
+              color: '#fff',
+              cursor: 'pointer',
+              transition: 'all 0.22s ease',
+            }}
+          >
+            <Zap className='size-4 text-[#4FC3F7]' />
+            Vpn
+          </button>
+          {/* Token pill */}
+          <button
+            onClick={() => paymentUrl && window.open(paymentUrl, '_blank')}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 7,
+              padding: '8px 12px',
+              borderRadius: 999,
+              background: 'rgba(0,122,255,0.18)',
+              border: '1px solid rgba(0,122,255,0.35)',
+              fontSize: 14,
+              fontWeight: 700,
+              color: '#fff',
+              cursor: 'pointer',
+              transition: 'all 0.22s ease',
+            }}
+          >
+            <span style={{ fontSize: 16, color: '#4FC3F7' }}>◆</span>
+            <span>{Math.trunc(tokens)}</span>
+            <span style={{ fontSize: 14, color: '#4FC3F7' }}>{t('topUp')}</span>
+          </button>
+        </div>
       </header>
 
       <div
@@ -559,7 +582,7 @@ export const Home = () => {
 
           {/* Desktop: 2-col grid; mobile: single col */}
           <div
-            className='grid grid-cols-4 gap-2 w-full'
+            className='grid grid-cols-1  md:grid-cols-2 lg:grid-cols-4 gap-2 w-full'
           >
             {trendsLoading
               ? Array.from({ length: 4 }).map((_, i) => (
