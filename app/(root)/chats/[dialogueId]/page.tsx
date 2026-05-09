@@ -26,8 +26,9 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { toast } from 'sonner';
 import { useHaptic } from '@/hooks/useHaptic';
-import { cn } from '@/lib/utils';
-import { localize } from '@/lib/utils';
+import { cn, localize } from '@/lib/utils';
+import { PublishDialog } from '@/components/dialogs/PublishDialog';
+import { Share2 } from 'lucide-react';
 
 /* ── Types ── */
 interface MediaItem {
@@ -306,6 +307,7 @@ export default function ChatPage() {
     url: string;
     type: string;
   } | null>(null);
+  const [publishingMessage, setPublishingMessage] = useState<Message | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -549,7 +551,7 @@ export default function ChatPage() {
 
   return (
     <div
-      className="flex flex-col h-svh max-w-4xl mx-auto border-x border-white/5 shadow-2xl"
+      className="flex flex-col h-svh max-w-4xl mx-auto shadow-2xl"
       style={{ background: 'var(--page-bg)' }}
     >
       {/* ── Header ── */}
@@ -768,68 +770,50 @@ export default function ChatPage() {
                         {extractResultMedia(msg.result).length > 0 && (
                           <div className="flex flex-wrap gap-2">
                             {extractResultMedia(msg.result).map((m, i) => {
-                              if (m.type === 'audio') {
-                                return (
-                                  <div key={i} className="w-full max-w-[420px]">
-                                    <div
-                                      className={cn(
-                                        'flex flex-col gap-3 p-4',
-                                        glassRegular,
-                                        'rounded-3xl border border-white/20'
-                                      )}
-                                    >
-                                      <AudioPlayer src={m.url} />
-                                      <a
-                                        href={m.url}
-                                        download
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className={cn(
-                                          'self-end w-9 h-9 flex items-center justify-center rounded-xl',
-                                          'bg-black/40 border border-white/15',
-                                          'active:scale-90 transition'
-                                        )}
-                                      >
-                                        <Download size={18} />
-                                      </a>
-                                    </div>
-                                  </div>
-                                );
-                              }
-                              return (
-                                <div key={i} className="relative group">
-                                  {m.type === 'image' ? (
-                                    <img
-                                      src={m.url}
-                                      alt="Generated"
-                                      onClick={() => setViewerSrc(m)}
-                                      className="max-w-65 max-h-65 rounded-2xl object-cover cursor-pointer border border-white/18 shadow-[0_4px_16px_rgba(0,0,0,0.22)]"
-                                    />
-                                  ) : (
-                                    <video
-                                      src={m.url}
-                                      controls
-                                      className="max-w-65 max-h-65 rounded-2xl"
-                                    />
-                                  )}
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleDownload(m.url);
-                                    }}
-                                    className={cn(
-                                      'absolute top-2 right-2 p-1.5 rounded-full',
-                                      'bg-black/45 backdrop-blur-xl border border-white/15',
-                                      'text-white flex items-center justify-center',
-                                      'sm:opacity-0 group-hover:opacity-100 transition-opacity'
-                                    )}
-                                  >
-                                    <Download size={14} />
-                                  </button>
-                                </div>
-                              );
+                               if (m.type === 'audio') {
+                                 return (
+                                   <div key={i} className="w-full max-w-[420px]">
+                                     <div className={cn('flex flex-col gap-3 p-4', glassRegular, 'rounded-3xl border border-white/20')}>
+                                       <AudioPlayer src={m.url} />
+                                       <a href={m.url} download target="_blank" rel="noopener noreferrer" className={cn('self-end w-9 h-9 flex items-center justify-center rounded-xl', 'bg-black/40 border border-white/15', 'active:scale-90 transition')}>
+                                         <Download size={18} />
+                                       </a>
+                                     </div>
+                                   </div>
+                                 );
+                               }
+                               return (
+                                 <div key={i} className="relative group">
+                                   {m.type === 'image' ? (
+                                     <img src={m.url} alt="Generated" onClick={() => setViewerSrc(m)} className="max-w-65 max-h-65 rounded-2xl object-cover cursor-pointer border border-white/18 shadow-[0_4px_16px_rgba(0,0,0,0.22)]" />
+                                   ) : (
+                                     <video src={m.url} controls className="max-w-65 max-h-65 rounded-2xl" />
+                                   )}
+                                   <button onClick={(e) => { e.stopPropagation(); handleDownload(m.url); }} className={cn('absolute top-2 right-2 p-1.5 rounded-full', 'bg-black/45 backdrop-blur-xl border border-white/15', 'text-white flex items-center justify-center', 'sm:opacity-0 group-hover:opacity-100 transition-opacity')}>
+                                     <Download size={14} />
+                                   </button>
+                                 </div>
+                               );
                             })}
                           </div>
+                        )}
+                        
+                        {/* Publish Button */}
+                        {msg.status === 'completed' && extractResultMedia(msg.result).length > 0 && (
+                          <button
+                            onClick={() => {
+                              haptic.light();
+                              setPublishingMessage(msg);
+                            }}
+                            className={cn(
+                              'flex items-center gap-2 px-4 py-2 rounded-xl self-start mt-1',
+                              'bg-blue-600/10 border border-blue-600/30 text-blue-400',
+                              'text-[13px] font-bold transition-all active:scale-[0.96] hover:bg-blue-600/20'
+                            )}
+                          >
+                            <Share2 size={14} />
+                            {t('publishToTrends')}
+                          </button>
                         )}
                         {!msg.result?.text &&
                           extractResultMedia(msg.result).length === 0 && (
@@ -860,22 +844,22 @@ export default function ChatPage() {
           onClick={() => setViewerSrc(null)}
           className="fixed inset-0 z-50 bg-black/88 backdrop-blur-2xl flex items-center justify-center p-4"
         >
-          {viewerSrc.type === 'image' ? (
+          {viewerSrc?.type === 'image' ? (
             <img
-              src={viewerSrc.url}
+              src={viewerSrc?.url}
               alt=""
               className="max-w-full max-h-full object-contain rounded-3xl shadow-2xl"
             />
-          ) : viewerSrc.type === 'video' ? (
+          ) : viewerSrc?.type === 'video' ? (
             <video
-              src={viewerSrc.url}
+              src={viewerSrc?.url}
               controls
               autoPlay
               className="max-w-full max-h-full rounded-3xl"
             />
-          ) : viewerSrc.type === 'audio' ? (
+          ) : viewerSrc?.type === 'audio' ? (
             <div className="w-full max-w-md bg-white/10 backdrop-blur-2xl rounded-3xl p-6 shadow-2xl">
-              <audio src={viewerSrc.url} controls autoPlay className="w-full" />
+              <audio src={viewerSrc?.url} controls autoPlay className="w-full" />
             </div>
           ) : null}
           <button
@@ -890,7 +874,7 @@ export default function ChatPage() {
           <button
             onClick={(e) => {
               e.stopPropagation();
-              handleDownload(viewerSrc.url);
+              if (viewerSrc) handleDownload(viewerSrc.url);
             }}
             className={cn(
               'absolute bottom-7 right-5 p-2.5 rounded-full',
@@ -1018,6 +1002,12 @@ export default function ChatPage() {
         @keyframes pulse-opacity { 0%,100%{opacity:1}50%{opacity:.4} }
         textarea::placeholder { color: rgba(255,255,255,0.30); }
       `}</style>
+
+      <PublishDialog 
+        isOpen={!!publishingMessage} 
+        onClose={() => setPublishingMessage(null)} 
+        message={publishingMessage}
+      />
     </div>
   );
 }

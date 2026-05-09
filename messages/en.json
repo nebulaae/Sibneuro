@@ -4,14 +4,16 @@
     "models": "Models",
     "create": "Create",
     "chats": "Chats",
-    "profile": "Profile"
+    "profile": "Profile",
+    "trends": "Trends"
   },
   "Sidebar": {
     "home": "Home",
     "models": "Models",
     "create": "Create",
     "chats": "Chats",
-    "profile": "Profile"
+    "profile": "Profile",
+    "trends": "Trends"
   },
   "ChatPage": {
     "loading": "Loading...",
@@ -28,6 +30,7 @@
     "uploadError": "File upload error",
     "modelNotAccept": "Model does not accept {fileType}",
     "maxFiles": "Maximum {limit} file(s) of type {fileType}",
+    "publishToTrends": "Publish",
     "dialogue": "Dialogue",
     "error": "Generation error"
   },
@@ -327,5 +330,34 @@
     "retry": "Try again",
     "connectionError": "Connection error",
     "connectionErrorDesc": "Failed to load data. Check your connection."
+  },
+  "Trends": {
+    "title": "Trends",
+    "subtitle": "Create stunning photos and videos with AI",
+    "error": "Load error",
+    "errorDesc": "Failed to load trends.",
+    "new": "New",
+    "generate": "Create",
+    "insufficientCredits": "Insufficient credits on balance",
+    "promptHidden": "Trend prompt is hidden. It will be automatically applied during generation.",
+    "uploadMedia": "Upload photo *",
+    "uploadMediaDesc": "Upload one or more photos",
+    "uploadHint": "JPEG, PNG, WebP up to 20 MB",
+    "model": "Model",
+    "prompt": "Prompt",
+    "back": "Back"
+  },
+  "Publish": {
+    "title": "Publish to Trends",
+    "description": "Share your result with the community. Choose what data to hide.",
+    "hidePrompt": "Hide prompt",
+    "hidePromptDesc": "Users won't see the text query",
+    "mediaSettings": "Media settings",
+    "media": "Media",
+    "hide": "Hide",
+    "replace": "Replace",
+    "publish": "Publish",
+    "success": "Post published!",
+    "error": "Error publishing"
   }
 }

@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useAIModels } from '@/hooks/useModels';
+import { usePosts } from '@/hooks/usePosts';
 import { useRoles } from '@/hooks/useRoles';
 import { useUser } from '@/hooks/useUser';
 import { useUI, usePaymentLink } from '@/hooks/useApiExtras';
@@ -81,8 +82,10 @@ export const Home = () => {
     isError,
     refetch,
   } = useAIModels();
-  const { data: trends, isLoading: trendsLoading } = useUI('trends');
+  const { data: trendsData, isLoading: trendsLoading } = useUI('trends');
+  const { data: postsData, isLoading: postsLoading } = usePosts({ limit: 4 });
   const { data: roles, isLoading: rolesLoading } = useRoles();
+  const posts = postsData?.items || [];
   const { data: userData } = useUser();
   const { data: paymentUrl } = usePaymentLink();
 
@@ -566,42 +569,51 @@ export const Home = () => {
           marginBottom: 20,
           width: '100%',
         }}>
-          <span
+          <div
             style={{
-              display: 'block',
-              fontSize: 12,
-              fontWeight: 700,
-              letterSpacing: '0.8px',
-              textTransform: 'uppercase',
-              color: 'rgba(255,255,255,0.4)',
-              marginBottom: 12,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              marginBottom: 14,
             }}
           >
-            {t('trending')}
-          </span>
+            <span
+              style={{
+                fontSize: 12,
+                fontWeight: 700,
+                letterSpacing: '0.8px',
+                textTransform: 'uppercase',
+                color: 'rgba(255,255,255,0.4)',
+              }}
+            >
+              {t('trending')}
+            </span>
+            <button
+              onClick={() => router.push('/trends')}
+              style={{
+                fontSize: 14,
+                fontWeight: 600,
+                color: '#4FC3F7',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+              }}
+            >
+              {t('all')}
+            </button>
+          </div>
 
-          {/* Desktop: 2-col grid; mobile: single col */}
           <div
-            className='grid grid-cols-1  md:grid-cols-2 lg:grid-cols-4 gap-2 w-full'
+            className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2 w-full'
           >
-            {trendsLoading
+            {postsLoading
               ? Array.from({ length: 4 }).map((_, i) => (
                 <GlassSkeleton key={i} w="100%" h="58px" radius="14px" />
               ))
-              : (((trends as any[]) || []).length === 0
-                ? [
-                  { icon: '🎨', title: t('trend1'), href: '/generate' },
-                  { icon: '🤖', title: t('trend2'), href: '/chats' },
-                  { icon: '📸', title: t('trend3'), href: '/generate' },
-                  { icon: '🎵', title: t('trend4'), href: '/generate' },
-                ]
-                : (trends as any[])
-              ).map((item: any, i: number) => (
+              : (posts.slice(0, 4).map((post: any, i: number) => (
                 <button
-                  key={i}
-                  onClick={() =>
-                    item.href ? router.push(item.href) : undefined
-                  }
+                  key={post.id}
+                  onClick={() => router.push(`/trends?post=${post.id}`)}
                   style={{
                     display: 'flex',
                     alignItems: 'center',
@@ -633,9 +645,9 @@ export const Home = () => {
                     (e.currentTarget.style.transform = 'none')
                   }
                 >
-                  {item.image ? (
+                  {post.result?.url ? (
                     <img
-                      src={item.image}
+                      src={post.result.url}
                       alt=""
                       style={{
                         width: 34,
@@ -654,7 +666,7 @@ export const Home = () => {
                         flexShrink: 0,
                       }}
                     >
-                      {item.icon ?? '✨'}
+                      ✨
                     </span>
                   )}
                   <span
@@ -663,9 +675,12 @@ export const Home = () => {
                       fontWeight: 500,
                       flex: 1,
                       color: '#fff',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
                     }}
                   >
-                    {item.title ? localize(item.title) : item.title}
+                    {post.inputs?.text || 'Trend'}
                   </span>
                   <svg
                     width="14"
@@ -679,7 +694,7 @@ export const Home = () => {
                     <path d="M9 18l6-6-6-6" />
                   </svg>
                 </button>
-              ))}
+              )))}
           </div>
         </section>
 
