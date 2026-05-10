@@ -343,7 +343,8 @@
     "uploadHint": "JPEG, PNG, WebP до 20 МБ",
     "model": "Модель",
     "prompt": "Промпт",
-    "back": "Назад"
+    "back": "Назад",
+    "done": "Готово"
   },
   "Publish": {
     "title": "Опубликовать в Тренды",

@@ -11,7 +11,9 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ErrorComponent } from '@/components/states/Error';
 import { localize } from '@/lib/utils';
 import Image from 'next/image';
-import { ChevronRight, Music, NotebookPen, Paintbrush, Video, Zap } from 'lucide-react';
+import { ChevronRight, Music, NotebookPen, Paintbrush, Video, Zap, Sparkles } from 'lucide-react';
+import { cleanModelName } from '@/lib/utils';
+import { getPostResultImage } from '@/hooks/usePosts';
 
 /* ── Skeleton ── */
 const GlassSkeleton = ({
@@ -415,7 +417,7 @@ export const Home = () => {
                       whiteSpace: 'nowrap',
                     }}
                   >
-                    {m.model_name}
+                    {cleanModelName(m.model_name)}
                   </span>
                 </button>
               ))}
@@ -604,95 +606,105 @@ export const Home = () => {
           </div>
 
           <div
-            className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2 w-full'
+            className='grid grid-cols-2 md:grid-cols-4 gap-3 w-full'
           >
             {postsLoading
               ? Array.from({ length: 4 }).map((_, i) => (
-                <GlassSkeleton key={i} w="100%" h="58px" radius="14px" />
+                <GlassSkeleton key={i} w="100%" h="180px" radius="18px" />
               ))
-              : (posts.slice(0, 4).map((post: any, i: number) => (
+              : (posts.slice(0, 4).map((post: any) => (
                 <button
                   key={post.id}
                   onClick={() => router.push(`/trends?post=${post.id}`)}
                   style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 12,
-                    padding: '12px 16px',
-                    borderRadius: 14,
+                    position: 'relative',
+                    aspectRatio: '3/4',
+                    borderRadius: 18,
+                    overflow: 'hidden',
                     ...glassCard,
                     cursor: 'pointer',
-                    textAlign: 'left',
-                    width: '100%',
                     transition: 'all 0.22s cubic-bezier(0.32,0.72,0,1)',
+                    padding: 0,
+                    border: '1px solid rgba(255,255,255,0.12)',
                   }}
-                  onMouseEnter={(e) =>
-                    Object.assign(e.currentTarget.style, {
-                      ...glassCardHover,
-                      transform: 'translateY(-1px)',
-                    })
-                  }
-                  onMouseLeave={(e) =>
-                    Object.assign(e.currentTarget.style, {
-                      ...glassCard,
-                      transform: 'none',
-                    })
-                  }
-                  onMouseDown={(e) =>
-                    (e.currentTarget.style.transform = 'scale(0.985)')
-                  }
-                  onMouseUp={(e) =>
-                    (e.currentTarget.style.transform = 'none')
-                  }
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = 'translateY(-4px)';
+                    e.currentTarget.style.border = '1px solid rgba(255,255,255,0.24)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'none';
+                    e.currentTarget.style.border = '1px solid rgba(255,255,255,0.12)';
+                  }}
                 >
-                  {post.result?.url ? (
+                  {getPostResultImage(post) ? (
                     <img
-                      src={post.result.url}
+                      src={getPostResultImage(post)!}
                       alt=""
                       style={{
-                        width: 34,
-                        height: 34,
-                        borderRadius: 8,
+                        position: 'absolute',
+                        inset: 0,
+                        width: '100%',
+                        height: '100%',
                         objectFit: 'cover',
-                        flexShrink: 0,
                       }}
                     />
                   ) : (
-                    <span
-                      style={{
-                        fontSize: 22,
-                        width: 34,
-                        textAlign: 'center',
-                        flexShrink: 0,
-                      }}
-                    >
-                      ✨
-                    </span>
+                    <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.05)' }}>
+                       <Sparkles className='size-6 text-white/20 mx-auto' />
+                    </div>
                   )}
-                  <span
-                    style={{
-                      fontSize: 14,
-                      fontWeight: 500,
-                      flex: 1,
+                  
+                  {/* Cost badge */}
+                  <div style={{
+                    position: 'absolute',
+                    top: 8,
+                    right: 8,
+                    padding: '4px 8px',
+                    borderRadius: 999,
+                    background: 'rgba(0,0,0,0.45)',
+                    backdropFilter: 'blur(10px)',
+                    border: '1px solid rgba(255,255,255,0.15)',
+                    fontSize: 11,
+                    fontWeight: 700,
+                    color: '#fff',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 3
+                  }}>
+                    <span style={{ color: '#4FC3F7' }}>◆</span>
+                    {post.cost || 15}
+                  </div>
+
+                  {/* Gradient Overlay */}
+                  <div style={{
+                    position: 'absolute',
+                    inset: 0,
+                    background: 'linear-gradient(to top, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.2) 50%, transparent 100%)',
+                  }} />
+
+                  {/* Text */}
+                  <div style={{
+                    position: 'absolute',
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    padding: '10px 12px',
+                  }}>
+                    <p style={{
+                      fontSize: 12,
+                      fontWeight: 600,
                       color: '#fff',
+                      margin: 0,
+                      textAlign: 'left',
+                      display: '-webkit-box',
+                      WebkitLineClamp: 2,
+                      WebkitBoxOrient: 'vertical',
                       overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap',
-                    }}
-                  >
-                    {post.inputs?.text || 'Trend'}
-                  </span>
-                  <svg
-                    width="14"
-                    height="14"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2.2"
-                    style={{ color: 'rgba(255,255,255,0.28)', flexShrink: 0 }}
-                  >
-                    <path d="M9 18l6-6-6-6" />
-                  </svg>
+                      lineHeight: 1.2
+                    }}>
+                      {post.inputs?.text || 'Untitled'}
+                    </p>
+                  </div>
                 </button>
               )))}
           </div>

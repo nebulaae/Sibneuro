@@ -17,6 +17,8 @@ export interface Post {
   user_id: number;
   model_tech_name: string;
   version_label: string;
+  model_name?: string;
+  cost?: number;
   inputs: {
     text: string | null;
     hide_text: boolean;
@@ -28,12 +30,27 @@ export interface Post {
   params: Record<string, any>;
   result: {
     url?: string;
+    text?: string | null;
+    media?: Array<{
+      type: string;
+      input: string;
+      format: string;
+    }>;
     [key: string]: any;
   };
   priority: number;
   likes: number;
   created_at: string;
   updated_at: string;
+}
+
+export function getPostResultImage(post: Post): string | null {
+  if (post.result?.url) return post.result.url;
+  if (post.result?.media && post.result.media.length > 0) {
+    const first = post.result.media[0];
+    return first.input;
+  }
+  return null;
 }
 
 export interface GetPostsParams {

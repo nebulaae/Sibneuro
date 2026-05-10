@@ -22,6 +22,10 @@ import {
   Download,
   Pause,
   Play,
+  Clock,
+  Check,
+  CheckCheck,
+  Sparkles,
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { toast } from 'sonner';
@@ -53,6 +57,7 @@ interface Message {
   status: 'completed' | 'processing' | 'error' | 'pending';
   error?: string | null;
   cost?: number;
+  post_id?: number | null;
   created_at?: string;
 }
 
@@ -308,6 +313,7 @@ export default function ChatPage() {
     type: string;
   } | null>(null);
   const [publishingMessage, setPublishingMessage] = useState<Message | null>(null);
+  const [optimisticMessages, setOptimisticMessages] = useState<Message[]>([]);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -339,7 +345,11 @@ export default function ChatPage() {
   const generate = useGenerateAI();
   const upload = useUpload();
 
-  const msgs = (messages as Message[]) || [];
+  const msgsFromApi = (messages as Message[]) || [];
+  
+  // Combine API messages with optimistic ones
+  // We remove optimistic message if API message with same content/time appears or when API updates
+  const msgs = [...msgsFromApi, ...optimisticMessages];
 
   // ── Модель: история → sessionStorage → URL ──
   const {
@@ -407,10 +417,12 @@ export default function ChatPage() {
   /* ── Инвалидация баланса ── */
   const prevProcessingRef = useRef(false);
   useEffect(() => {
-    if (prevProcessingRef.current && !isProcessing && msgs.length > 0)
+    if (prevProcessingRef.current && !isProcessing && msgs.length > 0) {
       queryClient.invalidateQueries({ queryKey: queryKeys.user });
+      setOptimisticMessages([]); // Clear optimistic messages when generation finishes
+    }
     prevProcessingRef.current = isProcessing;
-  }, [isProcessing, queryClient]);
+  }, [isProcessing, queryClient, msgs.length]);
 
   /* ── Загрузка файла ── */
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -492,6 +504,21 @@ export default function ChatPage() {
     const inputs = convertMediaToInputs(safeText, oldFormatMedia);
 
     const sentText = text;
+    
+    // Add optimistic message
+    const optimisticMsg: Message = {
+      id: Date.now(),
+      model: techName,
+      version: version || '',
+      inputs: {
+        text: sentText || undefined,
+        media: oldFormatMedia.length > 0 ? oldFormatMedia as any : undefined
+      },
+      status: 'pending',
+      created_at: new Date().toISOString()
+    };
+    setOptimisticMessages(prev => [...prev, optimisticMsg]);
+
     setText('');
     setUploadedFiles([]);
 
@@ -518,6 +545,7 @@ export default function ChatPage() {
         },
         onError: () => {
           setText(sentText);
+          setOptimisticMessages([]);
         },
       }
     );
@@ -724,6 +752,18 @@ export default function ChatPage() {
                           ))}
                         </div>
                       )}
+                      
+                      {/* Status Indicators */}
+                      <div className="flex justify-end items-center gap-1 mt-1 opacity-60">
+                         <span className="text-[10px] font-medium">
+                           {msg.created_at ? new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
+                         </span>
+                         {msg.status === 'pending' || msg.status === 'processing' ? (
+                           <Clock size={10} className="animate-pulse" />
+                         ) : (
+                           <CheckCheck size={12} className="text-white" />
+                         )}
+                      </div>
                     </div>
                   </div>
                 )}
@@ -799,7 +839,7 @@ export default function ChatPage() {
                         )}
                         
                         {/* Publish Button */}
-                        {msg.status === 'completed' && extractResultMedia(msg.result).length > 0 && (
+                        {msg.status === 'completed' && extractResultMedia(msg.result).length > 0 && !msg.post_id && (
                           <button
                             onClick={() => {
                               haptic.light();
@@ -913,8 +953,8 @@ export default function ChatPage() {
                     className="w-full h-full object-cover"
                   />
                 ) : (
-                  <div className="w-full h-full bg-white/[.07] flex items-center justify-center text-[22px]">
-                    {f.type === 'video' ? '🎬' : '🎵'}
+                  <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.05)' }}>
+                     <Sparkles className='size-6 text-white/20 mx-auto' />
                   </div>
                 )}
                 <button

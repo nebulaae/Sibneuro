@@ -345,7 +345,8 @@
     "uploadHint": "JPEG, PNG, WebP up to 20 MB",
     "model": "Model",
     "prompt": "Prompt",
-    "back": "Back"
+    "back": "Back",
+    "done": "Done"
   },
   "Publish": {
     "title": "Publish to Trends",

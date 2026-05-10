@@ -8,7 +8,7 @@ import { useAIModels } from '@/hooks/useModels';
 import { useGenerateAI, convertMediaToInputs } from '@/hooks/useGenerations';
 import { useUpload, useUI } from '@/hooks/useApiExtras';
 import { useHaptic } from '@/hooks/useHaptic';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Loader2,
@@ -24,7 +24,8 @@ import {
   CheckCircle2
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { cn, localize } from '@/lib/utils';
+import { cn, localize, cleanModelName } from '@/lib/utils';
+import { getPostResultImage } from '@/hooks/usePosts';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import Image from 'next/image';
 
@@ -43,8 +44,8 @@ const spring =
 export const Trends = () => {
   const t = useTranslations('Trends');
   const router = useRouter();
-  const searchParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
-  const postParam = searchParams?.get('post');
+  const searchParams = useSearchParams();
+  const postParam = searchParams.get('post');
   const haptic = useHaptic();
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
 
@@ -55,6 +56,8 @@ export const Trends = () => {
     if (postParam && posts.length > 0) {
       const p = posts.find((x: Post) => x.id === parseInt(postParam));
       if (p) setSelectedPost(p);
+    } else if (!postParam) {
+      setSelectedPost(null);
     }
   }, [postParam, posts]);
 
@@ -92,9 +95,9 @@ export const Trends = () => {
               </p>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
               {postsLoading ? (
-                Array.from({ length: 6 }).map((_, i) => (
+                Array.from({ length: 12 }).map((_, i) => (
                   <div key={i} className={cn('aspect-3/4 rounded-2xl animate-pulse', glassThin)} />
                 ))
               ) : (
@@ -143,9 +146,9 @@ const TrendCard = ({ post, onClick }: { post: Post; onClick: () => void }) => {
         glassThin
       )}
     >
-      {post.result?.url ? (
+      {getPostResultImage(post) ? (
         <img
-          src={post.result.url}
+          src={getPostResultImage(post)!}
           alt=""
           className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
         />
@@ -166,7 +169,7 @@ const TrendCard = ({ post, onClick }: { post: Post; onClick: () => void }) => {
 
       <div className="absolute top-2 right-2">
         <div className={cn('flex items-center gap-1 px-2 py-0.5 rounded-full text-[12px] font-bold text-white', glassThick)}>
-          💎 {cost}
+          💎 {post.cost || 15}
         </div>
       </div>
 
@@ -190,6 +193,7 @@ const TrendDetail = ({ post, onBack }: { post: Post; onBack: () => void }) => {
   const router = useRouter();
 
   const [userMedia, setUserMedia] = useState<Record<number, { url: string; file?: File }>>({});
+  const [brokenImages, setBrokenImages] = useState<Record<number, boolean>>({});
   const [userText, setUserText] = useState<string>(post.inputs?.text || '');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [activeMediaIndex, setActiveMediaIndex] = useState<number | null>(null);
@@ -199,7 +203,7 @@ const TrendDetail = ({ post, onBack }: { post: Post; onBack: () => void }) => {
   // Find model and version to get the real cost
   const model = allModels?.find((m: any) => m.tech_name === post.model_tech_name);
   const version = model?.versions?.find((v: any) => v.label === post.version_label);
-  const cost = version?.cost ?? 15;
+  const cost = post.cost || version?.cost || 15;
   const canAfford = tokens >= cost;
 
   // Identify slots that can be replaced
@@ -234,8 +238,10 @@ const TrendDetail = ({ post, onBack }: { post: Post; onBack: () => void }) => {
     // Prepare inputs
     const finalMedia = mediaSlots.map((slot, index) => {
       const override = userMedia[index];
+      // Use slot.input.type if it was 'media' at top level
+      const realType = (slot.input?.type && slot.input.type !== 'media') ? slot.input.type : (slot.type === 'media' ? 'image' : slot.type);
       return {
-        type: slot.type || 'image',
+        type: realType || 'image',
         format: 'url',
         input: override ? override.url : slot.input?.input
       };
@@ -263,7 +269,7 @@ const TrendDetail = ({ post, onBack }: { post: Post; onBack: () => void }) => {
       initial={{ opacity: 0, x: 20 }}
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: -20 }}
-      className="flex flex-col min-h-screen"
+      className="flex flex-col min-h-screen max-w-2xl mx-auto w-full bg-black/20"
     >
       {/* Header */}
       <header className="sticky top-0 z-50 flex items-center gap-4 px-4 py-3 bg-black/50 backdrop-blur-xl border-b border-white/10">
@@ -272,7 +278,7 @@ const TrendDetail = ({ post, onBack }: { post: Post; onBack: () => void }) => {
         </button>
         <div className="flex-1 min-w-0">
           <h2 className="text-[17px] font-bold text-white truncate">
-            {post.inputs?.text || 'Trend'}
+             {t('title')}
           </h2>
         </div>
       </header>
@@ -280,42 +286,22 @@ const TrendDetail = ({ post, onBack }: { post: Post; onBack: () => void }) => {
       <div className="flex-1 overflow-y-auto px-5 py-6">
         {/* Main Preview */}
         <div className="relative aspect-3/4 rounded-3xl overflow-hidden mb-6 shadow-2xl border border-white/10">
-          {post.result?.url && (
-            <img src={post.result.url} alt="" className="w-full h-full object-cover" />
+          {getPostResultImage(post) && (
+            <img src={getPostResultImage(post)!} alt="" className="w-full h-full object-cover" />
           )}
           <div className="absolute inset-0 bg-linear-to-t from-black/60 via-transparent to-transparent" />
           <div className="absolute bottom-5 left-5 right-5">
              <div className="flex items-center gap-3">
-                <div className={cn("px-3 py-1.5 rounded-xl flex items-center gap-2", glassThick)}>
+                 <div className={cn("px-3 py-1.5 rounded-xl flex items-center gap-2", glassThick)}>
                    <span className="text-[12px] font-bold text-white/50">{t('model')}:</span>
-                   <span className="text-[13px] font-bold text-white">{post.model_tech_name}</span>
-                </div>
+                   <span className="text-[13px] font-bold text-white">{post.model_name || cleanModelName(post.model_tech_name)}</span>
+                 </div>
              </div>
           </div>
         </div>
 
         {/* Info & Replaceable Slots */}
         <div className="flex flex-col gap-6 mb-10">
-          <div className="flex flex-col gap-3">
-             <label className="text-[12px] font-bold uppercase tracking-wider text-white/40 px-1">
-               {t('prompt')}
-             </label>
-             {post.inputs?.hide_text ? (
-               <div className={cn("flex items-center gap-3 p-4 rounded-2xl", glassThin, "border-blue-500/20 bg-blue-500/5")}>
-                 <Lock className="size-4 text-blue-400" />
-                 <p className="text-[14px] text-blue-100/70">
-                   {t('promptHidden')}
-                 </p>
-               </div>
-             ) : (
-               <div className={cn("p-4 rounded-2xl", glassThin)}>
-                 <p className="text-[14px] text-white/90 leading-relaxed">
-                   {post.inputs?.text || 'No text prompt'}
-                 </p>
-               </div>
-             )}
-          </div>
-
           {/* Media Slots */}
           {mediaSlots.some(s => !(s.input?.reference?.hide && !s.input?.reference?.replace)) && (
             <div className="space-y-4">
@@ -371,9 +357,13 @@ const TrendDetail = ({ post, onBack }: { post: Post; onBack: () => void }) => {
                             </button>
                           )}
                         </>
-                      ) : !hide && originalUrl ? (
+                      ) : !hide && originalUrl && !brokenImages[index] ? (
                         <>
-                          <img src={originalUrl} className="absolute inset-0 w-full h-full object-cover opacity-60" />
+                          <img 
+                            src={originalUrl} 
+                            className="absolute inset-0 w-full h-full object-cover opacity-60" 
+                            onError={() => setBrokenImages(prev => ({ ...prev, [index]: true }))}
+                          />
                           {replace && (
                              <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover:bg-black/40 transition-colors">
                                 <div className={cn("p-2 rounded-xl", glassRegular)}>
@@ -398,6 +388,26 @@ const TrendDetail = ({ post, onBack }: { post: Post; onBack: () => void }) => {
               </div>
             </div>
           )}
+
+          <div className="flex flex-col gap-3">
+             <label className="text-[12px] font-bold uppercase tracking-wider text-white/40 px-1">
+                {t('prompt')}
+             </label>
+             {post.inputs?.hide_text ? (
+               <div className={cn("flex items-center gap-3 p-4 rounded-2xl", glassThin, "border-blue-500/20 bg-blue-500/5")}>
+                 <Lock className="size-4 text-blue-400" />
+                 <p className="text-[14px] text-blue-100/70">
+                   {t('promptHidden')}
+                 </p>
+               </div>
+             ) : (
+               <div className={cn("p-4 rounded-2xl", glassThin)}>
+                 <p className="text-[14px] text-white/90 leading-relaxed">
+                   {post.inputs?.text || 'No text prompt'}
+                 </p>
+               </div>
+             )}
+          </div>
         </div>
       </div>
 

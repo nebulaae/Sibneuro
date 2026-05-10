@@ -19,3 +19,8 @@ export function localize(v: any, lang = 'ru'): string {
   if (typeof v === 'string') return v;
   return v[lang] || v.en || v.ru || Object.values(v)[0] || '';
 }
+
+export function cleanModelName(name: string | null | undefined): string {
+  if (!name) return '';
+  return name.replace(/^sosana\//i, '');
+}
