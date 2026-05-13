@@ -15,6 +15,7 @@ export interface Post {
   id: number;
   bot_id: number;
   user_id: number;
+  name?: string;
   model_tech_name: string;
   version_label: string;
   model_name?: string;
@@ -44,13 +45,17 @@ export interface Post {
   updated_at: string;
 }
 
-export function getPostResultImage(post: Post): string | null {
-  if (post.result?.url) return post.result.url;
+export function getPostResultMedia(post: Post): { url: string; type: string } | null {
+  if (post.result?.url) return { url: post.result.url, type: 'image' }; // fallback
   if (post.result?.media && post.result.media.length > 0) {
     const first = post.result.media[0];
-    return first.input;
+    return { url: first.input, type: first.type || 'image' };
   }
   return null;
+}
+
+export function getPostResultImage(post: Post): string | null {
+  return getPostResultMedia(post)?.url || null;
 }
 
 export interface GetPostsParams {

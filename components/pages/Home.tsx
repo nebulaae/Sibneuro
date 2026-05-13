@@ -13,7 +13,7 @@ import { localize } from '@/lib/utils';
 import Image from 'next/image';
 import { ChevronRight, Music, NotebookPen, Paintbrush, Video, Zap, Sparkles } from 'lucide-react';
 import { cleanModelName } from '@/lib/utils';
-import { getPostResultImage } from '@/hooks/usePosts';
+import { getPostResultImage, getPostResultMedia } from '@/hooks/usePosts';
 
 /* ── Skeleton ── */
 const GlassSkeleton = ({
@@ -636,23 +636,45 @@ export const Home = () => {
                     e.currentTarget.style.border = '1px solid rgba(255,255,255,0.12)';
                   }}
                 >
-                  {getPostResultImage(post) ? (
-                    <img
-                      src={getPostResultImage(post)!}
-                      alt=""
-                      style={{
-                        position: 'absolute',
-                        inset: 0,
-                        width: '100%',
-                        height: '100%',
-                        objectFit: 'cover',
-                      }}
-                    />
-                  ) : (
-                    <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.05)' }}>
-                       <Sparkles className='size-6 text-white/20 mx-auto' />
-                    </div>
-                  )}
+                  {(() => {
+                    const media = getPostResultMedia(post);
+                    if (!media) return (
+                      <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.05)' }}>
+                         <Sparkles className='size-6 text-white/20 mx-auto' />
+                      </div>
+                    );
+                    if (media.type === 'video') {
+                      return (
+                        <video
+                          src={media.url}
+                          autoPlay
+                          muted
+                          loop
+                          playsInline
+                          style={{
+                            position: 'absolute',
+                            inset: 0,
+                            width: '100%',
+                            height: '100%',
+                            objectFit: 'cover',
+                          }}
+                        />
+                      );
+                    }
+                    return (
+                      <img
+                        src={media.url}
+                        alt=""
+                        style={{
+                          position: 'absolute',
+                          inset: 0,
+                          width: '100%',
+                          height: '100%',
+                          objectFit: 'cover',
+                        }}
+                      />
+                    );
+                  })()}
                   
                   {/* Cost badge */}
                   <div style={{
@@ -702,7 +724,7 @@ export const Home = () => {
                       overflow: 'hidden',
                       lineHeight: 1.2
                     }}>
-                      {post.inputs?.text || 'Untitled'}
+                      {post.name || post.inputs?.text || 'Untitled'}
                     </p>
                   </div>
                 </button>

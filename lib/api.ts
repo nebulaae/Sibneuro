@@ -27,7 +27,7 @@ function getUserId(): number | null {
       const parts = token.split('.');
       if (parts.length === 3) {
         const base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
-        const decoded = JSON.parse(atob(base64));
+        const decoded = JSON.parse(decodeURIComponent(escape(atob(base64))));
         const id = decoded?.user?.id ?? decoded?.id ?? decoded?.user_id ?? null;
         if (id) return id;
       }

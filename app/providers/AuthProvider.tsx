@@ -33,7 +33,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const parts = token.split('.');
         if (parts.length === 3) {
           const base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
-          const decoded = JSON.parse(atob(base64));
+          const decoded = JSON.parse(decodeURIComponent(escape(atob(base64))));
           const u = decoded?.user || decoded;
           if (u?.id || u?.user_id) {
             const userId = u.id ?? u.user_id;

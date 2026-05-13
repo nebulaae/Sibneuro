@@ -33,6 +33,7 @@ import { useHaptic } from '@/hooks/useHaptic';
 import { cn, localize } from '@/lib/utils';
 import { PublishDialog } from '@/components/dialogs/PublishDialog';
 import { Share2 } from 'lucide-react';
+import { getAppSource } from '@/lib/source';
 
 /* ── Types ── */
 interface MediaItem {
@@ -171,6 +172,23 @@ function extractResultMedia(result: Message['result']) {
 }
 
 const handleDownload = async (url: string, filename?: string) => {
+  const source = getAppSource();
+  
+  // Если это Telegram или Max — используем openLink
+  if (source === 'tg' || source === 'max') {
+    try {
+      const wa = (window as any)?.Telegram?.WebApp || (window as any)?.WebApp;
+      if (wa?.openLink) {
+        wa.openLink(url);
+        return;
+      }
+    } catch (e) {
+      console.error('WebApp.openLink failed:', e);
+    }
+    window.open(url, '_blank');
+    return;
+  }
+
   try {
     const response = await fetch(url);
     const blob = await response.blob();

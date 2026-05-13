@@ -25,7 +25,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn, localize, cleanModelName } from '@/lib/utils';
-import { getPostResultImage } from '@/hooks/usePosts';
+import { getPostResultImage, getPostResultMedia } from '@/hooks/usePosts';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import Image from 'next/image';
 
@@ -146,17 +146,33 @@ const TrendCard = ({ post, onClick }: { post: Post; onClick: () => void }) => {
         glassThin
       )}
     >
-      {getPostResultImage(post) ? (
-        <img
-          src={getPostResultImage(post)!}
-          alt=""
-          className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-        />
-      ) : (
-        <div className="absolute inset-0 flex items-center justify-center bg-white/5">
-          <Sparkles className="size-8 text-white/10" />
-        </div>
-      )}
+      {(() => {
+        const media = getPostResultMedia(post);
+        if (!media) return (
+          <div className="absolute inset-0 flex items-center justify-center bg-white/5">
+            <Sparkles className="size-8 text-white/10" />
+          </div>
+        );
+        if (media.type === 'video') {
+          return (
+            <video
+              src={media.url}
+              autoPlay
+              muted
+              loop
+              playsInline
+              className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+            />
+          );
+        }
+        return (
+          <img
+            src={media.url}
+            alt=""
+            className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+          />
+        );
+      })()}
 
       {/* Badges */}
       <div className="absolute top-2 left-2 flex flex-col gap-1">
@@ -176,7 +192,7 @@ const TrendCard = ({ post, onClick }: { post: Post; onClick: () => void }) => {
       {/* Footer */}
       <div className="absolute inset-x-0 bottom-0 p-3 bg-linear-to-t from-black/80 via-black/40 to-transparent">
         <p className="text-white text-[13px] font-semibold line-clamp-2 leading-snug">
-          {post.inputs?.text || 'Untitled Trend'}
+          {post.name || post.inputs?.text || 'Untitled Trend'}
         </p>
       </div>
     </motion.div>
@@ -286,9 +302,14 @@ const TrendDetail = ({ post, onBack }: { post: Post; onBack: () => void }) => {
       <div className="flex-1 overflow-y-auto px-5 py-6">
         {/* Main Preview */}
         <div className="relative aspect-3/4 rounded-3xl overflow-hidden mb-6 shadow-2xl border border-white/10">
-          {getPostResultImage(post) && (
-            <img src={getPostResultImage(post)!} alt="" className="w-full h-full object-cover" />
-          )}
+          {(() => {
+            const media = getPostResultMedia(post);
+            if (!media) return <div className="absolute inset-0 bg-white/5 flex items-center justify-center"><Sparkles className="size-10 text-white/10" /></div>;
+            if (media.type === 'video') {
+              return <video src={media.url} autoPlay muted loop playsInline className="w-full h-full object-cover" />;
+            }
+            return <img src={media.url} alt="" className="w-full h-full object-cover" />;
+          })()}
           <div className="absolute inset-0 bg-linear-to-t from-black/60 via-transparent to-transparent" />
           <div className="absolute bottom-5 left-5 right-5">
              <div className="flex items-center gap-3">
