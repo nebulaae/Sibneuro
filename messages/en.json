@@ -82,6 +82,7 @@
     "marqueeImage": "Image generation",
     "marqueeVideo": "Video from ideas",
     "marqueeMusic": "Music and audio",
+    "noTrends": "No trends yet",
     "cat": {
       "text": {
         "title": "Text",
@@ -168,7 +169,8 @@
     "catImageEmoji": "🖼️ Images",
     "catVideoEmoji": "🎬 Video",
     "catAudioEmoji": "🎵 Audio",
-    "catAll": "All models"
+    "catAll": "All models",
+    "aiAssistants": "AI Assistants"
   },
   "Generate": {
     "title": "Create",
@@ -288,10 +290,14 @@
   },
   "Profile": {
     "title": "Profile",
+    "tabProfile": "Overview",
+    "tabAccount": "Account",
+    "tabPartnership": "Partnership",
     "logout": "Sign out",
     "tokens": "Tokens",
     "topUp": "Top up →",
     "referrals": "Referrals",
+    "earnedLabel": "Earned",
     "earned": "{amount} 💎 earned",
     "referralLink": "Referral link",
     "shareLink": "Share the link — earn bonuses for every invited friend",
@@ -313,6 +319,10 @@
     "statusCompleted": "Done",
     "statusError": "Error",
     "statusProcessing": "Processing",
+    "premium": "Premium",
+    "premiumUntil": "until {date}",
+    "requestsShort": "{count} reqs",
+    "referralProgram": "Referral program",
     "subscription": "Subscription",
     "activeSubscription": "Active Subscription",
     "cancelSubscription": "Cancel Subscription",

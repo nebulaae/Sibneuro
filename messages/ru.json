@@ -31,6 +31,7 @@
     "modelNotAccept": "Модель не принимает {fileType}",
     "maxFiles": "Максимум {limit} файл(ов) типа {fileType}",
     "publishToTrends": "Опубликовать",
+    "dialogue": "\u0414\u0438\u0430\u043b\u043e\u0433",
     "viewer": "Просмотр",
     "error": "Ошибка",
     "model": "Модель",
@@ -82,6 +83,7 @@
     "marqueeImage": "Генерация изображений",
     "marqueeVideo": "Видео из идеи",
     "marqueeMusic": "Музыка и аудио",
+    "noTrends": "\u0422\u0440\u0435\u043d\u0434\u043e\u0432 \u043f\u043e\u043a\u0430 \u043d\u0435\u0442",
     "cat": {
       "text": {
         "title": "Текст",
@@ -168,7 +170,8 @@
     "catImageEmoji": "🖼️ Изображения",
     "catVideoEmoji": "🎬 Видео",
     "catAudioEmoji": "🎵 Аудио",
-    "catAll": "Все модели"
+    "catAll": "Все модели",
+    "aiAssistants": "AI \u0430\u0441\u0441\u0438\u0441\u0442\u0435\u043d\u0442\u044b"
   },
   "Generate": {
     "title": "Создать",
@@ -288,10 +291,14 @@
   },
   "Profile": {
     "title": "Профиль",
+    "tabProfile": "\u041e\u0431\u0437\u043e\u0440",
+    "tabAccount": "\u0410\u043a\u043a\u0430\u0443\u043d\u0442",
+    "tabPartnership": "\u041f\u0430\u0440\u0442\u043d\u0451\u0440\u0441\u0442\u0432\u043e",
     "logout": "Выйти",
     "tokens": "Токены",
     "topUp": "Пополнить →",
     "referrals": "Рефералы",
+    "earnedLabel": "\u0417\u0430\u0440\u0430\u0431\u043e\u0442\u0430\u043d\u043e",
     "earned": "{amount} 💎 заработано",
     "referralLink": "Реферальная ссылка",
     "shareLink": "Поделитесь ссылкой — получайте бонусы за каждого приглашённого друга",
@@ -314,6 +321,10 @@
     "statusError": "Ошибка",
     "topUpBalance": "Пополнить баланс",
     "statusProcessing": "Обработка",
+    "premium": "Premium",
+    "premiumUntil": "\u0434\u043e {date}",
+    "requestsShort": "{count} \u0437\u0430\u043f\u0440.",
+    "referralProgram": "\u0420\u0435\u0444\u0435\u0440\u0430\u043b\u044c\u043d\u0430\u044f \u043f\u0440\u043e\u0433\u0440\u0430\u043c\u043c\u0430",
     "support": "Поддержка",
     "subscription": "Подписка",
     "activeSubscription": "Активная подписка",
