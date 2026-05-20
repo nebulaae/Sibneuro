@@ -141,26 +141,21 @@ export const useLikePost = () => {
 };
 
 // GET /api/posts
-export const usePosts = (params?: {
-  userId?: number;
-  limit?: number;
-  offset?: number;
-  minLikes?: number;
-}) => {
+export const usePosts = (
+  params: {
+    bot_id?: number;
+    user_id?: number;
+    limit?: number;
+    offset?: number;
+    min_likes?: number;
+  } = {}
+) => {
   return useQuery({
-    queryKey: queryKeys.posts(params),
+    queryKey: ['posts', params],
     queryFn: async () => {
-      const { data } = await api.get('/api/posts', {
-        params: {
-          ...(params?.userId ? { user_id: params.userId } : {}),
-          limit: params?.limit ?? 20,
-          offset: params?.offset ?? 0,
-          ...(params?.minLikes != null ? { min_likes: params.minLikes } : {}),
-        },
-      });
-      return data.items || [];
+      const { data } = await api.get('/api/posts', { params });
+      return data;
     },
-    staleTime: 60_000,
   });
 };
 
@@ -168,21 +163,38 @@ export const usePosts = (params?: {
 export const usePublishPost = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (payload: {
-      model_tech_name: string;
-      endpoint_id: number;
-      version_label?: string;
-      inputs?: Record<string, any>;
-      params?: Record<string, any>;
-      provider_task_id?: string;
-      result?: Record<string, any>;
-    }) => {
+    mutationFn: async (payload: any) => {
       const { data } = await api.post('/api/posts/publish', payload);
-      if (!data.success) throw new Error(data.error);
-      return data as { success: true; id: number; post_id: number };
+      return data;
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['posts'] });
       queryClient.invalidateQueries({ queryKey: queryKeys.dashboard });
+    },
+  });
+};
+
+// GET /api/recurrent/get
+export const useRecurrentStatus = () => {
+  return useQuery({
+    queryKey: ['recurrent-status'],
+    queryFn: async () => {
+      const { data } = await api.get('/api/recurrent/get');
+      return data as { recurrent: boolean };
+    },
+  });
+};
+
+// POST /api/recurrent/cancel
+export const useCancelRecurrent = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      const { data } = await api.post('/api/recurrent/cancel');
+      return data as { ok: boolean };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['recurrent-status'] });
     },
   });
 };
@@ -440,31 +452,6 @@ export const useSetChatTitle = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.chats });
-    },
-  });
-};
-
-// GET /api/recurrent/get
-export const useRecurrentStatus = () => {
-  return useQuery({
-    queryKey: ['recurrent-status'],
-    queryFn: async () => {
-      const { data } = await api.get('/api/recurrent/get');
-      return data as { recurrent: boolean };
-    },
-  });
-};
-
-// POST /api/recurrent/cancel
-export const useCancelRecurrent = () => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async () => {
-      const { data } = await api.post('/api/recurrent/cancel');
-      return data as { ok: boolean };
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['recurrent-status'] });
     },
   });
 };

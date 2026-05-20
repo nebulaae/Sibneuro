@@ -5,7 +5,6 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useAIModels, useModelParams } from '@/hooks/useModels';
 import { convertMediaToInputs, useGenerateAI } from '@/hooks/useGenerations';
 import { useUpload } from '@/hooks/useApiExtras';
-import { useTranslations, useLocale } from 'next-intl';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   Loader2,
@@ -17,17 +16,21 @@ import {
   Settings2,
   ChevronDown,
   Sparkles,
-  Film,
-  Image as ImageIcon,
+  ChevronRight,
+  Zap,
+  CheckCircle2,
+  Lock,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import api from '@/lib/api';
 import { useHaptic } from '@/hooks/useHaptic';
 import { cn } from '@/lib/utils';
+import { useLocale, useTranslations } from 'next-intl';
 import { getParamLabel, getParamValueLabel } from '@/lib/paramHelpers';
 
-/* ── Polling ── */
+const ACCENT_BLUE = 'oklch(71.5% 0.143 215.221)';
+
 function useGenerationStatus(dialogueId: string | null, enabled: boolean) {
   return useQuery({
     queryKey: ['gen-status', dialogueId],
@@ -43,300 +46,13 @@ function useGenerationStatus(dialogueId: string | null, enabled: boolean) {
   });
 }
 
-/* ── Is Kling Motion version ── */
-const isKlingMotion = (version?: string | null) =>
-  !!version && version.toLowerCase().includes('motion');
-
-/* ── Glass classes ── */
-const glassThin =
-  'bg-white/[.07] dark:bg-black/[.45] backdrop-blur-xl backdrop-saturate-150 border border-white/[.14] shadow-[inset_0_1px_0_rgba(255,255,255,0.15)]';
-const glassRegular =
-  'bg-white/[.10] dark:bg-black/[.55] backdrop-blur-2xl backdrop-saturate-180 border border-white/[.18] shadow-[inset_0_1px_0_rgba(255,255,255,0.20),0_4px_16px_rgba(0,0,0,0.22)]';
-const glassThick =
-  'bg-white/[.13] dark:bg-black/[.65] backdrop-blur-3xl backdrop-saturate-200 border border-white/[.22] shadow-[inset_0_1px_0_rgba(255,255,255,0.25),0_8px_32px_rgba(0,0,0,0.28)]';
-const glassBlue =
-  'bg-[rgba(0,122,255,0.85)] backdrop-blur-xl border border-[rgba(0,122,255,0.30)] shadow-[inset_0_1px_0_rgba(255,255,255,0.35),0_6px_24px_rgba(0,122,255,0.38)]';
-const spring =
-  'transition-all duration-[280ms] [transition-timing-function:cubic-bezier(0.32,0.72,0,1)]';
-
-const SectionLabel = ({ children }: { children: React.ReactNode }) => (
-  <p className="text-[11px] font-bold tracking-[0.6px] uppercase text-white/50 mb-2.5">
-    {children}
-  </p>
-);
-
-const PillBtn = ({
-  active,
-  onClick,
-  children,
-}: {
-  active: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
-}) => {
-  const haptic = useHaptic();
-  return (
-    <button
-      onClick={() => {
-        haptic.selection();
-        onClick();
-      }}
-      className={cn(
-        'px-[14px] py-1.5 rounded-full text-[14px] font-semibold cursor-pointer flex-shrink-0',
-        spring,
-        'active:scale-[0.92]',
-        active ? glassBlue + ' text-white' : glassThin + ' text-white/50'
-      )}
-    >
-      {children}
-    </button>
-  );
-};
-
-const ModelRow = ({ m, onClick }: { m: any; onClick: () => void }) => {
-  const t = useTranslations('Generate');
-  const haptic = useHaptic();
-  const cost =
-    m.versions?.find((v: any) => v.default)?.cost ?? m.versions?.[0]?.cost ?? 1;
-  const avatarUrl =
-    m.avatar ||
-    `https://ui-avatars.com/api/?name=${encodeURIComponent(m.model_name)}&background=1c1c1c&color=fff&size=128`;
-  return (
-    <button
-      onClick={() => {
-        haptic.light();
-        onClick();
-      }}
-      className={cn(
-        'flex items-center gap-[14px] px-5 py-[13px] w-full text-left',
-        'bg-transparent border-none border-b border-white/[.06] cursor-pointer',
-        spring,
-        'hover:bg-white/[.04] active:bg-white/[.07] active:scale-[0.985]'
-      )}
-    >
-      <div className="w-[46px] h-[46px] rounded-[14px] overflow-hidden flex-shrink-0 border border-white/[.14] shadow-[inset_0_1px_0_rgba(255,255,255,0.15)]">
-        <Avatar className="size-full">
-          <AvatarImage src={avatarUrl} />
-          <AvatarFallback className="text-[14px] font-bold bg-white/[.10] text-white">
-            {m.model_name.slice(0, 2)}
-          </AvatarFallback>
-        </Avatar>
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-[16px] font-semibold text-white truncate tracking-[-0.2px]">
-          {m.model_name}
-        </p>
-        <p className="text-[13px] text-white/40 mt-0.5">
-          {m.versions?.length > 1
-            ? t('versions', { count: m.versions.length })
-            : m.versions?.[0]?.label || ''}
-        </p>
-      </div>
-      <div
-        className={cn(
-          'inline-flex items-center gap-1 px-[10px] py-[3px] rounded-full text-[12px] font-semibold text-white/50 flex-shrink-0',
-          glassThin
-        )}
-      >
-        💎 {cost}
-      </div>
-    </button>
-  );
-};
-
-/* ── Kling Motion dual upload ── */
-interface KlingMotionUploadProps {
-  photoUrl: string | null;
-  videoUrl: string | null;
-  photoFile: File | null;
-  videoFile: File | null;
-  onPhotoChange: (url: string, file: File) => void;
-  onVideoChange: (url: string, file: File) => void;
-  onPhotoClear: () => void;
-  onVideoClear: () => void;
-  isUploading: boolean;
-}
-
-const KlingMotionUpload = ({
-  photoUrl,
-  videoUrl,
-  photoFile,
-  videoFile,
-  onPhotoChange,
-  onVideoChange,
-  onPhotoClear,
-  onVideoClear,
-  isUploading,
-}: KlingMotionUploadProps) => {
-  const t = useTranslations('Generate');
-  const photoRef = useRef<HTMLInputElement>(null);
-  const videoRef = useRef<HTMLInputElement>(null);
-  const upload = useUpload();
-
-  const handlePhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const f = e.target.files?.[0];
-    if (!f) return;
-    try {
-      const r = await upload.mutateAsync(f);
-      onPhotoChange(r.url, f);
-    } catch {
-      toast.error(t('photoUploadError'));
-    }
-    if (photoRef.current) photoRef.current.value = '';
-  };
-  const handleVideo = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const f = e.target.files?.[0];
-    if (!f) return;
-    try {
-      const r = await upload.mutateAsync(f);
-      onVideoChange(r.url, f);
-    } catch {
-      toast.error(t('videoUploadError'));
-    }
-    if (videoRef.current) videoRef.current.value = '';
-  };
-
-  const SlotCard = ({
-    type,
-    url,
-    file,
-    onClear,
-    inputRef,
-    onChange,
-    accept,
-  }: {
-    type: 'image' | 'video';
-    url: string | null;
-    file: File | null;
-    onClear: () => void;
-    inputRef: React.RefObject<HTMLInputElement | null>;
-    onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-    accept: string;
-  }) => {
-    const isImg = type === 'image';
-    const t = useTranslations('Generate');
-    const previewSrc = file ? URL.createObjectURL(file) : url;
-    return (
-      <div
-        className={cn(
-          'flex-1 relative rounded-2xl overflow-hidden',
-          glassThin,
-          'min-h-[140px] flex flex-col items-center justify-center gap-2 cursor-pointer',
-          'transition-all duration-240 active:scale-[0.97]',
-          !url && 'hover:bg-white/[.11]'
-        )}
-        onClick={() => !url && inputRef.current?.click()}
-      >
-        <input
-          ref={inputRef!}
-          type="file"
-          accept={accept}
-          onChange={onChange}
-          className="hidden"
-        />
-
-        {url && previewSrc ? (
-          <>
-            {isImg ? (
-              <img
-                src={previewSrc}
-                alt=""
-                className="absolute inset-0 w-full h-full object-cover"
-              />
-            ) : (
-              <video
-                src={previewSrc}
-                className="absolute inset-0 w-full h-full object-cover"
-                muted
-              />
-            )}
-            {/* Overlay */}
-            <div className="absolute inset-0 bg-black/20" />
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onClear();
-              }}
-              className="absolute top-2 right-2 w-6 h-6 rounded-full bg-black/60 backdrop-blur flex items-center justify-center border-none cursor-pointer z-10"
-            >
-              <X size={11} className="text-white" />
-            </button>
-            <div className="absolute bottom-2 left-3 z-10">
-              <span className="text-[11px] font-semibold text-white/70 bg-black/40 backdrop-blur px-2 py-0.5 rounded-full">
-                {isImg ? t('photoLabel') : t('videoLabel')}
-              </span>
-            </div>
-          </>
-        ) : (
-          <>
-            <div
-              className={cn(
-                'w-10 h-10 rounded-xl flex items-center justify-center',
-                glassRegular
-              )}
-            >
-              {isImg ? (
-                <ImageIcon size={18} className="text-white/60" />
-              ) : (
-                <Film size={18} className="text-white/60" />
-              )}
-            </div>
-            <p className="text-[13px] font-semibold text-white/60">
-              {isImg ? t('addPhoto') : t('addVideo')}
-            </p>
-            <p className="text-[11px] text-white/30">
-              {isImg ? t('sourceFrame') : t('motionReference')}
-            </p>
-          </>
-        )}
-      </div>
-    );
-  };
-
-  return (
-    <div>
-      <SectionLabel>{t('klingMotionTitle')}</SectionLabel>
-      <p className="text-[12px] text-white/35 mb-3 leading-[1.5]">
-        {t('klingMotionDesc')}
-      </p>
-      <div className="flex gap-3">
-        <SlotCard
-          type="image"
-          url={photoUrl}
-          file={photoFile}
-          onClear={onPhotoClear}
-          inputRef={photoRef}
-          onChange={handlePhoto}
-          accept="image/*,.heic"
-        />
-        <SlotCard
-          type="video"
-          url={videoUrl}
-          file={videoFile}
-          onClear={onVideoClear}
-          inputRef={videoRef}
-          onChange={handleVideo}
-          accept="video/*"
-        />
-      </div>
-      {isUploading && (
-        <div className="flex items-center gap-2 mt-2 text-[12px] text-white/40">
-          <Loader2 size={11} className="animate-spin" /> {t('loading')}
-        </div>
-      )}
-    </div>
-  );
-};
-
-/* ── Main ── */
 export const Generate = () => {
-  const t = useTranslations('Generate');
-  const locale = useLocale();
   const router = useRouter();
+  const locale = useLocale();
   const searchParams = useSearchParams();
   const modelParam = searchParams.get('model');
   const haptic = useHaptic();
-  const queryClient = useQueryClient();
+  const t = useTranslations('Generate');
 
   const [selectedTech, setSelectedTech] = useState<string | null>(modelParam);
   const [selectedVersion, setSelectedVersion] = useState<string | null>(null);
@@ -348,48 +64,30 @@ export const Generate = () => {
   const [showParams, setShowParams] = useState(false);
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [isWaiting, setIsWaiting] = useState(false);
-
-  // Kling Motion specific
-  const [motionPhoto, setMotionPhoto] = useState<{
-    url: string;
-    file: File;
-  } | null>(null);
-  const [motionVideo, setMotionVideo] = useState<{
-    url: string;
-    file: File;
-  } | null>(null);
-
   const fileInputRef = useRef<HTMLInputElement>(null);
+
   const { data: allModels, isLoading } = useAIModels();
   const generate = useGenerateAI();
   const upload = useUpload();
-
   const models = allModels || [];
   const selected = models.find((m) => m.tech_name === selectedTech);
   const currentVersion =
     selectedVersion ||
     selected?.versions?.find((v) => v.default)?.label ||
     selected?.versions?.[0]?.label;
-
-  const motionMode = isKlingMotion(currentVersion);
-
   const { data: params } = useModelParams(selectedTech, currentVersion);
   const { data: lastMessage } = useGenerationStatus(pendingId, isWaiting);
 
   useEffect(() => {
     if (modelParam) setSelectedTech(modelParam);
   }, [modelParam]);
-
   useEffect(() => {
     if (selected) {
       const def =
         selected.versions?.find((v) => v.default) || selected.versions?.[0];
       setSelectedVersion(def?.label || null);
-      setMotionPhoto(null);
-      setMotionVideo(null);
     }
   }, [selected?.tech_name]);
-
   useEffect(() => {
     if (!params) return;
     const defaults: Record<string, any> = {};
@@ -402,12 +100,11 @@ export const Generate = () => {
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files?.length) return;
-    const file = files[0];
     try {
-      const uploaded = await upload.mutateAsync(file);
+      const uploaded = await upload.mutateAsync(files[0]);
       setMedia((prev) => [
         ...prev,
-        { type: uploaded.type, url: uploaded.url, file },
+        { type: uploaded.type, url: uploaded.url, file: files[0] },
       ]);
     } catch {
       toast.error(t('uploadError'));
@@ -426,36 +123,17 @@ export const Generate = () => {
       );
       return;
     }
-
-    // Kling Motion validation
-    if (motionMode) {
-      if (!motionPhoto || !motionVideo) {
-        toast.error(t('klingMotionError'));
-        return;
-      }
-    } else if (!prompt.trim() && media.length === 0) {
+    if (!prompt.trim() && media.length === 0) {
       toast.error(t('enterDescription'));
       return;
     }
-
     haptic.medium();
-
-    let inputs: any;
-    if (motionMode && motionPhoto && motionVideo) {
-      const motionMedia = [
-        { type: 'image', format: 'url', input: motionPhoto.url },
-        { type: 'video', format: 'url', input: motionVideo.url },
-      ];
-      inputs = convertMediaToInputs(prompt.trim() || ' ', motionMedia);
-    } else {
-      const oldFormatMedia = media.map((m) => ({
-        type: m.type,
-        format: 'url',
-        input: m.url,
-      }));
-      inputs = convertMediaToInputs(prompt.trim() || ' ', oldFormatMedia);
-    }
-
+    const oldFormatMedia = media.map((m) => ({
+      type: m.type,
+      format: 'url',
+      input: m.url,
+    }));
+    const inputs = convertMediaToInputs(prompt.trim() || ' ', oldFormatMedia);
     generate.mutate(
       {
         tech_name: selected.tech_name,
@@ -476,7 +154,7 @@ export const Generate = () => {
                   role_id: null,
                 })
               );
-            } catch {}
+            } catch { }
           }
           if (data.status === 'processing') {
             toast(t('generationStarted'));
@@ -486,8 +164,6 @@ export const Generate = () => {
             haptic.success();
             toast.success(t('done'));
             router.push(`/chats/${dialogueId}`);
-          } else {
-            toast.success(t('generationComplete'));
           }
         },
       }
@@ -499,7 +175,7 @@ export const Generate = () => {
     if (lastMessage.status === 'completed') {
       haptic.success();
       setIsWaiting(false);
-      toast.success(t('generationComplete'));
+      toast.success(t('done'));
       if (pendingId) router.push(`/chats/${pendingId}`);
       setPendingId(null);
     } else if (lastMessage.status === 'error') {
@@ -510,36 +186,30 @@ export const Generate = () => {
       );
       setPendingId(null);
     }
-  }, [lastMessage, isWaiting, pendingId, haptic, router]);
+  }, [lastMessage, isWaiting, pendingId, t, router]);
 
-  /* ── Waiting screen ── */
   if (isWaiting && pendingId) {
     const status = lastMessage?.status;
     return (
-      <div className="flex flex-col items-center justify-center min-h-[100svh] gap-7 px-5 text-center">
-        <div
-          className={cn(
-            'w-10 h-10 rounded-[14px] flex items-center justify-center',
-            glassThick
-          )}
-        >
+      <div className="flex flex-col items-center justify-center min-h-svh gap-8 px-6 text-center">
+        <div className="w-24 h-24 rounded-[40px] flex items-center justify-center bg-zinc-900 border border-white/10 shadow-[0_0_50px_rgba(0,0,0,0.5)]">
           {status === 'completed' ? (
-            <CheckCircle size={16} className="text-[#34C759]" />
+            <CheckCircle2 size={36} className="text-cyan-500" />
           ) : status === 'error' ? (
-            <AlertCircle size={16} className="text-[#FF3B30]" />
+            <AlertCircle size={36} className="text-red-500" />
           ) : (
-            <Loader2 size={16} className="animate-spin text-white/50" />
+            <Loader2 size={36} className="animate-spin text-cyan-500" />
           )}
         </div>
-        <div className="flex flex-col gap-1.5">
-          <p className="text-[24px] font-bold tracking-[-0.4px]">
+        <div className="flex flex-col gap-3">
+          <p className="text-[24px] font-black tracking-tight text-white">
             {status === 'completed'
-              ? t('doneTitle')
+              ? t('done')
               : status === 'error'
                 ? t('errorTitle')
                 : t('waitingTitle')}
           </p>
-          <p className="text-[14px] text-white/50 max-w-[280px] leading-[1.5]">
+          <p className="text-[15px] font-medium text-white/30 max-w-[280px] leading-relaxed">
             {status === 'completed'
               ? t('doneSubtitle')
               : status === 'error'
@@ -547,31 +217,19 @@ export const Generate = () => {
                 : t('waitingSubtitle')}
           </p>
         </div>
-        <div className="flex gap-1.5">
-          {[0, 1, 2].map((i) => (
-            <div
-              key={i}
-              style={{ animationDelay: `${i * 0.2}s` }}
-              className="w-1.5 h-1.5 rounded-full bg-white/30 animate-[pulse-dot_1.4s_ease-in-out_infinite]"
-            />
-          ))}
-        </div>
         <button
           onClick={() => {
             setIsWaiting(false);
-            setPendingId(null);
             router.push(`/chats/${pendingId}`);
           }}
-          className="text-[14px] text-white/50 bg-none border-none cursor-pointer underline underline-offset-4"
+          className="px-8 py-3 rounded-full bg-white/5 border border-white/10 text-[13px] font-black text-white/40 hover:text-white transition-all"
         >
           {t('goToChat')}
         </button>
-        <style>{`@keyframes pulse-dot{0%,80%,100%{transform:scale(.6);opacity:.4}40%{transform:scale(1);opacity:1}}`}</style>
       </div>
     );
   }
 
-  /* ── Detail view ── */
   if (selected) {
     const cost =
       selected.versions?.find((v) => v.label === currentVersion)?.cost ??
@@ -586,435 +244,268 @@ export const Generate = () => {
       (p: any) => p.name === 'aspect_ratio'
     );
 
-    // Generate button disabled state
-    const generateDisabled =
-      generate.isPending ||
-      upload.isPending ||
-      (motionMode
-        ? !motionPhoto || !motionVideo
-        : !isTextModel && !prompt.trim() && media.length === 0);
-
     return (
-      <div className="flex flex-col min-h-[100svh] pb-[calc(80px+max(16px,env(safe-area-inset-bottom)))] overflow-x-hidden">
-        {/* Header */}
-        <header
-          className={cn(
-            'sticky top-0 z-40',
-            'bg-white/[.04] dark:bg-black/[.35] backdrop-blur-2xl backdrop-saturate-150',
-            'border-b border-white/[.10]',
-            'shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]'
-          )}
-        >
-          <div className="flex items-center justify-between px-4 py-3">
-            <button
-              onClick={() => {
-                haptic.light();
-                setSelectedTech(null);
-                setPrompt('');
-                setMedia([]);
-                setExtraParams({});
-                setShowParams(false);
-                setMotionPhoto(null);
-                setMotionVideo(null);
-              }}
-              className={cn(
-                'flex items-center gap-1 text-[16px] font-medium text-[#0A84FF] bg-none border-none cursor-pointer px-2 py-1 rounded-lg',
-                spring,
-                'active:scale-[0.92]'
-              )}
-            >
-              <ChevronLeft size={18} /> {t('back')}
-            </button>
-            <div className="flex items-center gap-2">
-              <div
-                className={cn(
-                  'w-[26px] h-[26px] rounded-lg overflow-hidden',
-                  glassThin
-                )}
-              >
-                <Avatar className="size-full">
-                  <AvatarImage src={selected.avatar} />
-                  <AvatarFallback className="text-[9px] font-bold">
-                    {selected.model_name.slice(0, 2)}
-                  </AvatarFallback>
-                </Avatar>
-              </div>
-              <span className="text-[16px] font-semibold tracking-[-0.2px]">
-                {selected.model_name}
-              </span>
+      <div className="flex flex-col min-h-svh pb-32">
+        <header className="sticky top-0 z-50 px-5 py-4 flex items-center justify-between">
+          <button
+            onClick={() => {
+              haptic.light();
+              setSelectedTech(null);
+            }}
+            className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-cyan-500 active:scale-90 transition-all"
+          >
+            <ChevronLeft size={20} />
+          </button>
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-xl overflow-hidden border border-white/10">
+              <Avatar className="size-full">
+                <AvatarImage src={selected.avatar} />
+                <AvatarFallback>{selected.model_name[0]}</AvatarFallback>
+              </Avatar>
             </div>
-            <div
-              className={cn(
-                'inline-flex items-center gap-1 px-[10px] py-1 rounded-full text-[12px] font-semibold text-white/50',
-                glassThin
-              )}
-            >
-              💎 {cost}
-            </div>
+            <span className="text-[16px] font-black tracking-tight">
+              {selected.model_name}
+            </span>
+          </div>
+          <div className="px-3 py-1 rounded-full bg-cyan-900/10 border border-cyan-500/20 text-[13px] font-black text-cyan-500">
+            ◈ {cost}
           </div>
         </header>
 
-        <div className="flex-1 overflow-y-auto">
-          <div className="max-w-[760px] mx-auto flex flex-col gap-5 px-5 py-5">
-            {/* Versions */}
-            {selected.versions && selected.versions.length > 1 && (
-              <div>
-                <SectionLabel>{t('version')}</SectionLabel>
-                <div className="flex flex-wrap gap-2">
-                  {selected.versions.map((v) => (
-                    <PillBtn
-                      key={v.label}
-                      active={currentVersion === v.label}
-                      onClick={() => {
-                        setSelectedVersion(v.label);
-                        setMotionPhoto(null);
-                        setMotionVideo(null);
-                      }}
-                    >
-                      {v.label} <span className="opacity-60">· {v.cost}💎</span>
-                    </PillBtn>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Kling Motion hint badge */}
-            {motionMode && (
-              <div
-                className={cn(
-                  'flex items-center gap-2.5 px-4 py-3 rounded-2xl',
-                  glassThin,
-                  'border-[rgba(0,122,255,0.25)] bg-[rgba(0,122,255,0.10)]'
-                )}
-              >
-                <Film size={16} className="text-[#4FC3F7] shrink-0" />
-                <div>
-                  <p className="text-[13px] font-semibold text-white/80">
-                    Kling Motion
-                  </p>
-                  <p className="text-[12px] text-white/45 mt-0.5">
-                    {t('klingMotionHint')}
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {/* Prompt */}
-            {!isTextModel && (
-              <div>
-                <SectionLabel>{t('prompt')}</SectionLabel>
-                <textarea
-                  value={prompt}
-                  onChange={(e) => setPrompt(e.target.value)}
-                  placeholder={
-                    motionMode ? t('promptOptionalMotion') : t('placeholder')
-                  }
-                  rows={4}
-                  className={cn(
-                    'w-full resize-none outline-none px-4 py-[14px] rounded-2xl',
-                    glassRegular,
-                    'text-[16px] leading-[1.55] text-white placeholder:text-white/30',
-                    'box-border font-[var(--font-sf)]',
-                    spring,
-                    'focus:border-[rgba(0,122,255,0.40)] focus:shadow-[inset_0_1px_0_rgba(255,255,255,0.20),0_0_0_3px_rgba(0,122,255,0.12)]'
-                  )}
-                  style={{ fontSize: 16 }}
-                />
-              </div>
-            )}
-
-            {/* Aspect ratio */}
-            {aspectParam && (
-              <div>
-                <SectionLabel>{t('aspectRatio')}</SectionLabel>
-                <div className="flex flex-wrap gap-2">
-                  {aspectParam.values?.map((val: string) => (
-                    <PillBtn
-                      key={val}
-                      active={
-                        (extraParams.aspect_ratio ?? aspectParam.default) ===
-                        val
-                      }
-                      onClick={() =>
-                        setExtraParams((p) => ({ ...p, aspect_ratio: val }))
-                      }
-                    >
-                      {val}
-                    </PillBtn>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Advanced params */}
-            {params &&
-              params.filter((p: any) => p.name !== 'aspect_ratio').length >
-                0 && (
-                <div>
+        <div className="flex-1 overflow-y-auto px-6 py-8 flex flex-col gap-10">
+          {selected.versions && selected.versions.length > 1 && (
+            <div className="flex flex-col gap-4">
+              <h3 className="text-[13px] font-black uppercase tracking-widest text-white/30 px-2">
+                {t('version')}
+              </h3>
+              <div className="flex flex-wrap gap-2">
+                {selected.versions.map((v) => (
                   <button
+                    key={v.label}
                     onClick={() => {
                       haptic.selection();
-                      setShowParams(!showParams);
+                      setSelectedVersion(v.label);
                     }}
-                    className="flex items-center gap-1.5 text-[14px] text-white/50 bg-none border-none cursor-pointer py-1.5"
+                    className={cn(
+                      'px-5 py-2.5 rounded-full text-[14px] font-black transition-all',
+                      currentVersion === v.label
+                        ? 'bg-cyan-900/10 border border-cyan-500/20 text-[13px] font-black text-cyan-500 shadow-[0_0_20px_rgba(0,122,255,0.3)]'
+                        : 'bg-white/5 text-white/40 border border-white/5'
+                    )}
                   >
-                    <Settings2 size={14} /> {t('advancedParams')}
-                    <ChevronDown
-                      size={14}
-                      className={cn(
-                        'transition-transform duration-[280ms]',
-                        showParams && 'rotate-180'
-                      )}
-                    />
+                    {v.label}{' '}
+                    <span className="opacity-40 ml-1">◈ {v.cost}</span>
                   </button>
-                  {showParams && (
-                    <div className="mt-[14px] flex flex-col gap-[14px]">
-                      {params
-                        .filter((p: any) => p.name !== 'aspect_ratio')
-                        .map((p: any) => (
-                          <div key={p.name}>
-                            <label className="block text-[12px] text-white/50 mb-1.5">
-                              {getParamLabel(p.name, locale)}
-                            </label>
-                            {p.type === 'select' && p.values ? (
-                              <div className="flex flex-wrap gap-1.5">
-                                {p.values.map((val: string) => (
-                                  <PillBtn
-                                    key={val}
-                                    active={
-                                      (extraParams[p.name] ?? p.default) === val
-                                    }
-                                    onClick={() =>
-                                      setExtraParams((prev) => ({
-                                        ...prev,
-                                        [p.name]: val,
-                                      }))
-                                    }
-                                  >
-                                    {getParamValueLabel(p.name, val, locale)}
-                                  </PillBtn>
-                                ))}
-                              </div>
-                            ) : (
-                              <input
-                                type={p.type === 'number' ? 'number' : 'text'}
-                                value={extraParams[p.name] ?? p.default ?? ''}
-                                min={p.min}
-                                max={p.max}
-                                onChange={(e) =>
-                                  setExtraParams((prev) => ({
-                                    ...prev,
-                                    [p.name]:
-                                      p.type === 'number'
-                                        ? Number(e.target.value)
-                                        : e.target.value,
-                                  }))
-                                }
-                                className={cn(
-                                  'w-full box-border px-[14px] py-[10px] rounded-xl text-[14px] outline-none text-white',
-                                  glassThin
-                                )}
-                              />
-                            )}
-                          </div>
-                        ))}
-                    </div>
-                  )}
-                </div>
-              )}
+                ))}
+              </div>
+            </div>
+          )}
 
-            {/* Kling Motion dual upload OR regular media */}
-            {!isTextModel &&
-              (motionMode ? (
-                <KlingMotionUpload
-                  photoUrl={motionPhoto?.url ?? null}
-                  videoUrl={motionVideo?.url ?? null}
-                  photoFile={motionPhoto?.file ?? null}
-                  videoFile={motionVideo?.file ?? null}
-                  onPhotoChange={(url, file) => setMotionPhoto({ url, file })}
-                  onVideoChange={(url, file) => setMotionVideo({ url, file })}
-                  onPhotoClear={() => setMotionPhoto(null)}
-                  onVideoClear={() => setMotionVideo(null)}
-                  isUploading={upload.isPending}
-                />
-              ) : canAttach ? (
-                <div>
-                  <div className="flex items-center justify-between mb-2.5">
-                    <SectionLabel>{t('media')}</SectionLabel>
+          {!isTextModel && (
+            <div className="flex flex-col gap-4">
+              <h3 className="text-[13px] font-black uppercase tracking-widest text-white/30 px-2">
+                {t('prompt')}
+              </h3>
+              <textarea
+                value={prompt}
+                onChange={(e) => setPrompt(e.target.value)}
+                placeholder={t('placeholder')}
+                className="w-full h-40 bg-zinc-900/40 border border-white/5 rounded-[32px] p-6 text-[17px] font-medium placeholder:text-white/20 outline-none focus:border-cyan-500/30 transition-all resize-none"
+              />
+            </div>
+          )}
+
+          {aspectParam && (
+            <div className="flex flex-col gap-4">
+              <h3 className="text-[13px] font-black uppercase tracking-widest text-white/30 px-2">
+                {t('aspectRatio')}
+              </h3>
+              <div className="grid grid-cols-4 gap-2">
+                {aspectParam.values?.map((val: string) => (
+                  <button
+                    key={val}
+                    onClick={() =>
+                      setExtraParams((p) => ({ ...p, aspect_ratio: val }))
+                    }
+                    className={cn(
+                      'py-3 rounded-2xl font-black text-[13px] transition-all border',
+                      (extraParams.aspect_ratio ?? aspectParam.default) === val
+                        ? 'bg-white text-black border-white'
+                        : 'bg-zinc-900/60 text-white/30 border-white/5'
+                    )}
+                  >
+                    {val}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {canAttach && !isTextModel && (
+            <div className="flex flex-col gap-4">
+              <div className="flex justify-between items-center px-2">
+                <h3 className="text-[13px] font-black uppercase tracking-widest text-white/30">
+                  {t('media')}
+                </h3>
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  className="text-[13px] font-black text-cyan-500 flex items-center gap-1.5"
+                >
+                  <ImagePlus size={14} /> {t('attach')}
+                </button>
+              </div>
+              <div className="flex flex-wrap gap-3">
+                {media.map((m, i) => (
+                  <div
+                    key={i}
+                    className="relative w-20 h-20 rounded-2xl overflow-hidden border border-white/10 group shadow-xl"
+                  >
+                    {m.type === 'image' ? (
+                      <img
+                        src={m.file ? URL.createObjectURL(m.file) : m.url}
+                        className="size-full object-cover"
+                      />
+                    ) : (
+                      <div className="size-full bg-zinc-800 flex items-center justify-center text-2xl">
+                        {m.type === 'video' ? '🎬' : '🎵'}
+                      </div>
+                    )}
                     <button
-                      onClick={() => fileInputRef.current?.click()}
-                      disabled={upload.isPending}
-                      className={cn(
-                        'flex items-center gap-1.5 text-[14px] font-semibold text-[#0A84FF] bg-none border-none cursor-pointer',
-                        spring,
-                        upload.isPending && 'opacity-50'
-                      )}
+                      onClick={() =>
+                        setMedia((prev) => prev.filter((_, idx) => idx !== i))
+                      }
+                      className="absolute top-1 right-1 w-6 h-6 rounded-full bg-black/60 flex items-center justify-center text-white border border-white/20"
                     >
-                      {upload.isPending ? (
-                        <Loader2 size={13} className="animate-spin" />
-                      ) : (
-                        <ImagePlus size={13} />
-                      )}
-                      {t('attach')}
+                      <X size={12} />
                     </button>
                   </div>
-                  <input
-                    type="file"
-                    ref={fileInputRef}
-                    accept="image/*,.heic,video/*,audio/*"
-                    onChange={handleFileUpload}
-                    className="hidden"
-                  />
-                  {media.length > 0 && (
-                    <div className="flex gap-2.5 flex-wrap">
-                      {media.map((m, i) => (
-                        <div
-                          key={i}
-                          className="relative w-20 h-20 rounded-2xl overflow-hidden border border-white/[.14]"
-                        >
-                          {m.type === 'image' ? (
-                            <img
-                              src={m.file ? URL.createObjectURL(m.file) : m.url}
-                              className="w-full h-full object-cover"
-                              alt=""
-                              onError={(e) => {
-                                (e.target as HTMLImageElement).src = m.url;
-                              }}
-                            />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center text-[28px] bg-white/[.07]">
-                              {m.type === 'video' ? '🎬' : '🎵'}
-                            </div>
-                          )}
-                          <button
-                            onClick={() =>
-                              setMedia((prev) =>
-                                prev.filter((_, idx) => idx !== i)
-                              )
-                            }
-                            className="absolute top-[5px] right-[5px] w-5 h-5 bg-black/55 backdrop-blur-lg rounded-full flex items-center justify-center text-white border-none cursor-pointer"
-                          >
-                            <X size={11} />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              ) : null)}
+                ))}
+                {media.length === 0 && (
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    className="w-20 h-20 rounded-2xl bg-zinc-900 border-2 border-dashed border-white/10 flex items-center justify-center text-white/20 hover:text-cyan-500 hover:border-cyan-500/30 transition-all"
+                  >
+                    <ImagePlus size={24} />
+                  </button>
+                )}
+              </div>
+              <input
+                type="file"
+                ref={fileInputRef}
+                accept="image/*,.heic,video/*,audio/*"
+                onChange={handleFileUpload}
+                className="hidden"
+              />
+            </div>
+          )}
 
-            {/* Generate */}
-            <button
-              onClick={handleGenerate}
-              disabled={generateDisabled}
-              className={cn(
-                'w-full py-4 px-4 rounded-full text-[16px] font-bold text-white',
-                'flex items-center justify-center gap-2',
-                glassBlue,
-                spring,
-                'active:scale-[0.97]',
-                generateDisabled && 'opacity-45'
-              )}
-            >
-              {generate.isPending || upload.isPending ? (
-                <>
-                  <Loader2 size={18} className="animate-spin" />
-                  {upload.isPending ? t('uploading') : t('generating')}
-                </>
-              ) : (
-                <>
-                  <Sparkles size={18} /> {t('generate')}
-                </>
-              )}
-            </button>
-          </div>
+          <button
+            onClick={handleGenerate}
+            disabled={
+              generate.isPending ||
+              upload.isPending ||
+              (!isTextModel && !prompt.trim() && media.length === 0)
+            }
+            className={cn(
+              'w-full h-16 rounded-[24px] flex items-center justify-center gap-3 font-black text-[17px] transition-all active:scale-[0.98] shadow-2xl',
+              generate.isPending
+                ? 'bg-white/5 text-white/20'
+                : 'bg-cyan-900/10 border border-cyan-500/20 text-[13px] font-black text-cyan-500'
+            )}
+          >
+            {generate.isPending ? (
+              <Loader2 size={20} className="animate-spin" />
+            ) : (
+              <Sparkles size={20} fill="currentColor" />
+            )}
+            {generate.isPending ? t('generating') : t('generate')}
+          </button>
         </div>
       </div>
     );
   }
 
-  /* ── Model picker ── */
-  const catOrder = ['image', 'video', 'audio'] as const;
-  const catLabels: Record<string, string> = {
-    text: t('catText') || 'Text',
-    image: t('catImageEmoji'),
-    video: t('catVideoEmoji'),
-    audio: t('catAudioEmoji'),
-  };
-
   return (
-    <div className="flex flex-col min-h-[100svh] pb-[calc(80px+max(16px,env(safe-area-inset-bottom)))] overflow-x-hidden">
-      <header
-        className={cn(
-          'sticky top-0 z-40 px-5 py-[14px]',
-          'bg-white/[.04] dark:bg-black/[.35] backdrop-blur-2xl backdrop-saturate-150',
-          'border-b border-white/[.10] shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]'
-        )}
-      >
-        <div className="max-w-[760px] mx-auto">
-          <p className="text-[24px] font-bold tracking-[-0.5px]">
-            {t('title')}
-          </p>
-          <p className="text-[14px] text-white/50 mt-0.5">{t('subtitle')}</p>
-        </div>
+    <div className="flex flex-col min-h-svh pb-32">
+      <header className="sticky top-0 z-50 px-5 py-4">
+        <h1 className="text-[30px] font-black tracking-tight bg-gradient-to-r from-cyan-200 via-sky-300 to-emerald-200 bg-clip-text text-transparent leading-tight">
+          {t('title')}
+        </h1>
       </header>
 
-      <div className="flex-1">
-        <div className="max-w-[760px] mx-auto">
-          {isLoading
-            ? Array.from({ length: 6 }).map((_, i) => (
-                <div
-                  key={i}
-                  className="flex items-center gap-[14px] px-5 py-[13px] border-b border-white/[.06]"
-                >
-                  <div
-                    className={cn(
-                      'w-[46px] h-[46px] rounded-[14px] flex-shrink-0 animate-[pulse-opacity_1.6s_ease-in-out_infinite]',
-                      glassThin
-                    )}
-                  />
-                  <div className="flex-1">
-                    <div
-                      className={cn(
-                        'w-[40%] h-[13px] rounded-md mb-1.5 animate-[pulse-opacity_1.6s_ease-in-out_0.1s_infinite]',
-                        glassThin
-                      )}
-                    />
-                    <div
-                      className={cn(
-                        'w-[25%] h-[10px] rounded-md animate-[pulse-opacity_1.6s_ease-in-out_0.2s_infinite]',
-                        glassThin
-                      )}
-                    />
-                  </div>
-                </div>
-              ))
-            : catOrder.map((cat) => {
-                const catModels = models.filter(
-                  (m) => m.mainCategory === cat || m.categories?.includes(cat)
-                );
-                if (!catModels.length) return null;
-                return (
-                  <div key={cat}>
-                    <div className="px-5 py-[10px] bg-white/[.04] backdrop-blur-xl border-b border-white/[.06]">
-                      <p className="text-[12px] font-bold tracking-[0.6px] uppercase text-white/50">
-                        {catLabels[cat]}
-                      </p>
-                    </div>
-                    {catModels.map((m) => (
-                      <ModelRow
+      <div className="p-4 flex flex-col gap-10">
+        {isLoading
+          ? Array.from({ length: 4 }).map((_, i) => (
+            <div
+              key={i}
+              className="h-24 rounded-[32px] bg-zinc-900 animate-pulse"
+            />
+          ))
+          : ['text', 'image', 'video', 'audio'].map((cat) => {
+            const catModels = models.filter(
+              (m) => m.mainCategory === cat || m.categories?.includes(cat)
+            );
+            if (!catModels.length) return null;
+            return (
+              <div key={cat} className="flex flex-col gap-4">
+                <h2 className="text-[13px] font-black uppercase tracking-widest text-white/30 px-2 flex items-center gap-2">
+                  {cat === 'text' ? (
+                    <Sparkles size={14} />
+                  ) : cat === 'image' ? (
+                    <Zap size={14} />
+                  ) : (
+                    <Zap size={14} />
+                  )}{' '}
+                  {t(
+                    `cat${cat.charAt(0).toUpperCase() + cat.slice(1)}` as any
+                  )}
+                </h2>
+                <div className="flex flex-col gap-3">
+                  {catModels.map((m) => {
+                    const cost =
+                      m.versions?.find((v: any) => v.default)?.cost ??
+                      m.versions?.[0]?.cost ??
+                      1;
+                    return (
+                      <button
                         key={m.tech_name}
-                        m={m}
-                        onClick={() => setSelectedTech(m.tech_name)}
-                      />
-                    ))}
-                  </div>
-                );
-              })}
-        </div>
+                        onClick={() => {
+                          haptic.light();
+                          setSelectedTech(m.tech_name);
+                        }}
+                        className="flex items-center gap-4 px-4 py-3 rounded-[32px] bg-zinc-900/40 border border-white/5 hover:border-white/15 transition-all group active:scale-[0.98]"
+                      >
+                        <div className="w-14 h-14 rounded-2xl overflow-hidden border border-white/10 group-hover:border-cyan-400/30 transition-colors">
+                          <Avatar className="size-full">
+                            <AvatarImage src={m.avatar} />
+                            <AvatarFallback>{m.model_name[0]}</AvatarFallback>
+                          </Avatar>
+                        </div>
+                        <div className="flex-1 text-left min-w-0">
+                          <p className="text-[17px] font-bold text-white group-hover:text-cyan-400 transition-colors truncate">
+                            {m.model_name}
+                          </p>
+                          <p className="text-[12px] font-medium text-white/20 uppercase tracking-widest mt-1">
+                            {m.versions?.[0]?.label}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <div className="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-[13px] font-black text-white/40">
+                            ◈ {cost}
+                          </div>
+                          <ChevronRight
+                            size={18}
+                            className="text-white/10 group-hover:text-white transition-colors"
+                          />
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
       </div>
-
-      <style>{`@keyframes pulse-opacity{0%,100%{opacity:1}50%{opacity:.4}}`}</style>
     </div>
   );
 };

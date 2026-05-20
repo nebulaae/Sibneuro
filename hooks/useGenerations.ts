@@ -32,11 +32,11 @@ export function normalizeResultMedia(
       // Обработка вложенной структуры: input может быть объектом {type, format, input}
       if (typeof m.input === 'object' && m.input !== null) {
         url = m.input.input || '';
-        type = m.input.type || 'image';
+        type = m.input.type === 'media' ? 'image' : m.input.type || 'image';
       } else {
         // m.url или m.input - обычная строка URL
         url = m.url || m.input || '';
-        type = m.type || 'image';
+        type = m.type === 'media' ? 'image' : m.type || 'image';
       }
 
       return { url, type };
@@ -55,7 +55,7 @@ export function convertMediaToInputs(
   // Если есть медиа, отправляем её в формате media: [{type, format, input}]
   if (media.length > 0) {
     inputs.media = media.map((m) => ({
-      type: m.type,
+      type: m.type === 'media' ? 'image' : m.type,
       format: m.format || 'url',
       input: m.input,
     }));

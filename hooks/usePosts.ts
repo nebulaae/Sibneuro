@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from '@tanstack/react-query';
 import api from '@/lib/api';
 
 export interface PostInputMedia {
@@ -15,11 +15,8 @@ export interface Post {
   id: number;
   bot_id: number;
   user_id: number;
-  name?: string;
   model_tech_name: string;
   version_label: string;
-  model_name?: string;
-  cost?: number;
   inputs: {
     text: string | null;
     hide_text: boolean;
@@ -37,33 +34,31 @@ export interface Post {
       input: string;
       format: string;
     }>;
-    [key: string]: any;
   };
+  model_name?: string;
+  cost?: number;
   priority: number;
   likes: number;
   created_at: string;
   updated_at: string;
 }
 
-export function getPostResultMedia(post: Post): { url: string; type: string } | null {
-  if (post.result?.url) return { url: post.result.url, type: 'image' }; // fallback
-  if (post.result?.media && post.result.media.length > 0) {
-    const first = post.result.media[0];
-    return { url: first.input, type: first.type || 'image' };
-  }
-  return null;
-}
-
-export function getPostResultImage(post: Post): string | null {
-  return getPostResultMedia(post)?.url || null;
-}
-
 export interface GetPostsParams {
   bot_id?: number;
   user_id?: number;
   limit?: number;
-  offset?: number;
+  page?: number;
   min_likes?: number;
+  skipUserId?: boolean;
+}
+export interface PostsResponse {
+  success: boolean;
+  items: Post[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+  hasNextPage: boolean;
 }
 
 export const usePosts = (params: GetPostsParams = {}) => {
@@ -72,6 +67,47 @@ export const usePosts = (params: GetPostsParams = {}) => {
     queryFn: async () => {
       const { data } = await api.get('/api/posts', { params });
       return data;
+    },
+  });
+};
+
+export const usePost = (id: number | string | null | undefined) => {
+  return useQuery({
+    queryKey: ['posts', id],
+    queryFn: async () => {
+      const { data } = await api.get(`/api/posts/${id}`, {
+        params: { skipUserId: true },
+      });
+      return data as Post;
+    },
+    enabled: !!id,
+  });
+};
+
+export const useInfinitePosts = (params: any = {}) => {
+  return useInfiniteQuery({
+    queryKey: ['posts', 'infinite'],
+
+    queryFn: async ({ pageParam = 1 }) => {
+      const { data } = await api.get('/api/posts', {
+        params: {
+          ...params,
+          page: pageParam,
+          limit: params.limit || 12,
+
+          // 💣 CRITICAL FIX
+          skipUserId: true,
+        },
+      });
+
+      return data;
+    },
+
+    initialPageParam: 1,
+
+    getNextPageParam: (lastPage) => {
+      if (!lastPage?.hasNextPage) return undefined;
+      return lastPage.page + 1;
     },
   });
 };
@@ -88,3 +124,28 @@ export const usePublishPost = () => {
     },
   });
 };
+
+export function getPostResultMedia(
+  post: Post
+): { url: string; type: 'image' | 'video' | 'audio' } | null {
+  const result = post.result as any;
+  const media = result?.media?.[0] || result;
+  const url = media?.url || media?.input || result?.url;
+
+  if (!url || typeof url !== 'string') return null;
+
+  const rawType = String(media?.type || '').toLowerCase();
+  const type =
+    rawType === 'video' || /\.(mp4|webm|mov)(\?|$)/i.test(url)
+      ? 'video'
+      : rawType === 'audio' || /\.(mp3|wav|ogg|m4a)(\?|$)/i.test(url)
+        ? 'audio'
+        : 'image';
+
+  return { url, type };
+}
+
+export function getPostResultImage(post: Post): string | null {
+  const media = getPostResultMedia(post);
+  return media?.type === 'image' ? media.url : null;
+}

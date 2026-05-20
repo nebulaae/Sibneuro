@@ -1,25 +1,30 @@
 'use client';
 
-import React, { useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useChats } from '@/hooks/useChats';
 import { useAIModels } from '@/hooks/useModels';
 import { useRoles } from '@/hooks/useRoles';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import {
+  Avatar,
+  AvatarFallback,
+  AvatarImage,
+} from '@/components/ui/avatar';
 import { ChatsLoader } from '@/components/states/Loading';
 import { ChatsEmpty } from '@/components/states/Empty';
 import { ErrorComponent } from '@/components/states/Error';
-import { useTranslations } from 'next-intl';
-import { MessageSquarePlus, Loader2 } from 'lucide-react';
-import { timeAgo } from '@/lib/utils';
+import {
+  MessageSquarePlus,
+  Loader2,
+  ChevronRight,
+  Plus,
+} from 'lucide-react';
+import { cn, timeAgo } from '@/lib/utils';
 import { toast } from 'sonner';
 import { useHaptic } from '@/hooks/useHaptic';
-import { cn } from '@/lib/utils';
+import { useTranslations } from 'next-intl';
 
-const glassThin = cn(
-  'bg-white/[.07] dark:bg-black/[.45] backdrop-blur-xl',
-  'border border-white/[.14]'
-);
+const ACCENT_CYAN = '#06b6d4';
 
 function cacheDialogueModel(
   dialogueId: string,
@@ -32,7 +37,7 @@ function cacheDialogueModel(
       `dialogue_model_${dialogueId}`,
       JSON.stringify({ model, version, role_id: roleId ?? null })
     );
-  } catch {}
+  } catch { }
 }
 
 export const Chats = () => {
@@ -40,6 +45,7 @@ export const Chats = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
   const haptic = useHaptic();
+
   const modelParam = searchParams.get('model');
   const roleParam = searchParams.get('role');
 
@@ -52,29 +58,32 @@ export const Chats = () => {
     isFetchingNextPage,
     refetch,
   } = useChats();
+
   const { data: models } = useAIModels();
   const { data: roles } = useRoles();
+
   const chats = data?.pages.flatMap((p) => p) ?? [];
   const startedRef = useRef(false);
 
+  // ==================== Логика открытия чата по параметрам ====================
   useEffect(() => {
     if (!modelParam && !roleParam) return;
     if (startedRef.current) return;
-    const modelsReady = !!models;
-    const rolesReady = roleParam ? !!roles : true;
-    if (!modelsReady || !rolesReady) return;
+    if (!models || (roleParam && !roles)) return;
 
     const role = roleParam
       ? roles?.find((r) => r.id === parseInt(roleParam))
       : null;
+
     if (roleParam && !role) {
       toast.error(t('assistantNotFound'));
       router.replace('/chats');
       return;
     }
 
-    let techName: string | null = null,
-      version: string | undefined;
+    let techName: string | null = null;
+    let version: string | undefined;
+
     if (modelParam) {
       const model = models?.find((m) => m.tech_name === modelParam);
       if (!model) {
@@ -94,6 +103,7 @@ export const Chats = () => {
         textModel?.versions?.find((v) => v.default) || textModel?.versions?.[0]
       )?.label;
     }
+
     if (!techName) {
       toast.error(t('suitableModelNotFound'));
       router.replace('/chats');
@@ -102,77 +112,103 @@ export const Chats = () => {
 
     startedRef.current = true;
 
-    // FIX 2: Открываем пустой чат без отправки начального сообщения "Привет".
-    // Переходим на страницу /chats/new с параметрами модели.
-    // Chat page для /chats/new сам создаст диалог при первом сообщении юзера.
     const params = new URLSearchParams({
       model: techName,
       ...(version ? { version } : {}),
       ...(role ? { role: String(role.id) } : {}),
     });
+
     router.replace(`/chats/new?${params.toString()}`);
-  }, [modelParam, roleParam, models, roles]);
+  }, [modelParam, roleParam, models, roles, router, t]);
 
-  if (isError)
+  // ==================== Error State ====================
+  if (isError) {
     return (
-      <div className="flex items-center justify-center min-h-screen p-6">
-        <ErrorComponent
-          title={t('error')}
-          description={t('errorLoadChats')}
-          onRetry={refetch}
-        />
+      <div className="flex items-center justify-center min-h-svh p-8 bg-black text-center">
+        <div className="max-w-xs flex flex-col items-center gap-6">
+          <div className="w-20 h-20 rounded-[32px] bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-500">
+            <MessageSquarePlus size={32} />
+          </div>
+          <div>
+            <h2 className="text-2xl font-black text-white mb-2">
+              {t('error')}
+            </h2>
+            <p className="text-white/40 font-medium leading-relaxed">
+              {t('errorLoadChats')}
+            </p>
+          </div>
+          <button
+            onClick={() => refetch()}
+            className="w-full py-4 rounded-2xl bg-white/5 border border-white/10 font-bold hover:bg-white/10 transition-all active:scale-95"
+          >
+            {t('retry') || 'Повторить'}
+          </button>
+        </div>
       </div>
     );
+  }
 
-  if ((modelParam || roleParam) && !startedRef.current && (models || roles))
+  // ==================== Loading new chat ====================
+  if ((modelParam || roleParam) && !startedRef.current) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen gap-4">
-        <Loader2 className="size-8 animate-spin text-white/40" />
-        <p className="text-[14px] text-white/50">{t('openingChat')}</p>
+      <div className="flex flex-col items-center justify-center min-h-svh gap-6 bg-black">
+        <div className="w-16 h-16 rounded-[24px] bg-zinc-900 border border-white/5 flex items-center justify-center shadow-2xl">
+          <Loader2 className="size-8 animate-spin" style={{ color: ACCENT_CYAN }} />
+        </div>
+        <p className="text-[15px] font-black text-white/30 tracking-tight">
+          {t('openingChat')}
+        </p>
       </div>
     );
+  }
 
   return (
-    <div className="flex flex-col h-full pb-[calc(80px+max(16px,env(safe-area-inset-bottom)))] w-full max-w-7xl mx-auto">
+    <div className="flex flex-col min-h-svh pb-32 w-full max-w-2xl mx-auto bg-black">
       {/* Header */}
-      <div
-        className={cn(
-          'sticky top-0 z-40 flex items-center justify-between px-5 py-3.5',
-          'bg-white/4 dark:bg-black/35 backdrop-blur-2xl backdrop-saturate-150',
-          'border-b border-white/10',
-          'shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]'
-        )}
-      >
-        <span className="text-[24px] font-bold tracking-[-0.5px]">
+      <header className="sticky top-0 z-50 px-5 py-4 flex items-center justify-between">
+        <h1 className="text-[30px] font-black tracking-tight bg-gradient-to-r from-cyan-200 via-sky-300 to-emerald-200 bg-clip-text text-transparent leading-tight">
           {t('title')}
-        </span>
+        </h1>
+
         <button
           onClick={() => {
             haptic.light();
             router.push('/models');
           }}
-          className={cn(
-            'size-9 rounded-full flex items-center justify-center',
-            glassThin,
-            'transition-all duration-280 ease-[cubic-bezier(0.32,0.72,0,1)]',
-            'active:scale-[0.88]'
-          )}
-          title={t('newChat')}
+          className="w-12 h-12 rounded-[20px] flex items-center justify-center shadow-[0_0_20px_rgba(6,182,212,0.4)] active:scale-90 transition-all"
+          style={{ backgroundColor: ACCENT_CYAN, color: 'white' }}
         >
-          <MessageSquarePlus className="size-5 text-white/60" />
+          <Plus size={24} />
         </button>
-      </div>
+      </header>
 
-      {/* Chat list */}
-      <div className="flex flex-col flex-1 overflow-y-auto">
+      {/* Chat List */}
+      <div className="flex flex-col flex-1 px-4 py-4">
         {isLoading ? (
           <ChatsLoader />
         ) : chats.length === 0 ? (
-          <div className="flex items-center justify-center flex-1 p-8">
-            <ChatsEmpty />
+          <div className="flex flex-col items-center justify-center flex-1 gap-6 text-center py-20 px-10">
+            <div className="w-24 h-24 rounded-[40px] bg-zinc-900 border border-white/10 flex items-center justify-center text-5xl shadow-inner">
+              💬
+            </div>
+            <div>
+              <h3 className="text-xl font-black text-white mb-2">
+                {t('noChatsTitle') || 'Чатов пока нет'}
+              </h3>
+              <p className="text-white/30 font-medium leading-relaxed">
+                {t('noChatsDesc') || 'Начните первый разговор с ИИ'}
+              </p>
+            </div>
+            <button
+              onClick={() => router.push('/models')}
+              className="px-8 py-3.5 rounded-full font-black text-[15px] shadow-[0_0_20px_rgba(6,182,212,0.3)] active:scale-95 transition-all"
+              style={{ backgroundColor: ACCENT_CYAN, color: 'white' }}
+            >
+              {t('newChat')}
+            </button>
           </div>
         ) : (
-          <>
+          <div className="flex flex-col gap-3">
             {chats.map((chat) => {
               const displayName =
                 chat.version || chat.title || chat.model || t('dialogue');
@@ -192,80 +228,59 @@ export const Chats = () => {
                     }
                     router.push(`/chats/${chat.dialogue_id}`);
                   }}
-                  className={cn(
-                    'flex items-center gap-3 px-4 py-3.5 w-full text-left',
-                    'border-b border-white/6',
-                    'bg-transparent transition-colors duration-200',
-                    'hover:bg-white/4 active:bg-white/[.07]'
-                  )}
+                  className="flex items-center gap-4 p-5 rounded-[32px] bg-zinc-900/30 border border-white/5 hover:border-white/15 transition-all group active:scale-[0.985]"
                 >
-                  <Avatar className="size-12 rounded-xl border border-white/[.14] shrink-0">
+                  <Avatar className="size-14 rounded-[22px] border border-white/10 group-hover:border-cyan-400/30 transition-colors shadow-lg">
                     <AvatarImage
                       src={
                         chat.avatar ||
-                        `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=1c1c1c&color=ffffff`
+                        `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=18181b&color=ffffff`
                       }
                     />
-                    <AvatarFallback className="rounded-xl bg-white/10 text-xs font-bold">
+                    <AvatarFallback className="bg-zinc-800 text-[14px] font-black text-white/40">
                       {displayName.slice(0, 2).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
 
-                  <div className="flex-1 min-w-0">
-                    <div className="text-base font-semibold text-white truncate">
+                  <div className="flex-1 min-w-0 text-left">
+                    <div className="text-[17px] font-black text-white group-hover:text-cyan-400 transition-colors truncate tracking-tight">
                       {chat.title || displayName}
                     </div>
-                    <div className="text-sm text-white/40 truncate">
-                      {chat.title === null ? null : displayName}
+                    <div className="text-[13px] text-white/40 font-medium truncate mt-0.5">
+                      {chat.title || chat.model}
                     </div>
                   </div>
 
-                  <div className="flex flex-col items-end gap-1 shrink-0">
-                    <span className="text-[12px] text-white/40">
+                  <div className="flex flex-col items-end gap-2 shrink-0">
+                    <span className="text-[11px] font-black text-white/20 uppercase tracking-widest bg-white/5 px-2.5 py-1 rounded-lg group-hover:bg-cyan-400/10 group-hover:text-cyan-400 transition-all">
                       {timeAgo(chat.last_activity || chat.started_at)}
                     </span>
-                    <svg
-                      width="14"
-                      height="14"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      className="text-white/25"
-                    >
-                      <path d="M9 18l6-6-6-6" />
-                    </svg>
+                    <ChevronRight
+                      size={18}
+                      className="text-white/10 group-hover:text-white group-hover:translate-x-1 transition-all"
+                    />
                   </div>
                 </button>
               );
             })}
 
             {hasNextPage && (
-              <div className="p-4">
-                <button
-                  onClick={() => {
-                    haptic.light();
-                    fetchNextPage();
-                  }}
-                  disabled={isFetchingNextPage}
-                  className={cn(
-                    'w-full py-3 rounded-2xl text-[14px] font-semibold text-[#0A84FF]',
-                    glassThin,
-                    'transition-all duration-280 active:scale-[0.97]'
-                  )}
-                >
-                  {isFetchingNextPage ? (
-                    <span className="flex items-center justify-center gap-2">
-                      <Loader2 className="size-4 animate-spin" />
-                      {t('loading')}
-                    </span>
-                  ) : (
-                    t('loadMore')
-                  )}
-                </button>
-              </div>
+              <button
+                onClick={() => {
+                  haptic.light();
+                  fetchNextPage();
+                }}
+                disabled={isFetchingNextPage}
+                className="w-full py-5 rounded-[28px] bg-white/5 border border-white/5 text-[14px] font-black text-white/30 hover:bg-white/10 hover:text-white transition-all active:scale-[0.98] mt-4"
+              >
+                {isFetchingNextPage ? (
+                  <Loader2 className="size-5 animate-spin mx-auto" />
+                ) : (
+                  t('loadMore')
+                )}
+              </button>
             )}
-          </>
+          </div>
         )}
       </div>
     </div>

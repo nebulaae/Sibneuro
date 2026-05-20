@@ -1,873 +1,382 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useAIModels } from '@/hooks/useModels';
-import { usePosts } from '@/hooks/usePosts';
-import { useRoles } from '@/hooks/useRoles';
-import { useUser } from '@/hooks/useUser';
-import { useUI, usePaymentLink } from '@/hooks/useApiExtras';
+import { useCallback, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { ErrorComponent } from '@/components/states/Error';
-import { localize } from '@/lib/utils';
-import Image from 'next/image';
-import { ChevronRight, Music, NotebookPen, Paintbrush, Video, Zap, Sparkles } from 'lucide-react';
-import { cleanModelName } from '@/lib/utils';
-import { getPostResultImage, getPostResultMedia } from '@/hooks/usePosts';
+import {
+  ArrowUpRight,
+  ImageIcon,
+  Loader2,
+  Music,
+  PenLine,
+  Play,
+  Sparkles,
+  Video,
+  Zap,
+} from 'lucide-react';
+import { useUser } from '@/hooks/useUser';
+import { usePaymentLink } from '@/hooks/useApiExtras';
+import { useInfinitePosts, getPostResultMedia } from '@/hooks/usePosts';
+import { cn } from '@/lib/utils';
+import { useHaptic } from '@/hooks/useHaptic';
+import { PaymentDialog } from '@/components/dialogs/PaymentDialog';
 
-/* ── Skeleton ── */
-const GlassSkeleton = ({
-  w,
-  h,
-  circle,
-  radius,
-}: {
-  w: string;
-  h: string;
-  circle?: boolean;
-  radius?: string;
-}) => (
-  <div
-    style={{
-      width: w,
-      height: h,
-      borderRadius: circle ? '9999px' : (radius ?? '10px'),
-      background: 'rgba(255,255,255,0.07)',
-      backdropFilter: 'blur(20px)',
-      border: '1px solid rgba(255,255,255,0.10)',
-      position: 'relative',
-      overflow: 'hidden',
-    }}
-  >
-    <div
-      style={{
-        position: 'absolute',
-        inset: 0,
-        background:
-          'linear-gradient(90deg,transparent,rgba(255,255,255,0.09),transparent)',
-        animation: 'shimmer 1.6s infinite',
-        backgroundSize: '200% 100%',
-      }}
-    />
-  </div>
-);
-
-/* ── Glass card ── */
-const glassCard: React.CSSProperties = {
-  background: 'rgba(255,255,255,0.07)',
-  backdropFilter: 'blur(24px) saturate(180%)',
-  WebkitBackdropFilter: 'blur(24px) saturate(180%)',
-  border: '1px solid rgba(255,255,255,0.14)',
+type NamedPost = {
+  name?: string;
+  inputs?: { text?: string | null };
 };
 
-const glassCardHover: React.CSSProperties = {
-  background: 'rgba(255,255,255,0.11)',
-  backdropFilter: 'blur(28px) saturate(200%)',
-  WebkitBackdropFilter: 'blur(28px) saturate(200%)',
-  border: '1px solid rgba(255,255,255,0.20)',
+const glass = {
+  thin: 'bg-white/[.06] backdrop-blur-xl border border-white/[.10] shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]',
+  card: 'bg-white/[.055] backdrop-blur-2xl border border-white/[.10] shadow-[inset_0_1px_0_rgba(255,255,255,0.14),0_4px_20px_rgba(0,0,0,0.25)]',
+  tab: 'bg-white/[.05] border border-white/[.08]',
+  activeTab: 'bg-cyan-400/15 border border-cyan-400/25 text-cyan-200 shadow-[0_0_16px_rgba(34,211,238,0.18)]',
 };
 
-/* ── Category config ── */
-const CATEGORIES = [
-  { key: 'text', label: 'Текст', emoji: <NotebookPen />, href: '/generate?cat=text' },
-  { key: 'image', label: 'Фото', emoji: <Paintbrush />, href: '/generate?cat=image' },
-  { key: 'video', label: 'Видео', emoji: <Video />, href: '/generate?cat=video' },
-  { key: 'music', label: 'Музыка', emoji: <Music />, href: '/generate?cat=audio' },
-];
+
+const categories = [
+  {
+    key: 'text',
+    icon: PenLine,
+    href: '/generate?cat=text',
+    gradient: 'from-sky-400/30 via-cyan-300/15 to-transparent',
+    glow: 'rgba(34,211,238,0.18)',
+  },
+  {
+    key: 'image',
+    icon: ImageIcon,
+    href: '/generate?cat=image',
+    gradient: 'from-emerald-400/25 via-cyan-300/12 to-transparent',
+    glow: 'rgba(52,211,153,0.18)',
+  },
+  {
+    key: 'video',
+    icon: Video,
+    href: '/generate?cat=video',
+    gradient: 'from-violet-400/25 via-sky-400/12 to-transparent',
+    glow: 'rgba(139,92,246,0.18)',
+  },
+  {
+    key: 'music',
+    icon: Music,
+    href: '/generate?cat=audio',
+    gradient: 'from-rose-400/22 via-pink-300/10 to-transparent',
+    glow: 'rgba(251,113,133,0.18)',
+  },
+] as const;
+
+const marqueeItems = ['marqueeText', 'marqueeImage', 'marqueeVideo', 'marqueeMusic'] as const;
 
 export const Home = () => {
   const t = useTranslations('Home');
   const router = useRouter();
-  const {
-    data: models,
-    isLoading: modelsLoading,
-    isError,
-    refetch,
-  } = useAIModels();
-  const { data: trendsData, isLoading: trendsLoading } = useUI('trends');
-  const { data: postsData, isLoading: postsLoading } = usePosts({ limit: 4 });
-  const { data: roles, isLoading: rolesLoading } = useRoles();
-  const posts = postsData?.items || [];
+  const haptic = useHaptic();
   const { data: userData } = useUser();
   const { data: paymentUrl } = usePaymentLink();
+  const { data, isLoading, fetchNextPage, hasNextPage, isFetchingNextPage } =
+    useInfinitePosts({ limit: 12 });
+  const posts = data?.pages.flatMap((page) => page.items) || [];
+  const tokens = Math.trunc(userData?.user?.tokens ?? 0);
+  const [isPaymentOpen, setIsPaymentOpen] = useState(false);
+  const observer = useRef<IntersectionObserver | null>(null);
 
-  const displayModels = models?.slice(0, 8) || [];
-  const displayRoles = roles?.slice(0, 5) || [];
-  const tokens = userData?.user?.tokens ?? 0;
-
-  if (isError)
-    return (
-      <div className="flex items-center justify-center min-h-screen p-6">
-        <ErrorComponent
-          title={t('error')}
-          description={t('errorLoadData')}
-          onRetry={refetch}
-        />
-      </div>
-    );
+  const lastPostRef = useCallback(
+    (node: HTMLDivElement | null) => {
+      if (observer.current) observer.current.disconnect();
+      observer.current = new IntersectionObserver(
+        (entries) => {
+          if (entries[0].isIntersecting && hasNextPage && !isFetchingNextPage) {
+            fetchNextPage();
+          }
+        },
+        { rootMargin: '360px' }
+      );
+      if (node) observer.current.observe(node);
+    },
+    [fetchNextPage, hasNextPage, isFetchingNextPage]
+  );
 
   return (
-    <div className="flex flex-col min-h-[100svh] pb-[calc(80px+max(16px,env(safe-area-inset-bottom)))] overflow-x-hidden">
-
-      {/* ── BG ── */}
-      <div
-        style={{
-          position: 'absolute',
-          inset: 0,
-          zIndex: -1,
-          overflow: 'hidden',
-          pointerEvents: 'none',
-        }}
-      >
-        <Image
-          src="/background.jpg"
-          alt="bg"
-          fill
-          style={{
-            objectFit: 'cover',
-            filter: 'blur(6px) brightness(0.28) saturate(1.3)',
-          }}
-          priority
-        />
-        <div
-          style={{
-            position: 'absolute',
-            inset: 0,
-            background:
-              'linear-gradient(160deg,rgba(10,10,30,0.55) 0%,transparent 50%,rgba(0,0,0,0.75) 100%)',
-          }}
-        />
+    <div className="min-h-svh overflow-x-hidden text-white pb-[calc(92px+max(16px,env(safe-area-inset-bottom)))]">
+      {/* Aurora background */}
+      <div className="fixed inset-0 -z-10 overflow-hidden">
+        <div className="absolute -top-40 -left-20 w-[600px] h-[600px] rounded-full bg-cyan-500/4 blur-[120px] animate-[aurora1_18s_ease-in-out_infinite]" />
+        <div className="absolute top-20 right-0 w-[500px] h-[500px] rounded-full bg-emerald-500/6 blur-[120px] animate-[aurora2_22s_ease-in-out_infinite]" />
+        <div className="absolute bottom-0 left-1/3 w-[400px] h-[400px] rounded-full bg-sky-500/6 blur-[100px] animate-[aurora3_28s_ease-in-out_infinite]" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_20%_0%,rgba(34,211,238,0.12),transparent_55%)]" />
+        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(5,7,11,0.2),#05070b_70%)]" />
       </div>
 
-      {/* ── Navbar ── */}
-      <header
-        style={{
-          position: 'sticky',
-          top: 0,
-          zIndex: 20,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '14px 16px',
-          borderRadius: 0,
-          borderTop: 'none',
-          borderLeft: 'none',
-          borderRight: 'none',
-          borderBottom: '1px solid rgba(255,255,255,0.10)',
-        }}
-      >
-        <span
-          style={{
-            fontSize: 18,
-            fontWeight: 700,
-            letterSpacing: '-0.6px',
-            color: '#fff',
-          }}
-        >
-          Sibneuro
-        </span>
+      {/* Header */}
+      <header className="sticky top-0 z-40 px-5 py-3.5">
+        <div className="mx-auto flex max-w-5xl items-center justify-between gap-3">
+          <button
+            onClick={() => router.push('/')}
+            className="flex items-center gap-3 rounded-2xl text-left transition active:scale-95"
+          >
+            <div>
+              <p className="text-[18px] font-black tracking-tight">Sibneuro</p>
+            </div>
+          </button>
+          <div className='flex  gap-2'>
+            <button
+              onClick={() => router.push('https://t.me/cubixvpnbot?start=HYDylP')}
+              className="flex items-center gap-2 rounded-full border border-cyan-400/20 bg-cyan-400/8 px-4 py-2 text-[13px] font-bold text-cyan-200 shadow-[inset_0_1px_0_rgba(255,255,255,0.15),0_8px_28px_rgba(34,211,238,0.10)] backdrop-blur-2xl transition active:scale-95"
+            >
+              <Zap className='size-4' />
+              Vpn
+            </button>
 
-        <div className='flex items-center gap-1'>
-          <button
-            onClick={() => router.push('https://t.me/cubixvpnbot?start=HYDylP')}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 7,
-              padding: '8px 12px',
-              borderRadius: 999,
-              background: 'rgba(0,122,255,0.18)',
-              border: '1px solid rgba(0,122,255,0.35)',
-              fontSize: 14,
-              fontWeight: 700,
-              color: '#fff',
-              cursor: 'pointer',
-              transition: 'all 0.22s ease',
-            }}
-          >
-            <Zap className='size-4 text-[#4FC3F7]' />
-            Vpn
-          </button>
-          {/* Token pill */}
-          <button
-            onClick={() => paymentUrl && window.open(paymentUrl, '_blank')}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 7,
-              padding: '8px 12px',
-              borderRadius: 999,
-              background: 'rgba(0,122,255,0.18)',
-              border: '1px solid rgba(0,122,255,0.35)',
-              fontSize: 14,
-              fontWeight: 700,
-              color: '#fff',
-              cursor: 'pointer',
-              transition: 'all 0.22s ease',
-            }}
-          >
-            <span style={{ fontSize: 16, color: '#4FC3F7' }}>◆</span>
-            <span>{Math.trunc(tokens)}</span>
-            <span style={{ fontSize: 14, color: '#4FC3F7' }}>{t('topUp')}</span>
-          </button>
+            <button
+              onClick={() => {
+                if (paymentUrl) setIsPaymentOpen(true);
+              }}
+              className="flex items-center gap-2 rounded-full border border-cyan-400/20 bg-cyan-400/8 px-4 py-2 text-[13px] font-bold text-cyan-200 shadow-[inset_0_1px_0_rgba(255,255,255,0.15),0_8px_28px_rgba(34,211,238,0.10)] backdrop-blur-2xl transition active:scale-95"
+            >
+              <span>{tokens}</span>
+              <span className="">{t('topUp')}</span>
+            </button>
+          </div>
         </div>
       </header>
 
-      <div
-        style={{
-          padding: '0 20px',
-          paddingBottom: 'calc(80px + max(20px, env(safe-area-inset-bottom)))',
-        }}
-      >
-        {/* ── Hero + Category Buttons ── */}
-        <section style={{ paddingTop: 28, marginBottom: 28 }}>
-          <h1
-            style={{
-              fontSize: 'clamp(28px, 5vw, 44px)',
-              fontWeight: 800,
-              letterSpacing: '-0.8px',
-              color: '#fff',
-              marginBottom: 6,
-              lineHeight: 1.15,
-            }}
-          >
-            {t("heroTitle")} <span style={{ color: '#4FC3F7' }}>{t("heroAccent")}</span>
-          </h1>
-          <p
-            style={{
-              fontSize: 15,
-              color: 'rgba(255,255,255,0.45)',
-              marginBottom: 20,
-            }}
-          >
-            {t("heroSubtitle")}
-          </p>
-
-          <div
-            className="grid grid-cols-2 gap-4 sm:grid-cols-4"
-          >
-            {CATEGORIES.map((cat) => (
+      <main className="mx-auto flex w-full max-w-5xl flex-col gap-10 px-5 pt-7">
+        {/* Hero + Category cards */}
+        <section className="grid gap-5 lg:grid-cols-[1.1fr_0.9fr] lg:items-start">
+          {/* Hero card */}
+          <div className="min-h-full rounded-[32px] border border-white/[0.10] bg-white/[0.055] p-6  backdrop-blur-3xl sm:p-8">
+            <div className="mb-7 inline-flex items-center gap-2 rounded-full border border-cyan-400/20 bg-cyan-400/8 px-3 py-1.5 text-[12px] font-bold text-cyan-200 backdrop-blur-xl">
+              <span className="size-1.5 rounded-full bg-cyan-300 shadow-[0_0_10px_rgba(34,211,238,0.9)]" />
+              {t('heroKicker')}
+            </div>
+            <h1 className="max-w-[560px] text-[42px] font-black leading-[0.96] tracking-tight sm:text-[58px]">
+              {t('heroTitle')}{' '}
+              <span className="bg-gradient-to-r from-cyan-200 via-sky-300 to-emerald-300 bg-clip-text text-transparent">
+                {t('heroAccent')}
+              </span>
+            </h1>
+            <p className="mt-5 max-w-[480px] text-[15px] leading-7 text-white/50 sm:text-[16px]">
+              {t('heroSubtitle')}
+            </p>
+            <div className="mt-8 flex flex-wrap justify-self-end gap-3">
               <button
-                key={cat.key}
-                onClick={() => router.push(cat.href)}
-                style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 8,
-                  padding: '16px 8px',
-                  borderRadius: 18,
-                  ...glassCard,
-                  cursor: 'pointer',
-                  transition: 'all 0.24s cubic-bezier(0.32,0.72,0,1)',
-                  color: '#fff',
+                onClick={() => {
+                  haptic.light();
+                  router.push('/generate');
                 }}
-                onMouseEnter={(e) =>
-                  Object.assign(e.currentTarget.style, {
-                    ...glassCardHover,
-                    transform: 'translateY(-2px)',
-                  })
-                }
-                onMouseLeave={(e) =>
-                  Object.assign(e.currentTarget.style, {
-                    ...glassCard,
-                    transform: 'none',
-                  })
-                }
-                onMouseDown={(e) =>
-                  (e.currentTarget.style.transform = 'scale(0.94)')
-                }
-                onMouseUp={(e) => (e.currentTarget.style.transform = 'none')}
+                className="inline-flex items-center gap-2 rounded-full bg-white px-5 py-3 text-[14px] font-black text-black transition active:scale-95"
               >
-                <span style={{ fontSize: 28 }}>{cat.emoji}</span>
-                <span
-                  style={{
-                    fontSize: 13,
-                    fontWeight: 600,
-                    color: 'rgba(255,255,255,0.85)',
-                  }}
-                >
-                  {cat.label}
-                </span>
+                {t('startCreate')}
+                <ArrowUpRight className="size-4" />
               </button>
+              <button
+                onClick={() => router.push('/trends')}
+                className="inline-flex items-center gap-2 rounded-full border border-white/[0.12] bg-white/[0.07] px-5 py-3 text-[14px] font-bold text-white/65 backdrop-blur-2xl transition active:scale-95"
+              >
+                {t('watchTrends')}
+              </button>
+            </div>
+          </div>
+
+          {/* Category 2×2 grid */}
+          <div className="grid grid-cols-2 sm:grid-cols-1 gap-3">
+            {categories.map((cat) => {
+              const Icon = cat.icon;
+              return (
+                <button
+                  key={cat.key}
+                  onClick={() => {
+                    haptic.selection();
+                    router.push(cat.href);
+                  }}
+                  className={cn(
+                    'group relative min-h-[160px] overflow-hidden rounded-[26px] border border-white/[0.10] bg-white/[0.055] p-4 text-left',
+                    'shadow-[inset_0_1px_0_rgba(255,255,255,0.18)] backdrop-blur-3xl',
+                    'transition-all duration-300 active:scale-[0.97]',
+                    'hover:border-white/20'
+                  )}
+                >
+                  {/* Gradient fill */}
+                  <div className={cn('absolute inset-0 bg-gradient-to-br opacity-100', cat.gradient)} />
+                  {/* Glow spot */}
+                  <div
+                    className="absolute -top-6 -left-6 w-28 h-28 rounded-full blur-2xl opacity-60 transition-opacity duration-500 group-hover:opacity-90"
+                    style={{ background: cat.glow }}
+                  />
+                  <div className="relative z-10 flex h-full flex-col justify-between">
+                    <div className="grid size-12 place-items-center rounded-2xl border border-white/[0.12] bg-black/25 backdrop-blur-2xl">
+                      <Icon className="size-5 text-white" />
+                    </div>
+                    <div>
+                      <p className="text-[17px] font-black tracking-tight">
+                        {t(`cat.${cat.key}.title`)}
+                      </p>
+                      <p className="mt-1 text-[12px] leading-5 text-white/40">
+                        {t(`cat.${cat.key}.subtitle`)}
+                      </p>
+                    </div>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </section>
+
+        {/* Marquee */}
+        <section className="-mx-5 overflow-hidden  py-4 backdrop-blur-xl">
+          <div className="flex w-max animate-[marquee_30s_linear_infinite] gap-3 px-5">
+            {[...marqueeItems, ...marqueeItems, ...marqueeItems].map((key, index) => (
+              <span
+                key={`${key}-${index}`}
+                className={cn("rounded-full border border-white/[0.08] bg-black/25 px-4 py-2 text-[13px] font-bold text-white/45", glass.activeTab)}
+              >
+                {t(key)}
+              </span>
             ))}
           </div>
         </section>
 
-        {/* ── Models Grid ── */}
-        <section style={{ marginBottom: 28 }}>
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              marginBottom: 14,
-            }}
-          >
-            <span
-              style={{
-                fontSize: 12,
-                fontWeight: 700,
-                letterSpacing: '0.8px',
-                textTransform: 'uppercase',
-                color: 'rgba(255,255,255,0.4)',
-              }}
-            >
-              {t('models')}
-            </span>
+        {/* Trends section */}
+        <section>
+          <div className="mb-5 flex items-end justify-between gap-4">
+            <div>
+              <p className="text-[12px] font-bold uppercase tracking-[0.2em] text-cyan-200/40">
+                {t('community')}
+              </p>
+              <h2 className="mt-1 text-[26px] font-black tracking-tight">{t('trending')}</h2>
+            </div>
             <button
-              onClick={() => router.push('/models')}
-              style={{
-                fontSize: 14,
-                fontWeight: 600,
-                color: '#4FC3F7',
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-              }}
+              onClick={() => router.push('/trends')}
+              className="rounded-full border border-white/[0.10] bg-white/[0.06] px-4 py-2 text-[13px] font-bold text-white/50 backdrop-blur-xl transition active:scale-95"
             >
-              {t('all')}
+              {t('all')} →
             </button>
           </div>
 
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(72px, 1fr))',
-              gap: '18px 10px',
-            }}
-          >
-            {modelsLoading
+          <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
+            {isLoading
               ? Array.from({ length: 8 }).map((_, i) => (
                 <div
                   key={i}
-                  style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    gap: 8,
-                  }}
-                >
-                  <GlassSkeleton w="54px" h="54px" circle />
-                  <GlassSkeleton w="44px" h="10px" />
-                </div>
+                  className="aspect-[3/4] animate-pulse rounded-[26px] border border-white/[0.08] bg-white/[0.06]"
+                />
               ))
-              : displayModels.map((m) => (
-                <button
-                  key={m.tech_name}
-                  onClick={() =>
-                    router.push(`/generate?model=${m.tech_name}`)
-                  }
-                  style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    gap: 7,
-                    background: 'none',
-                    border: 'none',
-                    cursor: 'pointer',
-                    padding: 0,
-                    transition: 'transform 0.22s cubic-bezier(0.32,0.72,0,1)',
-                  }}
-                  onMouseDown={(e) =>
-                    (e.currentTarget.style.transform = 'scale(0.87)')
-                  }
-                  onMouseUp={(e) =>
-                    (e.currentTarget.style.transform = 'scale(1)')
-                  }
-                  onMouseLeave={(e) =>
-                    (e.currentTarget.style.transform = 'scale(1)')
-                  }
-                >
-                  <div
-                    style={{
-                      width: 54,
-                      height: 54,
-                      borderRadius: '9999px',
-                      overflow: 'hidden',
-                      border: '1px solid rgba(255,255,255,0.16)',
-                      background: 'rgba(255,255,255,0.07)',
-                      backdropFilter: 'blur(20px)',
-                    }}
-                  >
-                    <Avatar className="size-full">
-                      <AvatarImage
-                        src={
-                          m.avatar ||
-                          `https://ui-avatars.com/api/?name=${encodeURIComponent(m.model_name)}&background=1c1c1c&color=fff`
-                        }
-                      />
-                      <AvatarFallback
-                        style={{ fontSize: 13, fontWeight: 700 }}
-                      >
-                        {m.model_name.slice(0, 2)}
-                      </AvatarFallback>
-                    </Avatar>
-                  </div>
-                  <span
-                    style={{
-                      fontSize: 11,
-                      fontWeight: 500,
-                      color: 'rgba(255,255,255,0.5)',
-                      maxWidth: 62,
-                      textAlign: 'center',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap',
-                    }}
-                  >
-                    {cleanModelName(m.model_name)}
-                  </span>
-                </button>
-              ))}
-          </div>
-        </section>
+              : posts.map((post, index) => {
+                const media = getPostResultMedia(post);
+                const isLast = index === posts.length - 1;
+                const title = (post as NamedPost).name || post.inputs?.text || t('trend');
+                const isVideo = media?.type === 'video';
+                return (
+                  <div key={post.id} ref={isLast ? lastPostRef : null}>
+                    <button
+                      onClick={() => {
+                        try {
+                          sessionStorage.setItem(`trend_post_${post.id}`, JSON.stringify(post));
+                        } catch { }
+                        router.push(`/trend/${post.id}`);
+                      }}
+                      className="group relative aspect-[3/4] w-full overflow-hidden rounded-[26px] border border-white/[0.08] bg-zinc-900/60 text-left shadow-[0_18px_50px_rgba(0,0,0,0.3)] transition-all duration-500 active:scale-[0.97] hover:border-white/20 hover:shadow-[0_24px_60px_rgba(0,0,0,0.5)]"
+                    >
+                      {media ? (
+                        isVideo ? (
+                          <video
+                            src={media.url}
+                            muted
+                            loop
+                            playsInline
+                            className="absolute inset-0 size-full object-cover transition duration-700 group-hover:scale-105"
+                            onMouseEnter={(e) => e.currentTarget.play()}
+                            onMouseLeave={(e) => e.currentTarget.pause()}
+                          />
+                        ) : (
+                          <img
+                            src={media.url}
+                            alt=""
+                            className="absolute inset-0 size-full object-cover transition duration-700 group-hover:scale-105"
+                          />
+                        )
+                      ) : (
+                        <div className="absolute inset-0 grid place-items-center bg-gradient-to-br from-cyan-300/10 to-white/[0.04]">
+                          <Sparkles className="size-8 text-white/20" />
+                        </div>
+                      )}
 
-        <div
-          style={{
-            height: 1,
-            background: 'rgba(255,255,255,0.08)',
-            margin: '0 0 24px',
-          }}
-        />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent opacity-80 transition-opacity group-hover:opacity-100" />
 
-        {/* ── AI Assistants ── */}
-        <section style={{ marginBottom: 28 }}>
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              marginBottom: 14,
-            }}
-          >
-            <span
-              style={{
-                fontSize: 12,
-                fontWeight: 700,
-                letterSpacing: '0.8px',
-                textTransform: 'uppercase',
-                color: 'rgba(255,255,255,0.4)',
-              }}
-            >
-              {t('aiAssistants')}
-            </span>
-            <button
-              onClick={() => router.push('/chats')}
-              style={{
-                fontSize: 14,
-                fontWeight: 600,
-                color: '#4FC3F7',
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-              }}
-            >
-              {t('all')}
-            </button>
-          </div>
-
-          <div
-            style={{
-              display: 'flex',
-              gap: 12,
-              overflowX: 'auto',
-              scrollbarWidth: 'none',
-              paddingBottom: 4,
-            }}
-          >
-            {rolesLoading
-              ? Array.from({ length: 5 }).map((_, i) => (
-                <div
-                  key={i}
-                  style={{
-                    flexShrink: 0,
-                    width: 72,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    gap: 8,
-                  }}
-                >
-                  <GlassSkeleton w="56px" h="56px" radius="14px" />
-                  <GlassSkeleton w="56px" h="10px" />
-                </div>
-              ))
-              : displayRoles.map((role) => (
-                <button
-                  key={role.id}
-                  onClick={() => router.push(`/chats?role=${role.id}`)}
-                  style={{
-                    flexShrink: 0,
-                    width: 72,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    gap: 8,
-                    background: 'none',
-                    border: 'none',
-                    cursor: 'pointer',
-                    padding: 0,
-                    transition: 'transform 0.22s cubic-bezier(0.32,0.72,0,1)',
-                  }}
-                  onMouseDown={(e) =>
-                    (e.currentTarget.style.transform = 'scale(0.87)')
-                  }
-                  onMouseUp={(e) =>
-                    (e.currentTarget.style.transform = 'scale(1)')
-                  }
-                  onMouseLeave={(e) =>
-                    (e.currentTarget.style.transform = 'scale(1)')
-                  }
-                >
-                  <div
-                    style={{
-                      width: 56,
-                      height: 56,
-                      borderRadius: 14,
-                      overflow: 'hidden',
-                      border: '1px solid rgba(255,255,255,0.16)',
-                      background: 'rgba(255,255,255,0.07)',
-                      backdropFilter: 'blur(20px)',
-                    }}
-                  >
-                    <Avatar className="size-full rounded-none">
-                      <AvatarImage src={role.image || ''} />
-                      <AvatarFallback style={{ fontSize: 22 }}>
-                        {localize(role.label).slice(0, 1)}
-                      </AvatarFallback>
-                    </Avatar>
-                  </div>
-                  <span
-                    style={{
-                      fontSize: 11,
-                      fontWeight: 500,
-                      color: 'rgba(255,255,255,0.5)',
-                      width: '100%',
-                      textAlign: 'center',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap',
-                    }}
-                  >
-                    {localize(role.label)}
-                  </span>
-                </button>
-              ))}
-          </div>
-        </section>
-
-        <div
-          style={{
-            height: 1,
-            background: 'rgba(255,255,255,0.08)',
-            margin: '0 0 24px',
-          }}
-        />
-
-        {/* ── Trending ── */}
-        <section style={{
-          marginBottom: 20,
-          width: '100%',
-        }}>
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              marginBottom: 14,
-            }}
-          >
-            <span
-              style={{
-                fontSize: 12,
-                fontWeight: 700,
-                letterSpacing: '0.8px',
-                textTransform: 'uppercase',
-                color: 'rgba(255,255,255,0.4)',
-              }}
-            >
-              {t('trending')}
-            </span>
-            <button
-              onClick={() => router.push('/trends')}
-              style={{
-                fontSize: 14,
-                fontWeight: 600,
-                color: '#4FC3F7',
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-              }}
-            >
-              {t('all')}
-            </button>
-          </div>
-
-          <div
-            className='grid grid-cols-2 md:grid-cols-4 gap-3 w-full'
-          >
-            {postsLoading
-              ? Array.from({ length: 4 }).map((_, i) => (
-                <GlassSkeleton key={i} w="100%" h="180px" radius="18px" />
-              ))
-              : (posts.slice(0, 4).map((post: any) => (
-                <button
-                  key={post.id}
-                  onClick={() => router.push(`/trends?post=${post.id}`)}
-                  style={{
-                    position: 'relative',
-                    aspectRatio: '3/4',
-                    borderRadius: 18,
-                    overflow: 'hidden',
-                    ...glassCard,
-                    cursor: 'pointer',
-                    transition: 'all 0.22s cubic-bezier(0.32,0.72,0,1)',
-                    padding: 0,
-                    border: '1px solid rgba(255,255,255,0.12)',
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.transform = 'translateY(-4px)';
-                    e.currentTarget.style.border = '1px solid rgba(255,255,255,0.24)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.transform = 'none';
-                    e.currentTarget.style.border = '1px solid rgba(255,255,255,0.12)';
-                  }}
-                >
-                  {(() => {
-                    const media = getPostResultMedia(post);
-                    if (!media) return (
-                      <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.05)' }}>
-                         <Sparkles className='size-6 text-white/20 mx-auto' />
+                      {/* Top badges */}
+                      <div className="absolute top-3 left-3 right-3 flex items-center justify-between">
+                        <div className="rounded-full border border-white/[0.10] bg-black/50 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white backdrop-blur-xl">
+                          {isVideo ? 'Video' : 'Image'}
+                        </div>
+                        {isVideo && (
+                          <div className="grid size-7 place-items-center rounded-full border border-white/20 bg-black/40 backdrop-blur-xl opacity-0 transition-opacity group-hover:opacity-100">
+                            <Play className="size-3 fill-white" />
+                          </div>
+                        )}
                       </div>
-                    );
-                    if (media.type === 'video') {
-                      return (
-                        <video
-                          src={media.url}
-                          autoPlay
-                          muted
-                          loop
-                          playsInline
-                          style={{
-                            position: 'absolute',
-                            inset: 0,
-                            width: '100%',
-                            height: '100%',
-                            objectFit: 'cover',
-                          }}
-                        />
-                      );
-                    }
-                    return (
-                      <img
-                        src={media.url}
-                        alt=""
-                        style={{
-                          position: 'absolute',
-                          inset: 0,
-                          width: '100%',
-                          height: '100%',
-                          objectFit: 'cover',
-                        }}
-                      />
-                    );
-                  })()}
-                  
-                  {/* Cost badge */}
-                  <div style={{
-                    position: 'absolute',
-                    top: 8,
-                    right: 8,
-                    padding: '4px 8px',
-                    borderRadius: 999,
-                    background: 'rgba(0,0,0,0.45)',
-                    backdropFilter: 'blur(10px)',
-                    border: '1px solid rgba(255,255,255,0.15)',
-                    fontSize: 11,
-                    fontWeight: 700,
-                    color: '#fff',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 3
-                  }}>
-                    <span style={{ color: '#4FC3F7' }}>◆</span>
-                    {post.cost || 15}
-                  </div>
 
-                  {/* Gradient Overlay */}
-                  <div style={{
-                    position: 'absolute',
-                    inset: 0,
-                    background: 'linear-gradient(to top, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.2) 50%, transparent 100%)',
-                  }} />
-
-                  {/* Text */}
-                  <div style={{
-                    position: 'absolute',
-                    bottom: 0,
-                    left: 0,
-                    right: 0,
-                    padding: '10px 12px',
-                  }}>
-                    <p style={{
-                      fontSize: 12,
-                      fontWeight: 600,
-                      color: '#fff',
-                      margin: 0,
-                      textAlign: 'left',
-                      display: '-webkit-box',
-                      WebkitLineClamp: 2,
-                      WebkitBoxOrient: 'vertical',
-                      overflow: 'hidden',
-                      lineHeight: 1.2
-                    }}>
-                      {post.name || post.inputs?.text || 'Untitled'}
-                    </p>
+                      {/* Bottom info */}
+                      <div className="absolute inset-x-0 bottom-0 p-4">
+                        {post.model_name && (
+                          <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-white/35">
+                            {post.model_name}
+                          </p>
+                        )}
+                        <p className="line-clamp-2 text-[13px] font-black leading-tight group-hover:text-cyan-200 transition-colors">
+                          {title}
+                        </p>
+                      </div>
+                    </button>
                   </div>
-                </button>
-              )))}
+                );
+              })}
           </div>
-        </section>
 
-
-        {/* ── Partnership Button ── */}
-        <section style={{ marginBottom: 28 }}>
-          <button
-            onClick={() => router.push('/profile/referral')}
-            style={{
-              width: '100%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 12,
-              padding: '16px',
-              borderRadius: 18,
-              background: 'rgba(0,122,255,0.12)',
-              border: '1px solid rgba(0,122,255,0.35)',
-              boxShadow:
-                'inset 0 1px 0 rgba(255,255,255,0.15), 0 8px 32px rgba(0,122,255,0.15)',
-              cursor: 'pointer',
-              transition: 'all 0.24s cubic-bezier(0.32,0.72,0,1)',
-              color: '#fff',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = 'rgba(0,122,255,0.18)';
-              e.currentTarget.style.transform = 'translateY(-2px)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = 'rgba(0,122,255,0.12)';
-              e.currentTarget.style.transform = 'none';
-            }}
-          >
-            <div
-              style={{
-                width: 32,
-                height: 32,
-                borderRadius: '50%',
-                background: 'rgba(0,122,255,0.3)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <Zap size={16} className="text-[#4FC3F7]" />
+          {!isLoading && posts.length === 0 && (
+            <div className="flex flex-col items-center justify-center py-20 text-center opacity-40">
+              <div className="mb-4 grid size-16 place-items-center rounded-3xl border-2 border-dashed border-white/20">
+                <span className="text-2xl">⚡️</span>
+              </div>
+              <p className="text-[14px] font-medium">{t('noTrends')}</p>
             </div>
-            <div style={{ textAlign: 'left' }}>
-              <p style={{ fontSize: 14, fontWeight: 700 }}>
-                {t('partnership')}
-              </p>
-              <p
-                style={{
-                  fontSize: 12,
-                  color: 'rgba(255,255,255,0.5)',
-                  marginTop: 2,
-                }}
-              >
-                {t('partnershipSub')}
-              </p>
-            </div>
-            <ChevronRight size={18} className="ml-auto opacity-30 text-white" />
-          </button>
-        </section>
-      </div>
+          )}
 
-      {/* ── Marquee ── */}
-      <div
-        style={{
-          position: 'sticky',
-          bottom: 48,
-          width: '100%',
-          marginTop: 0,
-          left: 0,
-          right: 0,
-          padding: '7px 0',
-          overflow: 'hidden',
-          zIndex: 45,
-        }}
-      >
-        <div
-          style={{
-            display: 'inline-block',
-            whiteSpace: 'nowrap',
-            animation: 'marquee 22s linear infinite',
-            fontSize: 16,
-            fontWeight: 600,
-            color: 'rgba(255,255,255,0.55)',
-            letterSpacing: '1.2px',
-          }}
-        >
-          {[
-            'Nana',
-            'Banana',
-            'Pro',
-            'Veo',
-            'Kling',
-            'Sora',
-            'Flux',
-            'MidJourney',
-            'Runway',
-            'Luma',
-          ].map((n, i) => (
-            <span key={i}>
-              <span style={{ color: 'rgba(255,255,255,0.85)' }}>{n}</span>
-              <span
-                style={{ margin: '0 14px', color: 'rgba(255,255,255,0.2)' }}
-              >
-                ·
-              </span>
-            </span>
-          ))}
-          {[
-            'Nana',
-            'Banana',
-            'Pro',
-            'Veo',
-            'Kling',
-            'Sora',
-            'Flux',
-            'MidJourney',
-            'Runway',
-            'Luma',
-          ].map((n, i) => (
-            <span key={`b${i}`}>
-              <span style={{ color: 'rgba(255,255,255,0.85)' }}>{n}</span>
-              <span
-                style={{ margin: '0 14px', color: 'rgba(255,255,255,0.2)' }}
-              >
-                ·
-              </span>
-            </span>
-          ))}
-        </div>
-      </div>
+          {isFetchingNextPage && (
+            <div className="flex justify-center py-8">
+              <Loader2 className="size-6 animate-spin text-white/30" />
+            </div>
+          )}
+        </section>
+      </main>
+
+      {paymentUrl && (
+        <PaymentDialog
+          url={paymentUrl}
+          open={isPaymentOpen}
+          onOpenChange={setIsPaymentOpen}
+        />
+      )}
 
       <style>{`
-        @keyframes shimmer { 0%{background-position:-200% 0} 100%{background-position:200% 0} }
-        @keyframes marquee { 0%{transform:translateX(0)} 100%{transform:translateX(-50%)} }
-        @media(min-width:1024px){ .lg\\:flex{ display:flex!important }}
+        @keyframes marquee {
+          from { transform: translateX(0); }
+          to { transform: translateX(-33.333%); }
+        }
+        @keyframes aurora1 {
+          0%, 100% { transform: translate(0, 0) scale(1); }
+          33% { transform: translate(60px, -40px) scale(1.1); }
+          66% { transform: translate(-30px, 30px) scale(0.95); }
+        }
+        @keyframes aurora2 {
+          0%, 100% { transform: translate(0, 0) scale(1); }
+          40% { transform: translate(-50px, 60px) scale(1.08); }
+          70% { transform: translate(40px, -30px) scale(0.92); }
+        }
+        @keyframes aurora3 {
+          0%, 100% { transform: translate(0, 0) scale(1); }
+          30% { transform: translate(30px, -50px) scale(1.06); }
+          65% { transform: translate(-40px, 20px) scale(0.96); }
+        }
       `}</style>
     </div>
   );

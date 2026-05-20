@@ -2,11 +2,12 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import {
   Sidebar,
   SidebarContent,
   SidebarGroup,
+  SidebarGroupLabel,
   SidebarGroupContent,
   SidebarMenu,
   SidebarMenuItem,
@@ -14,8 +15,8 @@ import {
 } from '@/components/ui/sidebar';
 import { Brain, Home, MessageCircle, Sparkle, UserRound } from 'lucide-react';
 import { useHaptic } from '@/hooks/useHaptic';
-import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils';
+import { useTranslations } from 'next-intl';
 import Image from 'next/image';
 
 export function AppSidebar() {
@@ -24,18 +25,12 @@ export function AppSidebar() {
   const router = useRouter();
   const haptic = useHaptic();
 
-  const [collapsible, setCollapsible] = useState<'icon' | 'offcanvas'>(
-    'offcanvas'
-  );
-
-  useEffect(() => {
-    const handleResize = () => {
-      setCollapsible(window.innerWidth >= 1024 ? 'offcanvas' : 'icon');
-    };
-    handleResize();
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
+  const glass = {
+    thin: 'bg-white/[.06] backdrop-blur-xl border border-white/[.10] shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]',
+    card: 'bg-white/[.055] backdrop-blur-2xl border border-white/[.10] shadow-[inset_0_1px_0_rgba(255,255,255,0.14),0_4px_20px_rgba(0,0,0,0.25)]',
+    tab: 'bg-white/[.05] border border-white/[.08]',
+    activeTab: 'bg-cyan-400/15 border border-cyan-400/25 text-cyan-200 shadow-[0_0_16px_rgba(34,211,238,0.18)]',
+  };
 
   const items = [
     { id: 1, href: '/', label: t('home'), icon: Home },
@@ -45,18 +40,28 @@ export function AppSidebar() {
     { id: 5, href: '/profile', label: t('profile'), icon: UserRound },
   ] as const;
 
-  useEffect(() => {
-    const token = localStorage.getItem('auth_token');
-    if (!token) router.replace('/login');
-  }, [router]);
+  // useEffect(() => {
+  //   const token = localStorage.getItem('auth_token');
+  //   if (!token) router.replace('/login');
+  // }, [router]);
 
   const isActive = (href: string) =>
-    pathname === href || (href !== '/' && pathname.startsWith(href + '/'));
+    pathname === href || pathname.startsWith(href + '/');
 
   return (
-    <Sidebar variant="floating" collapsible={collapsible} className="bg-transparent!">
-      <SidebarContent className="bg-neutral-950 rounded-3xl">
+    <Sidebar variant="floating" collapsible="icon">
+      <SidebarContent className={cn('rounded-xl py-1')}>
         <SidebarGroup>
+          <SidebarGroupLabel className="px-3 py-2">
+            <Image
+              src="/logo.png"
+              alt="logo"
+              width={120}
+              height={40}
+              className="invert opacity-80"
+            />
+          </SidebarGroupLabel>
+
           <SidebarGroupContent>
             <SidebarMenu className="space-y-1">
               {items.map((item) => {
@@ -71,27 +76,29 @@ export function AppSidebar() {
                     >
                       <Link
                         href={item.href}
-                        onClick={() =>
-                          isCreate ? haptic.medium() : haptic.selection()
-                        }
+                        onClick={() => {
+                          if (isCreate) haptic.medium();
+                          else haptic.selection();
+                        }}
                         className={cn(
-                          'group flex items-center gap-3 rounded-xl py-2.5',
-                          'text-[14px] font-medium transition-all duration-200',
+                          'rounded-xl font-medium',
+                          'transition-all duration-220 ease-[cubic-bezier(0.32,0.72,0,1)]',
                           'active:scale-[0.96]',
                           active
-                            ? 'bg-white/10 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.1)]'
-                            : 'text-white/50 hover:bg-white/5 hover:text-white/80'
+                            ? cn(
+                              glass.tab
+                            )
+                            : isCreate
+                              ? cn(
+                                glass.activeTab,
+                                '',
+                                'text-white'
+                              )
+                              : 'hover:bg-white/[.07]'
                         )}
                       >
-                        <item.icon
-                          className={cn(
-                            'shrink-0 h-5 w-5',
-                            active
-                              ? 'text-white'
-                              : 'text-white/40 group-hover:text-white/70'
-                          )}
-                        />
-                        <span className="truncate">{item.label}</span>
+                        <item.icon className="h-4 w-4" />
+                        <span>{item.label}</span>
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useCallback } from 'react';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import api from '@/lib/api';
 import { useAuth } from '@/hooks/useAuth';
 import { useBot } from '@/app/providers/BotProvider';
@@ -16,6 +16,7 @@ export const TelegramProvider = ({
   const { user, login } = useAuth();
   const { bot } = useBot();
   const pathname = usePathname();
+  const router = useRouter();
   const expanded = useRef(false);
   const attempted = useRef(false);
   const retryTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -65,12 +66,16 @@ export const TelegramProvider = ({
       }
 
       try {
+        const referrerId = localStorage.getItem('pending_referrer_id');
         const { data } = await api.post(
           '/api/auth/tma',
           {
             initData,
             platform: 'telegram',
             bot_id: botId,
+            ...(referrerId
+              ? { referrer_id: Number(referrerId), ref: Number(referrerId) }
+              : {}),
           },
           {
             headers: {
@@ -84,6 +89,7 @@ export const TelegramProvider = ({
         if (data.user?.id) {
           localStorage.setItem('auth_user_id', String(data.user.id));
         }
+        localStorage.removeItem('pending_referrer_id');
         login(data.user);
       } catch (err) {
         console.error('[TelegramProvider] auth/tma error:', err);
@@ -120,6 +126,55 @@ export const TelegramProvider = ({
       }
     };
   }, [pathname, user, bot, doAuth]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (sessionStorage.getItem('start_param_processed')) return;
+
+    const checkStartParam = () => {
+      let startParam = '';
+
+      try {
+        const tg = (window as any)?.Telegram?.WebApp;
+        startParam = tg?.initDataUnsafe?.start_param || '';
+      } catch {}
+
+      if (!startParam) {
+        try {
+          startParam =
+            new URLSearchParams(window.location.search).get(
+              'tgWebAppStartParam'
+            ) || '';
+        } catch {}
+      }
+
+      if (!startParam) return;
+
+      if (startParam.startsWith('post-')) {
+        const postMatch = startParam.match(/^post-(\d+)/);
+        const refMatch = startParam.match(/[_-]ref-(\d+)/);
+
+        if (refMatch) {
+          localStorage.setItem('pending_referrer_id', refMatch[1]);
+        }
+
+        if (postMatch) {
+          sessionStorage.setItem('start_param_processed', 'true');
+          router.replace(`/trend/${postMatch[1]}`);
+        }
+        return;
+      }
+
+      const refMatch = startParam.match(/^(?:ref-)?(\d+)$/);
+      if (refMatch) {
+        localStorage.setItem('pending_referrer_id', refMatch[1]);
+      }
+    };
+
+    checkStartParam();
+    const timer = setTimeout(checkStartParam, 1000);
+    return () => clearTimeout(timer);
+  }, [router]);
 
   return <>{children}</>;
 };

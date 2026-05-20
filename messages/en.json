@@ -32,7 +32,12 @@
     "maxFiles": "Maximum {limit} file(s) of type {fileType}",
     "publishToTrends": "Publish",
     "dialogue": "Dialogue",
-    "error": "Generation error"
+    "error": "Error",
+    "model": "Model",
+    "version": "Version",
+    "role": "Assistant",
+    "close": "Close",
+    "download": "Download"
   },
   "Chats": {
     "title": "Chats",
@@ -45,7 +50,10 @@
     "error": "Error",
     "errorLoadChats": "Failed to load chats.",
     "loadMore": "Load more",
-    "loading": "Loading..."
+    "loading": "Loading...",
+    "noChatsTitle": "No chats yet",
+    "noChatsDesc": "Start a conversation with an assistant or text model.",
+    "retry": "Retry"
   },
   "Home": {
     "models": "Models",
@@ -58,12 +66,40 @@
     "trend2": "Explore GPT capabilities",
     "trend3": "Photorealistic images",
     "trend4": "Music generation",
-    "heroTitle": "Create something",
-    "heroAccent": "incredible",
-    "heroSubtitle": "Choose a content type and start generating",
+    "heroTitle": "Create content with a",
+    "heroAccent": "Siberian pulse",
+    "heroSubtitle": "Text, images, video, and music in one minimal workspace: cold air, clean glass, fast AI models.",
     "partnership": "Partnership program",
     "partnershipSub": "Earn together with us",
-    "topUp": "Top up"
+    "topUp": "Top up",
+    "northLabel": "Siberian AI platform",
+    "heroKicker": "Northern light for your ideas",
+    "startCreate": "Start creating",
+    "watchTrends": "Watch trends",
+    "community": "Community",
+    "trend": "Trend",
+    "marqueeText": "Text assistants",
+    "marqueeImage": "Image generation",
+    "marqueeVideo": "Video from ideas",
+    "marqueeMusic": "Music and audio",
+    "cat": {
+      "text": {
+        "title": "Text",
+        "subtitle": "Dialogs, ideas, tasks"
+      },
+      "image": {
+        "title": "Photo",
+        "subtitle": "Visuals and styles"
+      },
+      "video": {
+        "title": "Video",
+        "subtitle": "Motion and scenes"
+      },
+      "music": {
+        "title": "Music",
+        "subtitle": "Tracks and sound"
+      }
+    }
   },
   "Login": {
     "tagline": "Next-generation AI platform",
@@ -131,7 +167,8 @@
     "generating": "Generating...",
     "catImageEmoji": "🖼️ Images",
     "catVideoEmoji": "🎬 Video",
-    "catAudioEmoji": "🎵 Audio"
+    "catAudioEmoji": "🎵 Audio",
+    "catAll": "All models"
   },
   "Generate": {
     "title": "Create",
@@ -245,7 +282,9 @@
         "1536x1024": "1536×1024",
         "1024x1536": "1024×1536"
       }
-    }
+    },
+    "catText": "Text",
+    "model": "Model"
   },
   "Profile": {
     "title": "Profile",
@@ -346,7 +385,17 @@
     "model": "Model",
     "prompt": "Prompt",
     "back": "Back",
-    "done": "Done"
+    "done": "Done",
+    "community": "Community feed",
+    "trend": "Trend",
+    "cost": "Cost",
+    "noPrompt": "No prompt provided",
+    "shareTrend": "Share trend",
+    "tgAppLink": "Telegram Mini App link",
+    "tgAppLinkDesc": "Opens this post inside the app",
+    "webBrowserLink": "Browser link",
+    "webBrowserLinkDesc": "Opens the trend detail page",
+    "linkCopied": "Link copied"
   },
   "Publish": {
     "title": "Publish to Trends",
