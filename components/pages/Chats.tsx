@@ -124,7 +124,7 @@ export const Chats = () => {
   // ==================== Error State ====================
   if (isError) {
     return (
-      <div className="flex items-center justify-center min-h-svh p-8 bg-black text-center">
+      <div className="flex items-center justify-center min-h-svh p-8 text-center">
         <div className="max-w-xs flex flex-col items-center gap-6">
           <div className="w-20 h-20 rounded-[32px] bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-500">
             <MessageSquarePlus size={32} />
@@ -151,7 +151,7 @@ export const Chats = () => {
   // ==================== Loading new chat ====================
   if ((modelParam || roleParam) && !startedRef.current) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-svh gap-6 bg-black">
+      <div className="flex flex-col items-center justify-center min-h-svh gap-6">
         <div className="w-16 h-16 rounded-[24px] bg-zinc-900 border border-white/5 flex items-center justify-center shadow-2xl">
           <Loader2 className="size-8 animate-spin" style={{ color: ACCENT_CYAN }} />
         </div>
@@ -163,7 +163,7 @@ export const Chats = () => {
   }
 
   return (
-    <div className="flex flex-col min-h-svh pb-32 w-full max-w-2xl mx-auto bg-black">
+    <div className="flex flex-col min-h-svh pb-32 w-full max-w-2xl mx-auto">
       {/* Header */}
       <header className="sticky top-0 z-50 px-5 py-4 flex items-center justify-between">
         <h1 className="text-[30px] font-black tracking-tight bg-gradient-to-r from-cyan-200 via-sky-300 to-emerald-200 bg-clip-text text-transparent leading-tight">

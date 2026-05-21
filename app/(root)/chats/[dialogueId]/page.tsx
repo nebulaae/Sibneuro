@@ -333,22 +333,26 @@ export default function ChatPage() {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); }
   };
 
-  const handleDownload = async (url: string) => {
+  const handleDownload = (url: string) => {
     haptic.selection();
+
+    // Create the secure proxy download URL
     const proxyUrl = `/api/download?url=${encodeURIComponent(url)}`;
-    try {
-      const res = await fetch(proxyUrl);
-      if (!res.ok) throw new Error();
-      const blob = await res.blob();
-      const blobUrl = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = blobUrl;
-      link.download = url.split('/').pop()?.split('?')[0] || 'download';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(blobUrl);
-    } catch { window.location.href = proxyUrl; }
+
+    // For Telegram Mini Apps, use openLink with the proxy URL to trigger native browser's download manager immediately
+    const isTelegram = typeof window !== 'undefined' && !!(window as any).Telegram?.WebApp;
+    if (isTelegram && (window as any).Telegram?.WebApp?.openLink) {
+      try {
+        const absoluteProxyUrl = new URL(proxyUrl, window.location.origin).toString();
+        (window as any).Telegram.WebApp.openLink(absoluteProxyUrl);
+        return;
+      } catch (err) {
+        console.warn('[handleDownload] Telegram openLink with proxy failed, trying standard download:', err);
+      }
+    }
+
+    // On standard website, set window.location.href to trigger direct immediate download without navigating away
+    window.location.href = proxyUrl;
   };
 
   const isSendDisabled = isHistoryLoading || isProcessing || generate.isPending || (!text.trim() && uploadedFiles.length === 0);
