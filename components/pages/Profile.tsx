@@ -274,10 +274,7 @@ export const Profile = () => {
             {/* Stats */}
             <div className="grid grid-cols-1 gap-3">
               <button
-                onClick={() => {
-                  haptic.medium();
-                  if (paymentUrl) setIsPaymentOpen(true);
-                }}
+                onClick={() => router.push(paymentUrl!)}
                 className={cn(
                   glass.tile,
                   'flex flex-col gap-3 p-5 text-left active:scale-95',
@@ -329,8 +326,7 @@ export const Profile = () => {
             {/* Top Up */}
             <button
               onClick={() => {
-                haptic.medium();
-                if (paymentUrl) setIsPaymentOpen(true);
+                router.push(paymentUrl!)
               }}
               className={cn(
                 glass.tile,
@@ -624,13 +620,13 @@ export const Profile = () => {
         )}
       </main>
 
-      {paymentUrl && (
+      {/* {paymentUrl && (
         <PaymentDialog
           url={paymentUrl}
           open={isPaymentOpen}
           onOpenChange={setIsPaymentOpen}
         />
-      )}
+      )} */}
     </div>
   );
 };
