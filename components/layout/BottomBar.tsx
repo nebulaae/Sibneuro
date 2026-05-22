@@ -281,7 +281,7 @@ export const BottomBar = () => {
   ] as const;
 
   return (
-    <nav className="fixed bottom-3 left-0 right-0 z-50 flex justify-center px-3 sm:hidden">
+    <nav className="fixed bottom-3 left-0 right-0 z-50 flex justify-center px-3 md:hidden">
       <div className="flex w-full max-w-sm items-center gap-2">
         {/* HOME */}
         <Link

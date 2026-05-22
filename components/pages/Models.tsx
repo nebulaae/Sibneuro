@@ -91,7 +91,7 @@ export const Models = () => {
       {/* Aurora bg */}
 
       {/* Header */}
-      <header className="sticky top-0 z-40 px-5 py-4 bg-black/25 backdrop-blur-3xl">
+      <header className="sticky top-0 z-40 px-5 py-4">
         <div className="max-w-2xl mx-auto">
           <h1 className="text-[30px] font-black tracking-tight bg-gradient-to-r from-cyan-200 via-sky-300 to-emerald-200 bg-clip-text text-transparent leading-tight">
             {t('title')}
@@ -100,7 +100,7 @@ export const Models = () => {
       </header>
 
       {/* Tabs */}
-      <div className="sticky top-[65px] z-30 bg-black/20 backdrop-blur-2xl">
+      <div className="sticky top-[65px] z-30">
         <div className="max-w-2xl mx-auto flex gap-2 px-4 py-3 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {TABS.map((tabItem) => {
             const active = tab === tabItem.key;

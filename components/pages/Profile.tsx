@@ -245,7 +245,7 @@ export const Profile = () => {
         </section>
 
         {/* Tabs */}
-        <div className="sticky top-[68px] z-30 -mx-5 px-5 pb-2 bg-black/20 backdrop-blur-2xl">
+        <div className="sticky top-[68px] z-30 -mx-5 px-5 pb-2">
           <div className="flex gap-1.5 p-1 rounded-full bg-white/[0.05] border border-white/[0.08]">
             {TABS.map((tab) => (
               <button

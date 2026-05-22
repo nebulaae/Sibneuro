@@ -1,4 +1,3 @@
-/* app/(root)/layout.tsx */
 import { BottomBar } from '@/components/layout/BottomBar';
 import { SidebarProvider } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/layout/AppSidebar';
@@ -10,7 +9,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <SidebarProvider open={false}>
+    <SidebarProvider defaultOpen={false}>
       <AppSidebar />
 
       {/* === Мягкий и минималистичный фон === */}

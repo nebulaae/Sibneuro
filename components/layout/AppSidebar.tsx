@@ -49,7 +49,7 @@ export function AppSidebar() {
     pathname === href || pathname.startsWith(href + '/');
 
   return (
-    <Sidebar variant="floating" collapsible="icon">
+    <Sidebar variant="floating" collapsible="icon" className='bg-inherit'>
       <SidebarContent className={cn('rounded-xl py-1')}>
         <SidebarGroup>
           <SidebarGroupLabel className="px-3 py-2">

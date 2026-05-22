@@ -10,6 +10,7 @@ import { getLocale, getMessages } from 'next-intl/server';
 import { PlatformScripts } from './providers/PlatformScripts';
 
 import './globals.css';
+import { ThemeProviders } from './providers/ThemeProviders';
 
 export const metadata: Metadata = {
   title: 'Sibneuro',
@@ -47,26 +48,28 @@ export default async function RootLayout({
               <TelegramProvider>
                 <MaxProvider>
                   <NextIntlClientProvider locale={locale} messages={messages}>
-                    {/* <ErudaInit /> */}
-                    {children}
-                    <Toaster
-                      position="top-center"
-                      toastOptions={{
-                        style: {
-                          background: 'var(--glass-thick)',
-                          backdropFilter: 'blur(50px) saturate(180%)',
-                          WebkitBackdropFilter: 'blur(50px) saturate(180%)',
-                          border: 'var(--glass-border-thick)',
-                          boxShadow:
-                            'inset 0 1px 0 rgba(255,255,255,0.2), 0 8px 32px rgba(0,0,0,0.3)',
-                          borderRadius: '16px',
-                          color: 'var(--sys-label)',
-                          fontSize: '14px',
-                          fontWeight: 500,
-                          fontFamily: 'var(--font-sf)',
-                        },
-                      }}
-                    />
+                    <ThemeProviders>
+                      {/* <ErudaInit /> */}
+                      {children}
+                      <Toaster
+                        position="top-center"
+                        toastOptions={{
+                          style: {
+                            background: 'var(--glass-thick)',
+                            backdropFilter: 'blur(50px) saturate(180%)',
+                            WebkitBackdropFilter: 'blur(50px) saturate(180%)',
+                            border: 'var(--glass-border-thick)',
+                            boxShadow:
+                              'inset 0 1px 0 rgba(255,255,255,0.2), 0 8px 32px rgba(0,0,0,0.3)',
+                            borderRadius: '16px',
+                            color: 'var(--sys-label)',
+                            fontSize: '14px',
+                            fontWeight: 500,
+                            fontFamily: 'var(--font-sf)',
+                          },
+                        }}
+                      />
+                    </ThemeProviders>
                   </NextIntlClientProvider>
                 </MaxProvider>
               </TelegramProvider>

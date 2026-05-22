@@ -2,11 +2,11 @@
 
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogHeader, 
-  DialogTitle, 
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
   DialogDescription,
   DialogFooter
 } from '@/components/ui/dialog';
@@ -27,7 +27,7 @@ interface PublishDialogProps {
 export const PublishDialog = ({ isOpen, onClose, message }: PublishDialogProps) => {
   const t = useTranslations('Publish');
   const publish = usePublishPost();
-  
+
   const [hideText, setHideText] = useState(false);
   const [mediaSettings, setMediaSettings] = useState<Record<number, { hide: boolean, replace: boolean }>>(
     Object.fromEntries((message?.inputs?.media || []).map((_: any, i: number) => [i, { hide: false, replace: false }]))
@@ -96,40 +96,40 @@ export const PublishDialog = ({ isOpen, onClose, message }: PublishDialogProps) 
               <Label className="text-[12px] font-bold uppercase tracking-wider text-white/40 px-1">
                 {t('mediaSettings')}
               </Label>
-              
+
               <div className="space-y-3">
                 {mediaList.map((m: any, i: number) => (
                   <div key={i} className="p-4 rounded-2xl bg-white/5 border border-white/10 space-y-4">
                     <div className="flex items-center gap-3">
-                       <div className="size-10 rounded-lg bg-white/10 overflow-hidden">
-                          <img src={m.url || m.input?.input} alt="" className="size-full object-cover" />
-                       </div>
-                       <span className="text-sm font-medium text-white/80">{t('media')} #{i + 1}</span>
+                      <div className="size-10 rounded-lg bg-white/10 overflow-hidden">
+                        <img src={m.url || m.input?.input} alt="" className="size-full object-cover" />
+                      </div>
+                      <span className="text-sm font-medium text-white/80">{t('media')} #{i + 1}</span>
                     </div>
-                    
+
                     <div className="grid grid-cols-2 gap-4 pt-2 border-t border-white/5">
-                       <div className="flex items-center justify-between">
-                          <Label className="text-xs flex items-center gap-1.5 cursor-pointer" htmlFor={`hide-${i}`}>
-                             <EyeOff className="size-3 text-white/40" />
-                             {t('hide')}
-                          </Label>
-                          <Switch 
-                            id={`hide-${i}`}
-                            checked={mediaSettings[i]?.hide} 
-                            onCheckedChange={(val: boolean) => setMediaSettings(prev => ({ ...prev, [i]: { ...prev[i], hide: val } }))} 
-                          />
-                       </div>
-                       <div className="flex items-center justify-between">
-                          <Label className="text-xs flex items-center gap-1.5 cursor-pointer" htmlFor={`replace-${i}`}>
-                             <Edit3 className="size-3 text-white/40" />
-                             {t('replace')}
-                          </Label>
-                          <Switch 
-                            id={`replace-${i}`}
-                            checked={mediaSettings[i]?.replace} 
-                            onCheckedChange={(val: boolean) => setMediaSettings(prev => ({ ...prev, [i]: { ...prev[i], replace: val } }))} 
-                          />
-                       </div>
+                      <div className="flex items-center justify-between">
+                        <Label className="text-xs flex items-center gap-1.5 cursor-pointer" htmlFor={`hide-${i}`}>
+                          <EyeOff className="size-3 text-white/40" />
+                          {t('hide')}
+                        </Label>
+                        <Switch
+                          id={`hide-${i}`}
+                          checked={mediaSettings[i]?.hide}
+                          onCheckedChange={(val: boolean) => setMediaSettings(prev => ({ ...prev, [i]: { ...prev[i], hide: val } }))}
+                        />
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <Label className="text-xs flex items-center gap-1.5 cursor-pointer" htmlFor={`replace-${i}`}>
+                          <Edit3 className="size-3 text-white/40" />
+                          {t('replace')}
+                        </Label>
+                        <Switch
+                          id={`replace-${i}`}
+                          checked={mediaSettings[i]?.replace}
+                          onCheckedChange={(val: boolean) => setMediaSettings(prev => ({ ...prev, [i]: { ...prev[i], replace: val } }))}
+                        />
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -142,7 +142,7 @@ export const PublishDialog = ({ isOpen, onClose, message }: PublishDialogProps) 
           <Button
             disabled={publish.isPending}
             onClick={handlePublish}
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold h-12 rounded-xl"
+            className="w-full bg-cyan-600 hover:bg-cyan-700 text-white font-bold h-12 rounded-xl"
           >
             {publish.isPending ? <Loader2 className="animate-spin" /> : t('publish')}
           </Button>

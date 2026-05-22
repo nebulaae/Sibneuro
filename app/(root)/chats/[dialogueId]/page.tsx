@@ -541,76 +541,115 @@ export default function ChatPage() {
                         )}
                         {resultMedia.length > 0 && (
                           <div className="flex flex-wrap gap-3">
-                            {resultMedia.map((m, i) => (
-                              <div
-                                key={i}
-                                className={cn('relative group w-full max-w-[320px] rounded-[26px] overflow-hidden', glass.card)}
-                              >
-                                {m.type === 'audio' ? (
-                                  <div className="p-4 flex flex-col gap-3">
-                                    <AudioPlayer src={m.url} />
-                                    <button
-                                      onClick={() => handleDownload(m.url)}
-                                      className={cn('self-end p-2.5 rounded-[14px] transition active:scale-90', glass.thin)}
-                                    >
-                                      <Download size={16} className="text-cyan-300" />
-                                    </button>
-                                  </div>
-                                ) : (
-                                  <>
-                                    <div
-                                      className="relative h-full w-full  cursor-pointer overflow-hidden"
-                                      onClick={() => setViewerSrc(m)}
-                                    >
-                                      {m.type === 'image' ? (
-                                        <img
-                                          src={m.url}
-                                          className="w-full h-full object-contain transition-transform duration-700 group-hover:scale-105"
-                                          alt=""
-                                        />
-                                      ) : (
-                                        <video
-                                          src={m.url}
-                                          className="w-full h-full object-cover"
-                                          muted loop playsInline
-                                          onMouseEnter={(e) => e.currentTarget.play()}
-                                          onMouseLeave={(e) => e.currentTarget.pause()}
-                                        />
-                                      )}
-                                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent  transition-opacity duration-300" />
+                            {resultMedia.map((m, i) => {
+                              const mediaType =
+                                m.type?.toLowerCase().includes('video')
+                                  ? 'video'
+                                  : m.type?.toLowerCase().includes('audio')
+                                    ? 'audio'
+                                    : 'image';
+
+                              return (
+                                <div
+                                  key={i}
+                                  className={cn(
+                                    'relative group w-full max-w-[320px] rounded-[26px] overflow-hidden',
+                                    glass.card
+                                  )}
+                                >
+                                  {mediaType === 'audio' ? (
+                                    <div className="p-4 flex flex-col gap-3">
+                                      <AudioPlayer src={m.url} />
+
                                       <button
-                                        onClick={(e) => { e.stopPropagation(); handleDownload(m.url); }}
-                                        className="absolute top-3 right-3 p-2 rounded-full bg-black/55 backdrop-blur border border-white/20 transition-opacity"
+                                        onClick={() => handleDownload(m.url)}
+                                        className={cn(
+                                          'self-end p-2.5 rounded-[14px] transition active:scale-90',
+                                          glass.thin
+                                        )}
                                       >
-                                        <Download size={14} className="text-white" />
+                                        <Download size={16} className="text-cyan-300" />
                                       </button>
-                                      {m.type === 'video' && (
-                                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none group-hover:opacity-0 transition-opacity">
-                                          <div className={cn('w-12 h-12 rounded-full flex items-center justify-center', glass.thin)}>
-                                            <Play size={20} fill="white" className="ml-1 text-white" />
-                                          </div>
-                                        </div>
-                                      )}
                                     </div>
-                                    {!msg.post_id && (
-                                      <div className="p-3">
+                                  ) : (
+                                    <>
+                                      <div
+                                        className="relative aspect-square  cursor-pointer overflow-hidden"
+                                        onClick={() => setViewerSrc(m)}
+                                      >
+                                        {mediaType === 'image' ? (
+                                          <img
+                                            src={m.url}
+                                            className="w-full h-full object-contain transition-transform duration-700 group-hover:scale-105"
+                                            alt=""
+                                          />
+                                        ) : (
+                                          <video
+                                            src={m.url}
+                                            className="w-full h-full object-cover"
+                                            muted
+                                            loop
+                                            playsInline
+                                            onMouseEnter={(e) => e.currentTarget.play()}
+                                            onMouseLeave={(e) => e.currentTarget.pause()}
+                                          />
+                                        )}
+
+                                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
+
                                         <button
-                                          onClick={(e) => { e.stopPropagation(); setPublishingMessage(msg); }}
-                                          className={cn(
-                                            'w-full flex items-center justify-center gap-2 py-3 rounded-[18px]',
-                                            'text-[13px] font-black text-cyan-200 transition active:scale-95',
-                                            glass.cyan
-                                          )}
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleDownload(m.url);
+                                          }}
+                                          className="absolute top-3 right-3 p-2 rounded-full bg-black/55 backdrop-blur border border-white/20"
                                         >
-                                          <Share2 size={14} />
-                                          {t('publishToTrends') || 'Publish to Trends'}
+                                          <Download size={14} className="text-white" />
                                         </button>
+
+                                        {mediaType === 'video' && (
+                                          <div className="absolute inset-0 flex items-center justify-center pointer-events-none group-hover:opacity-0 transition-opacity">
+                                            <div
+                                              className={cn(
+                                                'w-12 h-12 rounded-full flex items-center justify-center',
+                                                glass.thin
+                                              )}
+                                            >
+                                              <Play
+                                                size={20}
+                                                fill="white"
+                                                className="ml-1 text-white"
+                                              />
+                                            </div>
+                                          </div>
+                                        )}
                                       </div>
-                                    )}
-                                  </>
-                                )}
-                              </div>
-                            ))}
+
+                                      {(msg.post_id === null ||
+                                        msg.post_id === undefined ||
+                                        msg.post_id === 0) && (
+                                          <div className="p-3">
+                                            <button
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                setPublishingMessage(msg);
+                                              }}
+                                              className={cn(
+                                                'w-full flex items-center justify-center gap-2 py-3 rounded-[18px]',
+                                                'text-[13px] font-black text-cyan-200 transition active:scale-95',
+                                                glass.cyan
+                                              )}
+                                            >
+                                              <Share2 size={14} />
+                                              {t('publishToTrends') || 'Publish to Trends'}
+                                            </button>
+                                          </div>
+                                        )}
+                                    </>
+                                  )}
+                                </div>
+                              );
+                            })}
                           </div>
                         )}
                       </div>
