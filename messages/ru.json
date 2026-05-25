@@ -139,7 +139,8 @@
     "emailExists": "Пользователь с таким email уже существует",
     "registerSuccess": "Аккаунт создан! Войдите в систему.",
     "autoLoginLoading": "Выполняется вход...",
-    "back": "Назад"
+    "back": "Назад",
+    "continueWithTelegram": "Продолжить с Telegram"
   },
   "Models": {
     "title": "Модели",

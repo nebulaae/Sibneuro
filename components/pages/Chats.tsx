@@ -230,12 +230,13 @@ export const Chats = () => {
                   }}
                   className="flex items-center gap-4 p-5 rounded-[32px] bg-zinc-900/30 border border-white/5 hover:border-white/15 transition-all group active:scale-[0.985]"
                 >
-                  <Avatar className="size-14 rounded-[22px] border border-white/10 group-hover:border-cyan-400/30 transition-colors shadow-lg">
+                  <Avatar className="size-14 transition-colors">
                     <AvatarImage
                       src={
                         chat.avatar ||
                         `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=18181b&color=ffffff`
                       }
+                      className='object-cover'
                     />
                     <AvatarFallback className="bg-zinc-800 text-[14px] font-black text-white/40">
                       {displayName.slice(0, 2).toUpperCase()}

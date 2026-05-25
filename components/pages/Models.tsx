@@ -159,7 +159,7 @@ export const Models = () => {
                       )}
                     >
                       <Avatar className="mb-3 size-14 rounded-2xl border border-white/[0.12]">
-                        <AvatarImage src={role.image || ''} />
+                        <AvatarImage src={role.image || ''} className='object-cover' />
                         <AvatarFallback className="rounded-2xl bg-white/[0.10] text-lg font-bold">
                           {localize(role.label).slice(0, 1)}
                         </AvatarFallback>
@@ -215,7 +215,7 @@ export const Models = () => {
                       'active:scale-[0.985]'
                     )}
                   >
-                    <div className="w-14 h-14 rounded-2xl overflow-hidden shrink-0 border border-white/[0.12]">
+                    <div className="w-14 h-14 overflow-hidden">
                       <Avatar className="size-full">
                         <AvatarImage src={avatarUrl} />
                         <AvatarFallback className="text-[14px] font-bold bg-white/[0.08] text-white">

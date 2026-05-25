@@ -49,7 +49,6 @@ export default async function RootLayout({
                 <MaxProvider>
                   <NextIntlClientProvider locale={locale} messages={messages}>
                     <ThemeProviders>
-                      {/* <ErudaInit /> */}
                       {children}
                       <Toaster
                         position="top-center"

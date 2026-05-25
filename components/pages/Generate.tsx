@@ -257,7 +257,7 @@ export const Generate = () => {
             <ChevronLeft size={20} />
           </button>
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-xl overflow-hidden border border-white/10">
+            <div className="w-10 h-10 overflow-hidden">
               <Avatar className="size-full">
                 <AvatarImage src={selected.avatar} />
                 <AvatarFallback>{selected.model_name[0]}</AvatarFallback>
@@ -475,7 +475,7 @@ export const Generate = () => {
                         }}
                         className="flex items-center gap-4 px-4 py-3 rounded-[32px] bg-zinc-900/40 border border-white/5 hover:border-white/15 transition-all group active:scale-[0.98]"
                       >
-                        <div className="w-14 h-14 rounded-2xl overflow-hidden border border-white/10 group-hover:border-cyan-400/30 transition-colors">
+                        <div className="w-14 h-14 overflow-hidden transition-colors">
                           <Avatar className="size-full">
                             <AvatarImage src={m.avatar} />
                             <AvatarFallback>{m.model_name[0]}</AvatarFallback>
