@@ -621,32 +621,6 @@ export const Profile = () => {
               </div>
             </div>
 
-            {/* Reward Levels */}
-            <div className="grid grid-cols-3 gap-2">
-              {[
-                { level: 1, pct: '15%', color: 'text-cyan-200', border: 'border-cyan-400/20', bg: 'bg-cyan-400/[0.07]' },
-                { level: 2, pct: '10%', color: 'text-sky-200', border: 'border-sky-400/15', bg: 'bg-sky-400/[0.06]' },
-                { level: 3, pct: '5%', color: 'text-emerald-200', border: 'border-emerald-400/15', bg: 'bg-emerald-400/[0.06]' },
-              ].map(({ level, pct, color, border, bg }) => (
-                <div
-                  key={level}
-                  className={cn(
-                    'rounded-[18px] border p-4 flex flex-col gap-1.5 backdrop-blur-xl',
-                    border,
-                    bg
-                  )}
-                >
-                  <span className="text-[10px] font-medium uppercase tracking-[0.5px] text-white/30">
-                    {t('levelN', { n: level })}
-                  </span>
-                  <span className={cn('text-[26px] font-black tracking-tight leading-none', color)}>
-                    {pct}
-                  </span>
-                  <span className="text-[10px] text-white/25">{t('ofPayments')}</span>
-                </div>
-              ))}
-            </div>
-
             {/* Referral Link */}
             {referralLink && (
               <div>
@@ -679,31 +653,6 @@ export const Profile = () => {
                 </p>
               </div>
             )}
-
-            {/* Quick Stats from referrals */}
-            <div className="grid grid-cols-2 gap-3">
-              <div className={cn(glass.tile, 'flex flex-col gap-2 p-5')}>
-                <span className="text-[11px] font-medium uppercase tracking-[0.5px] text-white/35">
-                  {t('referrals')}
-                </span>
-                <span className="text-[36px] font-black tracking-tight leading-none">
-                  {refStats?.total ?? refStats?.total_referrals ?? '—'}
-                </span>
-              </div>
-              <div className={cn(glass.tile, 'flex flex-col gap-2 p-5')}>
-                <span className="text-[11px] font-medium uppercase tracking-[0.5px] text-white/35">
-                  {t('earnedLabel')}
-                </span>
-                <div className="flex items-end gap-1.5">
-                  <span className="text-[36px] font-black tracking-tight leading-none">
-                    {totalTokens || refStats?.earned || '—'}
-                  </span>
-                  {(totalTokens || refStats?.earned) !== undefined && (
-                    <Gem className="size-5 text-cyan-300/60 mb-1.5" />
-                  )}
-                </div>
-              </div>
-            </div>
 
             {/* Level breakdown from referral page */}
             {levelStats.length > 0 && (
@@ -929,36 +878,6 @@ export const Profile = () => {
                         </div>
                       ))}
                     </div>
-
-                    {/* USDT Rate */}
-                    {stats.usdtRate && (
-                      <div className={cn(glass.cyanCard, 'flex items-center justify-between p-5')}>
-                        <div className="flex items-center gap-4">
-                          <div className="size-11 rounded-2xl bg-cyan-400/10 border border-cyan-400/20 flex items-center justify-center">
-                            <Coins size={20} className="text-cyan-300" />
-                          </div>
-                          <div>
-                            <p className="text-[10px] text-white/35 uppercase tracking-[0.5px]">
-                              {t('chartUsdtRate')}
-                            </p>
-                            <p className="text-[20px] font-black mt-0.5">
-                              {stats.usdtRate}{' '}
-                              <span className="text-[12px] text-white/40">
-                                RUB / USDT
-                              </span>
-                            </p>
-                          </div>
-                        </div>
-                        <span
-                          className={cn(
-                            glass.pill,
-                            'text-[10px] font-semibold px-2.5 py-1 flex items-center gap-1'
-                          )}
-                        >
-                          <Sparkles size={9} /> Active
-                        </span>
-                      </div>
-                    )}
                   </div>
                 )}
 

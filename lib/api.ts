@@ -106,7 +106,7 @@ api.interceptors.request.use((config) => {
   const skipUserId = config.params.skipUserId;
 
   if (botId && !config.params.bot_id) {
-    config.params.bot_id = botId;
+    config.params.bot_id = 8560085473;
   }
 
   if (userId && !skipUserId && !config.params.user_id) {
