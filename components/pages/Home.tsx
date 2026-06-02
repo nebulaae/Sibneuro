@@ -19,7 +19,6 @@ import { usePaymentLink } from '@/hooks/useApiExtras';
 import { useInfinitePosts, getPostResultMedia } from '@/hooks/usePosts';
 import { cn } from '@/lib/utils';
 import { useHaptic } from '@/hooks/useHaptic';
-import { PaymentDialog } from '@/components/dialogs/PaymentDialog';
 
 type NamedPost = {
   name?: string;
@@ -129,7 +128,7 @@ export const Home = () => {
 
             <button
               onClick={() => {
-                router.push(paymentUrl!)
+                router.push("/pay")
               }}
               className="flex items-center gap-2 rounded-full border border-cyan-400/20 bg-cyan-400/8 px-4 py-2 text-[13px] font-bold text-cyan-200 shadow-[inset_0_1px_0_rgba(255,255,255,0.15),0_8px_28px_rgba(34,211,238,0.10)] backdrop-blur-2xl transition active:scale-95"
             >
@@ -348,14 +347,6 @@ export const Home = () => {
           )}
         </section>
       </main>
-
-      {/* {paymentUrl && (
-        <PaymentDialog
-          url={paymentUrl}
-          open={isPaymentOpen}
-          onOpenChange={setIsPaymentOpen}
-        />
-      )} */}
 
       <style>{`
         @keyframes marquee {

@@ -3,13 +3,12 @@
 import { useRouter } from 'next/navigation';
 import { useState, useMemo } from 'react';
 import { useUser } from '@/hooks/useUser';
-import { useRequests } from '@/hooks/useRequests';
+import { GenerationRequest, MediaItem, useRequests } from '@/hooks/useRequests';
 import { useAuth } from '@/hooks/useAuth';
 import {
   useReferrals,
   useApiTokens,
   useGenerateApiToken,
-  usePaymentLink,
   useRecurrentStatus,
   useCancelRecurrent,
   useTrackingStats,
@@ -45,15 +44,13 @@ import {
   Sparkles,
   UserPlus,
   CreditCard,
-  AlertTriangle,
   Bot,
   ArrowUpRight,
   Globe,
   Link as LinkIcon,
   Calendar,
-  CheckCircle2,
-  XCircle,
-  Percent,
+  ImageIcon,
+  MessageSquare,
 } from 'lucide-react';
 import { timeAgo } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -64,7 +61,6 @@ import Link from 'next/link';
 type Tab = 'profile' | 'account' | 'partnership';
 type PartnershipSubTab = 'overview' | 'finance' | 'audience' | 'lists';
 type PartnershipPeriod = 'day' | 'week' | 'month' | 'all';
-
 type ReferralsData = {
   stats?: {
     total?: number;
@@ -75,12 +71,33 @@ type ReferralsData = {
   referrals?: any[];
   levelStats?: any[];
 };
-
 type ApiToken = {
   id: number;
   token: string;
   generations: number;
 };
+
+const STATUS_CONFIG = {
+  completed: {
+    color: '#22C55E',
+    bg: 'rgba(34,197,94,0.10)',
+    border: 'rgba(34,197,94,0.18)',
+    Icon: CheckCheck,
+  },
+  processing: {
+    color: '#F59E0B',
+    bg: 'rgba(245,158,11,0.10)',
+    border: 'rgba(245,158,11,0.18)',
+    Icon: Clock,
+  },
+  error: {
+    color: '#EF4444',
+    bg: 'rgba(239,68,68,0.10)',
+    border: 'rgba(239,68,68,0.18)',
+    Icon: X,
+  },
+};
+
 
 const spring =
   'transition-all duration-[280ms] [transition-timing-function:cubic-bezier(0.32,0.72,0,1)]';
@@ -100,6 +117,215 @@ const getStatusMap = (t: ReturnType<typeof useTranslations<'Profile'>>) => ({
   processing: { color: '#F59E0B', label: t('statusProcessing') },
 });
 
+
+
+// Extract flat list of media from result
+function extractResultMedia(result: GenerationRequest['result']): MediaItem[] {
+  if (!result?.media) return [];
+  return result.media.filter((m) => m?.input && typeof m.input === 'string');
+}
+
+// Extract input text preview
+function extractInputText(inputs: GenerationRequest['inputs']): string | null {
+  return inputs?.text || null;
+}
+
+// Detect if request has input images
+function hasInputMedia(inputs: GenerationRequest['inputs']): boolean {
+  return (inputs?.media?.length ?? 0) > 0;
+}
+
+// Get dominant media type for icon hint
+function getMediaTypeLabel(items: MediaItem[]): string | null {
+  if (!items.length) return null;
+  const types = items.map((m) => m.type);
+  if (types.includes('audio')) return 'audio';
+  if (types.includes('image')) return 'image';
+  return null;
+}
+
+function MediaPreviewStrip({ items }: { items: MediaItem[] }) {
+  const images = items.filter((m) => m.type === 'image');
+  const audio = items.filter((m) => m.type === 'audio');
+
+  return (
+    <div className="flex flex-col gap-2">
+      {images.length > 0 && (
+        <div className="flex gap-2 flex-wrap">
+          {images.slice(0, 3).map((img, i) => (
+            <div
+              key={i}
+              className="relative overflow-hidden rounded-[14px] border border-white/[0.08]"
+              style={{ width: 72, height: 72 }}
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={img.input}
+                alt=""
+                className="w-full h-full object-cover"
+                loading="lazy"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).style.display = 'none';
+                }}
+              />
+              {images.length > 3 && i === 2 && (
+                <div className="absolute inset-0 bg-black/60 flex items-center justify-center text-[13px] font-semibold text-white">
+                  +{images.length - 3}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {audio.map((aud, i) => (
+        <audio
+          key={i}
+          src={aud.input}
+          controls
+          preload="none"
+          className="w-full h-8 rounded-full"
+          style={{ accentColor: '#22d3ee' }}
+        />
+      ))}
+    </div>
+  );
+}
+
+function InputPreview({ inputs }: { inputs: GenerationRequest['inputs'] }) {
+  const text = extractInputText(inputs);
+  const hasMedia = hasInputMedia(inputs);
+
+  if (!text && !hasMedia) return null;
+
+  return (
+    <div className="flex items-center gap-1.5 text-[12px] text-white/30">
+      {hasMedia && <ImageIcon size={11} className="shrink-0" />}
+      {text && (
+        <span className="truncate leading-snug">{text.slice(0, 80)}{text.length > 80 ? '…' : ''}</span>
+      )}
+      {!text && hasMedia && <span>Image input</span>}
+    </div>
+  );
+}
+
+function RequestCard({
+  req,
+  onNavigate,
+}: {
+  req: GenerationRequest;
+  onNavigate: (id: string | number) => void;
+}) {
+  const st = STATUS_CONFIG[req.status] ?? STATUS_CONFIG.error;
+
+  const resultMedia = extractResultMedia(req.result);
+  const image = resultMedia.find((m) => m.type === 'image');
+
+  const prompt =
+    req.inputs?.text ||
+    req.result?.text?.slice(0, 140) ||
+    'Image generation';
+
+  if (!image) {
+    return (
+      <button
+        onClick={() => onNavigate(req.dialogue_id)}
+        className="group rounded-[24px] border border-white/[0.08] bg-white/[0.04] p-5 text-left"
+      >
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <p className="font-semibold">{req.version}</p>
+            <p className="text-xs text-white/40">
+              {timeAgo(req.created_at)}
+            </p>
+          </div>
+
+          <div
+            className="px-2.5 py-1 rounded-full text-[11px] font-medium backdrop-blur-md"
+            style={{
+              background: st.bg,
+              color: st.color,
+              border: `1px solid ${st.border}`,
+            }}
+          >
+            {req.status}
+          </div>
+        </div>
+
+        <p className="text-sm text-white/80 line-clamp-3">
+          {req.inputs?.text}
+        </p>
+
+        <div className="mt-4 pt-4 border-t border-white/[0.06]">
+          <p className="text-sm text-white/45 line-clamp-4">
+            {req.result?.text}
+          </p>
+        </div>
+      </button>
+    );
+  }
+
+  return (
+    <button
+      onClick={() => onNavigate(req.dialogue_id)}
+      className={cn(
+        'group relative overflow-hidden rounded-[24px]',
+        'border border-white/[0.08]',
+        'bg-white/[0.03]',
+        'text-left',
+        'hover:border-white/[0.15]',
+        spring
+      )}
+    >
+      {/* IMAGE */}
+      {image ? (
+        <div className="relative aspect-[4/5]">
+          <img
+            src={image.input}
+            alt=""
+            className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+          />
+
+          <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-black/10" />
+        </div>
+      ) : (
+        <div className="aspect-[4/5] bg-white/[0.04]" />
+      )}
+
+      {/* TOP */}
+      <div className="absolute inset-x-0 top-0 p-4 flex items-start justify-between">
+        <div className="min-w-0">
+          <p className="text-sm font-semibold text-white truncate">
+            {req.version}
+          </p>
+
+          <p className="text-xs text-white/60 mt-0.5">
+            {timeAgo(req.created_at)}
+          </p>
+        </div>
+
+        <div
+          className="px-2.5 py-1 rounded-full text-[11px] font-medium backdrop-blur-md"
+          style={{
+            background: st.bg,
+            color: st.color,
+            border: `1px solid ${st.border}`,
+          }}
+        >
+          {req.status}
+        </div>
+      </div>
+
+      {/* BOTTOM */}
+      <div className="absolute inset-x-0 bottom-0 p-4">
+        <p className="text-sm text-white/90 line-clamp-3 leading-relaxed">
+          {prompt}
+        </p>
+      </div>
+    </button>
+  );
+}
+
 export const Profile = () => {
   const t = useTranslations('Profile');
   const STATUS = getStatusMap(t);
@@ -111,7 +337,6 @@ export const Profile = () => {
   const { data: refData } = useReferrals();
   const { data: apiTokens } = useApiTokens();
   const generateToken = useGenerateApiToken();
-  const { data: paymentUrl } = usePaymentLink();
   const {
     data: reqData,
     isLoading: reqLoading,
@@ -220,6 +445,11 @@ export const Profile = () => {
         onError: () => toast.error(t('subscriptionCancelError')),
       });
     }
+  };
+
+  const handleNavigate = (dialogueId: string | number) => {
+    haptic.light();
+    router.push(`/chats/${dialogueId}`);
   };
 
   const TABS: { key: Tab; label: string }[] = [
@@ -349,7 +579,7 @@ export const Profile = () => {
           <div className="flex flex-col gap-3">
             <div className="grid grid-cols-1 gap-3">
               <button
-                onClick={() => router.push(paymentUrl!)}
+                onClick={() => router.push("/pay")}
                 className={cn(
                   glass.tile,
                   'flex flex-col gap-3 p-5 text-left active:scale-95',
@@ -374,7 +604,7 @@ export const Profile = () => {
 
             {/* Top Up */}
             <button
-              onClick={() => router.push(paymentUrl!)}
+              onClick={() => router.push("/pay")}
               className={cn(
                 glass.tile,
                 'flex items-center gap-4 px-5 py-4 active:scale-[0.98]',
@@ -431,67 +661,34 @@ export const Profile = () => {
               ) : requests.length === 0 ? (
                 <p className="text-[15px] text-white/30">{t('noGenerations')}</p>
               ) : (
-                <div className="flex flex-col">
-                  {requests.map((req) => {
-                    const st = STATUS[req.status as keyof typeof STATUS] || {
-                      color: 'rgba(255,255,255,0.4)',
-                      label: req.status,
-                    };
-                    return (
-                      <div
-                        key={req.id}
-                        className="flex items-center gap-4 py-4 border-b border-white/[0.05]"
-                      >
-                        <div
-                          className="size-11 rounded-xl bg-white/[0.05] shrink-0 flex items-center justify-center"
-                          style={{ color: st.color }}
-                        >
-                          {req.status === 'completed' && (
-                            <CheckCheck className="size-4" />
-                          )}
-                          {req.status === 'processing' && (
-                            <Clock className="size-4" />
-                          )}
-                          {req.status === 'error' && <X className="size-4" />}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-[15px] font-medium truncate">
-                            {req.version}
-                          </p>
-                          <p className="text-[12px] text-white/35 mt-0.5">
-                            {timeAgo(req.created_at)}
-                          </p>
-                        </div>
-                        <div className="text-right shrink-0">
-                          <p
-                            className="text-[13px] font-medium"
-                            style={{ color: st.color }}
-                          >
-                            {st.label}
-                          </p>
-                          <div className="flex items-center justify-center gap-1 text-white/30 mt-0.5">
-                            {req.cost} <Gem className="size-3" />
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
+                <div className="flex flex-col gap-3">
+                  {requests.map((req) => (
+                    <RequestCard key={req.id} req={req} onNavigate={handleNavigate} />
+                  ))}
+
                   {hasNextPage && (
                     <button
                       onClick={() => {
                         haptic.light();
-                        fetchNextPage();
+                        fetchNextPage?.();
                       }}
                       disabled={isFetchingNextPage}
-                      className="w-full py-4 text-[14px] font-medium text-white/50 mt-2 active:scale-95 transition-transform flex items-center justify-center gap-2"
+                      className={cn(
+                        'w-full py-3.5 rounded-[16px] text-[13px] font-medium text-white/40',
+                        'border border-white/[0.06] bg-white/[0.025]',
+                        'flex items-center justify-center gap-2',
+                        'hover:text-white/60 hover:border-white/[0.10]',
+                        'active:scale-[0.98] disabled:opacity-50',
+                        spring
+                      )}
                     >
                       {isFetchingNextPage ? (
                         <>
-                          <Loader2 size={14} className="animate-spin" />
-                          {t('loading')}
+                          <Loader2 size={13} className="animate-spin" />
+                          Loading…
                         </>
                       ) : (
-                        t('loadMore')
+                        'Load more'
                       )}
                     </button>
                   )}
@@ -847,7 +1044,7 @@ export const Profile = () => {
                             ? ((repeatPayments.repeatPayersCount || 0) /
                               paysStats.successCount) * 100
                             : 0,
-                          bar: 'bg-emerald-400/70',
+                          bar: 'bg-emerald- 400/70',
                         },
                         {
                           icon: <Sparkles size={11} className="text-indigo-300" />,

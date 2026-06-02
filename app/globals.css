@@ -284,6 +284,7 @@ html {
 }
 
 body {
+  background-color: black;
   color: var(--sys-label);
   font-family: var(--font-sf);
   transition: background 0.3s var(--spring-slow);

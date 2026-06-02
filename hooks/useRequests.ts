@@ -2,13 +2,28 @@ import api from '@/lib/api';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { queryKeys } from '@/lib/queryKeys';
 
+export type MediaItem = {
+  type: 'image' | 'audio' | 'video';
+  input: string;
+  format: string;
+};
+export type RequestStatus = 'completed' | 'processing' | 'error';
 export interface GenerationRequest {
   id: number;
-  model: string;
+  dialogue_id: number | string;
   version: string;
-  status: 'completed' | 'processing' | 'error';
+  model: string;
   cost: number;
+  status: RequestStatus;
   created_at: string;
+  inputs: {
+    text?: string | null;
+    media?: any[];
+  };
+  result?: {
+    text?: string | null;
+    media?: MediaItem[];
+  } | null;
 }
 
 // GET /reqs — история генераций
