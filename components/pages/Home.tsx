@@ -5,6 +5,7 @@ import { useCallback, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import {
   ArrowUpRight,
+  Heart,
   ImageIcon,
   Loader2,
   Music,
@@ -16,7 +17,7 @@ import {
 } from 'lucide-react';
 import { useUser } from '@/hooks/useUser';
 import { usePaymentLink } from '@/hooks/useApiExtras';
-import { useInfinitePosts, getPostResultMedia } from '@/hooks/usePosts';
+import { useInfinitePosts, useLikePost } from '@/hooks/usePosts';
 import { cn } from '@/lib/utils';
 import { useHaptic } from '@/hooks/useHaptic';
 
@@ -29,9 +30,9 @@ const glass = {
   thin: 'bg-white/[.06] backdrop-blur-xl border border-white/[.10] shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]',
   card: 'bg-white/[.055] backdrop-blur-2xl border border-white/[.10] shadow-[inset_0_1px_0_rgba(255,255,255,0.14),0_4px_20px_rgba(0,0,0,0.25)]',
   tab: 'bg-white/[.05] border border-white/[.08]',
-  activeTab: 'bg-cyan-400/15 border border-cyan-400/25 text-cyan-200 shadow-[0_0_16px_rgba(34,211,238,0.18)]',
+  activeTab:
+    'bg-cyan-400/15 border border-cyan-400/25 text-cyan-200 shadow-[0_0_16px_rgba(34,211,238,0.18)]',
 };
-
 
 const categories = [
   {
@@ -64,7 +65,56 @@ const categories = [
   },
 ] as const;
 
-const marqueeItems = ['marqueeText', 'marqueeImage', 'marqueeVideo', 'marqueeMusic'] as const;
+const marqueeItems = [
+  'marqueeText',
+  'marqueeImage',
+  'marqueeVideo',
+  'marqueeMusic',
+] as const;
+
+function LikeButton({
+  postId,
+  botId,
+  userId,
+  liked,
+  likes,
+}: {
+  postId: number;
+  botId: number;
+  userId: number;
+  liked?: boolean;
+  likes: number;
+}) {
+  const { mutate: likePost, isPending } = useLikePost();
+
+  const handleClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (isPending) return;
+    likePost({ post_id: postId, bot_id: botId, user_id: userId });
+  };
+
+  return (
+    <button
+      onClick={handleClick}
+      className={`
+        flex items-center gap-1.5 px-2.5 py-1.5 rounded-full backdrop-blur-md border transition-all duration-200 active:scale-90
+        ${
+          liked
+            ? 'bg-red-500/20 border-red-500/40 text-red-400'
+            : 'bg-black/40 border-white/10 text-white/50 hover:text-white/80 hover:bg-black/60'
+        }
+      `}
+    >
+      <Heart
+        size={13}
+        className={`transition-all duration-200 ${liked ? 'fill-red-400 text-red-400' : ''}`}
+      />
+      {likes > 0 && (
+        <span className="text-[11px] font-bold leading-none">{likes}</span>
+      )}
+    </button>
+  );
+}
 
 export const Home = () => {
   const t = useTranslations('Home');
@@ -75,8 +125,8 @@ export const Home = () => {
   const { data, isLoading, fetchNextPage, hasNextPage, isFetchingNextPage } =
     useInfinitePosts({ limit: 12 });
   const posts = data?.pages.flatMap((page) => page.items) || [];
+  const userId = userData?.user?.user_id ?? 0;
   const tokens = Math.trunc(userData?.user?.tokens ?? 0);
-  const [isPaymentOpen, setIsPaymentOpen] = useState(false);
   const observer = useRef<IntersectionObserver | null>(null);
 
   const lastPostRef = useCallback(
@@ -117,18 +167,20 @@ export const Home = () => {
               <p className="text-[18px] font-black tracking-tight">Sibneuro</p>
             </div>
           </button>
-          <div className='flex  gap-2'>
+          <div className="flex  gap-2">
             <button
-              onClick={() => router.push('https://t.me/cubixvpnbot?start=HYDylP')}
+              onClick={() =>
+                router.push('https://t.me/cubixvpnbot?start=HYDylP')
+              }
               className="flex items-center gap-2 rounded-full border border-cyan-400/20 bg-cyan-400/8 px-4 py-2 text-[13px] font-bold text-cyan-200 shadow-[inset_0_1px_0_rgba(255,255,255,0.15),0_8px_28px_rgba(34,211,238,0.10)] backdrop-blur-2xl transition active:scale-95"
             >
-              <Zap className='size-4' />
+              <Zap className="size-4" />
               Vpn
             </button>
 
             <button
               onClick={() => {
-                router.push("/pay")
+                router.push('/pay');
               }}
               className="flex items-center gap-2 rounded-full border border-cyan-400/20 bg-cyan-400/8 px-4 py-2 text-[13px] font-bold text-cyan-200 shadow-[inset_0_1px_0_rgba(255,255,255,0.15),0_8px_28px_rgba(34,211,238,0.10)] backdrop-blur-2xl transition active:scale-95"
             >
@@ -196,7 +248,12 @@ export const Home = () => {
                   )}
                 >
                   {/* Gradient fill */}
-                  <div className={cn('absolute inset-0 bg-gradient-to-br opacity-100', cat.gradient)} />
+                  <div
+                    className={cn(
+                      'absolute inset-0 bg-gradient-to-br opacity-100',
+                      cat.gradient
+                    )}
+                  />
                   {/* Glow spot */}
                   <div
                     className="absolute -top-6 -left-6 w-28 h-28 rounded-full blur-2xl opacity-60 transition-opacity duration-500 group-hover:opacity-90"
@@ -224,125 +281,153 @@ export const Home = () => {
         {/* Marquee */}
         <section className="-mx-5 overflow-hidden  py-4 backdrop-blur-xl">
           <div className="flex w-max animate-[marquee_30s_linear_infinite] gap-3 px-5">
-            {[...marqueeItems, ...marqueeItems, ...marqueeItems].map((key, index) => (
-              <span
-                key={`${key}-${index}`}
-                className={cn("rounded-full border border-white/[0.08] bg-black/25 px-4 py-2 text-[13px] font-bold text-white/45", glass.activeTab)}
-              >
-                {t(key)}
-              </span>
-            ))}
+            {[...marqueeItems, ...marqueeItems, ...marqueeItems].map(
+              (key, index) => (
+                <span
+                  key={`${key}-${index}`}
+                  className={cn(
+                    'rounded-full border border-white/[0.08] bg-black/25 px-4 py-2 text-[13px] font-bold text-white/45',
+                    glass.activeTab
+                  )}
+                >
+                  {t(key)}
+                </span>
+              )
+            )}
           </div>
         </section>
 
         {/* Trends section */}
-        <section>
-          <div className="mb-5 flex items-end justify-between gap-4">
-            <div>
-              <p className="text-[12px] font-bold uppercase tracking-[0.2em] text-cyan-200/40">
-                {t('community')}
-              </p>
-              <h2 className="mt-1 text-[26px] font-black tracking-tight">{t('trending')}</h2>
-            </div>
+        <section className="pb-32">
+          <div className="flex items-center justify-between mb-6 px-2">
+            <h2 className="text-[24px] font-black text-cyan-400 tracking-tight">
+              {t('trending')}
+            </h2>
             <button
               onClick={() => router.push('/trends')}
-              className="rounded-full border border-white/[0.10] bg-white/[0.06] px-4 py-2 text-[13px] font-bold text-white/50 backdrop-blur-xl transition active:scale-95"
+              className="text-[14px] font-medium text-white/40 hover:text-white transition-colors"
             >
               {t('all')} →
             </button>
           </div>
 
-          <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
+          <div className="grid grid-cols-2 gap-4">
             {isLoading
-              ? Array.from({ length: 8 }).map((_, i) => (
-                <div
-                  key={i}
-                  className="aspect-[3/4] animate-pulse rounded-[26px] border border-white/[0.08] bg-white/[0.06]"
-                />
-              ))
+              ? Array.from({ length: 6 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="aspect-3/4 rounded-3xl animate-pulse bg-white/5 border border-white/10"
+                  />
+                ))
               : posts.map((post, index) => {
-                const media = getPostResultMedia(post);
-                const isLast = index === posts.length - 1;
-                const title = (post as NamedPost).name || post.inputs?.text || t('trend');
-                const isVideo = media?.type === 'video';
-                return (
-                  <div key={post.id} ref={isLast ? lastPostRef : null}>
-                    <button
-                      onClick={() => {
-                        try {
-                          sessionStorage.setItem(`trend_post_${post.id}`, JSON.stringify(post));
-                        } catch { }
-                        router.push(`/trend/${post.id}`);
-                      }}
-                      className="group relative aspect-[3/4] w-full overflow-hidden rounded-[26px] border border-white/[0.08] bg-zinc-900/60 text-left shadow-[0_18px_50px_rgba(0,0,0,0.3)] transition-all duration-500 active:scale-[0.97] hover:border-white/20 hover:shadow-[0_24px_60px_rgba(0,0,0,0.5)]"
-                    >
-                      {media ? (
-                        isVideo ? (
-                          <video
-                            src={media.url}
-                            muted
-                            loop
-                            playsInline
-                            className="absolute inset-0 size-full object-cover transition duration-700 group-hover:scale-105"
-                            onMouseEnter={(e) => e.currentTarget.play()}
-                            onMouseLeave={(e) => e.currentTarget.pause()}
-                          />
+                  const result = post.result as any;
+                  const media = result?.media?.[0] || result;
+                  const isVideo =
+                    media?.type === 'video' ||
+                    (typeof media?.input === 'string' &&
+                      media.input.includes('.mp4'));
+                  const mediaUrl = media?.url || media?.input || result?.url;
+                  const trendName =
+                    (post as any).name || post.inputs?.text || t('trend');
+                  const isLast = index === posts.length - 1;
+
+                  return (
+                    <div key={post.id} ref={isLast ? lastPostRef : null}>
+                      <div
+                        onClick={() => {
+                          sessionStorage.setItem(
+                            `trend_post_${post.id}`,
+                            JSON.stringify(post)
+                          );
+                          router.push(`/trend/${post.id}`);
+                        }}
+                        className="group relative aspect-3/4 rounded-3xl overflow-hidden bg-zinc-900 border border-white/10 transition-all duration-500 hover:scale-[1.02] active:scale-[0.98] hover:border-white/20 hover:shadow-[0_20px_50px_rgba(0,0,0,0.5)] w-full cursor-pointer"
+                      >
+                        {/* Media */}
+                        {mediaUrl ? (
+                          isVideo ? (
+                            <video
+                              src={mediaUrl}
+                              className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                              muted
+                              loop
+                              playsInline
+                              onMouseEnter={(e) => e.currentTarget.play()}
+                              onMouseLeave={(e) => e.currentTarget.pause()}
+                            />
+                          ) : (
+                            <img
+                              src={mediaUrl}
+                              alt=""
+                              className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                            />
+                          )
                         ) : (
-                          <img
-                            src={media.url}
-                            alt=""
-                            className="absolute inset-0 size-full object-cover transition duration-700 group-hover:scale-105"
-                          />
-                        )
-                      ) : (
-                        <div className="absolute inset-0 grid place-items-center bg-gradient-to-br from-cyan-300/10 to-white/[0.04]">
-                          <Sparkles className="size-8 text-white/20" />
-                        </div>
-                      )}
+                          <div className="absolute inset-0 flex items-center justify-center bg-white/5">
+                            <span className="text-[40px] animate-pulse">
+                              ✨
+                            </span>
+                          </div>
+                        )}
 
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent opacity-80 transition-opacity group-hover:opacity-100" />
+                        {/* Gradient overlay */}
+                        <div className="absolute inset-0 bg-linear-to-t from-neutral-950/90 via-neutral-950/20 to-transparent opacity-80 group-hover:opacity-100 transition-opacity" />
 
-                      {/* Top badges */}
-                      <div className="absolute top-3 left-3 right-3 flex items-center justify-between">
-                        <div className="rounded-full border border-white/[0.10] bg-black/50 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white backdrop-blur-xl">
-                          {isVideo ? 'Video' : 'Image'}
+                        {/* Bottom info */}
+                        <div className="absolute inset-x-0 bottom-0 p-4 transform transition-transform duration-500">
+                          <div className="flex items-center justify-between gap-2">
+                            <h3 className="text-base text-start font-black text-white line-clamp-2 leading-tight group-hover:text-cyan-400 transition-colors">
+                              {trendName}
+                            </h3>
+
+                            {/* Like button — bottom left */}
+                            <div onClick={(e) => e.stopPropagation()}>
+                              <LikeButton
+                                postId={post.id}
+                                botId={post.bot_id}
+                                userId={userId}
+                                liked={post.liked}
+                                likes={post.likes}
+                              />
+                            </div>
+                          </div>
                         </div>
+
+                        {/* Cost badge — top right */}
+                        {/* <div className="absolute top-4 right-4">
+                      <div className="backdrop-blur-xl border border-white/10 px-3 py-1 rounded-full text-[12px] font-bold text-white shadow-lg">
+                        ◈ {post.cost || 15}
+                      </div>
+                    </div> */}
+
+                        {/* Video play icon — top left */}
                         {isVideo && (
-                          <div className="grid size-7 place-items-center rounded-full border border-white/20 bg-black/40 backdrop-blur-xl opacity-0 transition-opacity group-hover:opacity-100">
-                            <Play className="size-3 fill-white" />
+                          <div className="absolute top-4 left-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <div className="w-8 h-8 rounded-full bg-white/20 backdrop-blur-md border border-white/30 flex items-center justify-center">
+                              <Play className="size-4 fill-white text-white" />
+                            </div>
                           </div>
                         )}
                       </div>
-
-                      {/* Bottom info */}
-                      <div className="absolute inset-x-0 bottom-0 p-4">
-                        {post.model_name && (
-                          <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-white/35">
-                            {post.model_name}
-                          </p>
-                        )}
-                        <p className="line-clamp-2 text-[13px] font-black leading-tight group-hover:text-cyan-200 transition-colors">
-                          {title}
-                        </p>
-                      </div>
-                    </button>
-                  </div>
-                );
-              })}
+                    </div>
+                  );
+                })}
           </div>
 
-          {!isLoading && posts.length === 0 && (
-            <div className="flex flex-col items-center justify-center py-20 text-center opacity-40">
-              <div className="mb-4 grid size-16 place-items-center rounded-3xl border-2 border-dashed border-white/20">
-                <span className="text-2xl">⚡️</span>
-              </div>
-              <p className="text-[14px] font-medium">{t('noTrends')}</p>
+          {isFetchingNextPage && (
+            <div className="flex justify-center py-10">
+              <Loader2 className="size-7 animate-spin text-white/40" />
             </div>
           )}
 
-          {isFetchingNextPage && (
-            <div className="flex justify-center py-8">
-              <Loader2 className="size-6 animate-spin text-white/30" />
+          {!isLoading && posts.length === 0 && (
+            <div className="flex flex-col items-center justify-center py-20 text-center opacity-40 px-10">
+              <div className="w-16 h-16 rounded-3xl border-2 border-dashed border-white/20 flex items-center justify-center mb-4">
+                <span className="text-2xl">⚡️</span>
+              </div>
+              <p className="text-[14px] font-medium">
+                {t('noTrends') || 'No trends yet'}
+              </p>
             </div>
           )}
         </section>

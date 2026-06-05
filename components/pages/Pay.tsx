@@ -122,19 +122,22 @@ export const Pay = () => {
   const availableMethods = useMemo<PayMethod[]>(() => {
     if (!packagesData?.packages) return [];
     const found = new Set<PayMethod>();
-    packagesData.packages.forEach(pkg =>
-      pkg.plans.forEach(plan => {
+    packagesData.packages.forEach((pkg) =>
+      pkg.plans.forEach((plan) => {
         if (plan.amount != null) found.add('rub');
         if (plan.amount_xtr != null) found.add('xtr');
         if (plan.amount_usdt != null) found.add('usdt');
       })
     );
     const order: PayMethod[] = ['rub', 'xtr', 'usdt'];
-    return order.filter(m => found.has(m));
+    return order.filter((m) => found.has(m));
   }, [packagesData]);
 
   useEffect(() => {
-    if (availableMethods.length > 0 && !availableMethods.includes(selectedMethod)) {
+    if (
+      availableMethods.length > 0 &&
+      !availableMethods.includes(selectedMethod)
+    ) {
       setSelectedMethod(availableMethods[0]);
     }
   }, [availableMethods, selectedMethod]);
@@ -142,7 +145,10 @@ export const Pay = () => {
   const applyDiscount = (value: number, discount: number) =>
     Math.round(value * (1 - discount / 100));
 
-  const getPrice = (plan: Plan, method: PayMethod): { display: string; original?: string } | null => {
+  const getPrice = (
+    plan: Plan,
+    method: PayMethod
+  ): { display: string; original?: string } | null => {
     const discount = activePromo?.discount ?? 0;
 
     if (method === 'rub' && plan.amount != null) {
@@ -182,7 +188,7 @@ export const Pay = () => {
       plan.description.en ||
       plan.description.ru ||
       '';
-    return text.split('\n').filter(l => l.trim().length > 0);
+    return text.split('\n').filter((l) => l.trim().length > 0);
   };
 
   const formatDuration = (seconds: number): string => {
@@ -206,7 +212,10 @@ export const Pay = () => {
         return;
       }
 
-      if (tgWindow?.TelegramMiniApp && typeof tgWindow.TelegramMiniApp.openLink === 'function') {
+      if (
+        tgWindow?.TelegramMiniApp &&
+        typeof tgWindow.TelegramMiniApp.openLink === 'function'
+      ) {
         tgWindow.TelegramMiniApp.openLink(url);
         return;
       }
@@ -223,7 +232,8 @@ export const Pay = () => {
   // Apply promo code
   const handleApplyPromo = async () => {
     const code = promoInput.trim();
-    if (!code || !packagesData?.promo_check_url || !packagesData?.pay_id) return;
+    if (!code || !packagesData?.promo_check_url || !packagesData?.pay_id)
+      return;
 
     setPromoLoading(true);
     setPromoError(null);
@@ -305,19 +315,38 @@ export const Pay = () => {
           if (data && typeof data === 'object') {
             const obj = data as Record<string, any>;
 
-            if ('link' in obj && typeof obj.link === 'string' && obj.link.trim() !== '') {
+            if (
+              'link' in obj &&
+              typeof obj.link === 'string' &&
+              obj.link.trim() !== ''
+            ) {
               targetLink = obj.link;
-            } else if ('url' in obj && typeof obj.url === 'string' && obj.url.trim() !== '') {
+            } else if (
+              'url' in obj &&
+              typeof obj.url === 'string' &&
+              obj.url.trim() !== ''
+            ) {
               targetLink = obj.url;
-            } else if ('data' in obj && obj.data && typeof obj.data === 'object') {
+            } else if (
+              'data' in obj &&
+              obj.data &&
+              typeof obj.data === 'object'
+            ) {
               const innerData = obj.data as Record<string, any>;
-              if (typeof innerData.link === 'string' && innerData.link.trim() !== '') {
+              if (
+                typeof innerData.link === 'string' &&
+                innerData.link.trim() !== ''
+              ) {
                 targetLink = innerData.link;
               }
             }
           }
 
-          if (targetLink && typeof targetLink === 'string' && !targetLink.includes('native code')) {
+          if (
+            targetLink &&
+            typeof targetLink === 'string' &&
+            !targetLink.includes('native code')
+          ) {
             handleOpenLink(targetLink);
             setTimeout(() => {
               refetch();
@@ -329,7 +358,7 @@ export const Pay = () => {
             toast.error(t('paymentError'));
           }
         },
-        onError: error => {
+        onError: (error) => {
           toast.dismiss();
           haptic.error();
           setPayingKey(null);
@@ -377,7 +406,7 @@ export const Pay = () => {
         {!isLoading && availableMethods.length > 0 && (
           <div className="max-w-xl mx-auto px-4 pb-3 mt-4">
             <div className="flex gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-              {availableMethods.map(m => (
+              {availableMethods.map((m) => (
                 <button
                   key={m}
                   onClick={() => {
@@ -411,7 +440,9 @@ export const Pay = () => {
         {error && (
           <div className="mt-6 p-6 rounded-[28px] bg-red-500/5 border border-red-500/15 text-center">
             <Info size={24} className="mx-auto mb-2 text-red-400" />
-            <p className="text-[14px] font-bold text-red-400">{t('errorLoadPackages')}</p>
+            <p className="text-[14px] font-bold text-red-400">
+              {t('errorLoadPackages')}
+            </p>
           </div>
         )}
 
@@ -432,7 +463,7 @@ export const Pay = () => {
                 <input
                   type="email"
                   value={email}
-                  onChange={e => {
+                  onChange={(e) => {
                     setEmail(e.target.value);
                     if (emailError) setEmailError(null);
                   }}
@@ -446,7 +477,9 @@ export const Pay = () => {
                 />
               </div>
               {emailError && (
-                <p className="mt-1.5 ml-1 text-[12px] font-bold text-red-400">{emailError}</p>
+                <p className="mt-1.5 ml-1 text-[12px] font-bold text-red-400">
+                  {emailError}
+                </p>
               )}
             </motion.div>
           )}
@@ -469,7 +502,9 @@ export const Pay = () => {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-[13px] font-black text-emerald-400">
-                      {t('promoDiscountActive', { discount: activePromo.discount })}
+                      {t('promoDiscountActive', {
+                        discount: activePromo.discount,
+                      })}
                     </p>
                     {timeLeft && (
                       <p className="text-[11px] font-bold text-white/30 flex items-center gap-1 mt-0.5">
@@ -494,12 +529,12 @@ export const Pay = () => {
                       <input
                         type="text"
                         value={promoInput}
-                        onChange={e => {
+                        onChange={(e) => {
                           setPromoInput(e.target.value.toUpperCase());
                           if (promoError) setPromoError(null);
                           if (promoSuccess) setPromoSuccess(false);
                         }}
-                        onKeyDown={e => {
+                        onKeyDown={(e) => {
                           if (e.key === 'Enter') handleApplyPromo();
                         }}
                         placeholder={t('promoPlaceholder')}

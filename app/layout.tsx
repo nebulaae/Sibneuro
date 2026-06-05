@@ -11,6 +11,7 @@ import { PlatformScripts } from './providers/PlatformScripts';
 
 import './globals.css';
 import { ThemeProviders } from './providers/ThemeProviders';
+import { TelegramLoginScript } from './providers/TelegramLoginScript';
 
 export const metadata: Metadata = {
   title: 'Sibneuro',
@@ -44,6 +45,7 @@ export default async function RootLayout({
       <body style={{ fontFamily: 'var(--font-sf)', margin: 0 }}>
         <QueryProvider>
           <BotProvider>
+            <TelegramLoginScript />
             <AuthProvider>
               <TelegramProvider>
                 <MaxProvider>

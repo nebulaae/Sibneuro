@@ -461,14 +461,21 @@ export const useTrackingStats = (period = 'all') => {
   return useQuery({
     queryKey: ['tracking-stats', period],
     queryFn: async () => {
-      const { data } = await api.get('/api/tracking/stats', { params: { period } });
+      const { data } = await api.get('/api/tracking/stats', {
+        params: { period },
+      });
       return data;
     },
   });
 };
 
 // GET /tracking/payments
-export const useTrackingPayments = (period = 'all', status?: string, limit = 50, offset = 0) => {
+export const useTrackingPayments = (
+  period = 'all',
+  status?: string,
+  limit = 50,
+  offset = 0
+) => {
   return useQuery({
     queryKey: ['tracking-payments', period, status, limit, offset],
     queryFn: async () => {
@@ -485,7 +492,9 @@ export const useTrackingPaymentsStats = (period = 'all') => {
   return useQuery({
     queryKey: ['tracking-payments-stats', period],
     queryFn: async () => {
-      const { data } = await api.get('/api/tracking/payments-stats', { params: { period } });
+      const { data } = await api.get('/api/tracking/payments-stats', {
+        params: { period },
+      });
       return data;
     },
   });
@@ -496,7 +505,9 @@ export const useTrackingReferrals = (limit = 50, offset = 0) => {
   return useQuery({
     queryKey: ['tracking-referrals', limit, offset],
     queryFn: async () => {
-      const { data } = await api.get('/api/tracking/referrals', { params: { limit, offset } });
+      const { data } = await api.get('/api/tracking/referrals', {
+        params: { limit, offset },
+      });
       return data;
     },
   });

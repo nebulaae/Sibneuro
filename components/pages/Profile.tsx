@@ -57,6 +57,7 @@ import { toast } from 'sonner';
 import { useHaptic } from '@/hooks/useHaptic';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
+import { AlbumsTab } from '../shared/profile/AlbumsTab';
 
 type Tab = 'profile' | 'account' | 'partnership';
 type PartnershipSubTab = 'overview' | 'finance' | 'audience' | 'lists';
@@ -98,7 +99,6 @@ const STATUS_CONFIG = {
   },
 };
 
-
 const spring =
   'transition-all duration-[280ms] [transition-timing-function:cubic-bezier(0.32,0.72,0,1)]';
 
@@ -116,8 +116,6 @@ const getStatusMap = (t: ReturnType<typeof useTranslations<'Profile'>>) => ({
   error: { color: '#EF4444', label: t('statusError') },
   processing: { color: '#F59E0B', label: t('statusProcessing') },
 });
-
-
 
 // Extract flat list of media from result
 function extractResultMedia(result: GenerationRequest['result']): MediaItem[] {
@@ -202,7 +200,10 @@ function InputPreview({ inputs }: { inputs: GenerationRequest['inputs'] }) {
     <div className="flex items-center gap-1.5 text-[12px] text-white/30">
       {hasMedia && <ImageIcon size={11} className="shrink-0" />}
       {text && (
-        <span className="truncate leading-snug">{text.slice(0, 80)}{text.length > 80 ? '…' : ''}</span>
+        <span className="truncate leading-snug">
+          {text.slice(0, 80)}
+          {text.length > 80 ? '…' : ''}
+        </span>
       )}
       {!text && hasMedia && <span>Image input</span>}
     </div>
@@ -222,9 +223,7 @@ function RequestCard({
   const image = resultMedia.find((m) => m.type === 'image');
 
   const prompt =
-    req.inputs?.text ||
-    req.result?.text?.slice(0, 140) ||
-    'Image generation';
+    req.inputs?.text || req.result?.text?.slice(0, 140) || 'Image generation';
 
   if (!image) {
     return (
@@ -235,9 +234,7 @@ function RequestCard({
         <div className="flex items-center justify-between mb-4">
           <div>
             <p className="font-semibold">{req.version}</p>
-            <p className="text-xs text-white/40">
-              {timeAgo(req.created_at)}
-            </p>
+            <p className="text-xs text-white/40">{timeAgo(req.created_at)}</p>
           </div>
 
           <div
@@ -252,9 +249,7 @@ function RequestCard({
           </div>
         </div>
 
-        <p className="text-sm text-white/80 line-clamp-3">
-          {req.inputs?.text}
-        </p>
+        <p className="text-sm text-white/80 line-clamp-3">{req.inputs?.text}</p>
 
         <div className="mt-4 pt-4 border-t border-white/[0.06]">
           <p className="text-sm text-white/45 line-clamp-4">
@@ -354,6 +349,9 @@ export const Profile = () => {
     useState<PartnershipSubTab>('overview');
   const [copiedToken, setCopiedToken] = useState<string | null>(null);
   const [copiedRef, setCopiedRef] = useState(false);
+  const [historyTab, setHistoryTab] = useState<'generations' | 'albums'>(
+    'generations'
+  );
 
   const { data: trackingStatsData, isLoading: trackingStatsLoading } =
     useTrackingStats(partnershipPeriod);
@@ -579,7 +577,7 @@ export const Profile = () => {
           <div className="flex flex-col gap-3">
             <div className="grid grid-cols-1 gap-3">
               <button
-                onClick={() => router.push("/pay")}
+                onClick={() => router.push('/pay')}
                 className={cn(
                   glass.tile,
                   'flex flex-col gap-3 p-5 text-left active:scale-95',
@@ -604,7 +602,7 @@ export const Profile = () => {
 
             {/* Top Up */}
             <button
-              onClick={() => router.push("/pay")}
+              onClick={() => router.push('/pay')}
               className={cn(
                 glass.tile,
                 'flex items-center gap-4 px-5 py-4 active:scale-[0.98]',
@@ -639,60 +637,121 @@ export const Profile = () => {
             </Link>
 
             {/* History */}
-            <div className="mt-4">
-              <p className="text-[11px] font-medium tracking-[0.5px] uppercase text-white/30 mb-4">
-                {t('generationHistory')}
-              </p>
-              {reqLoading ? (
-                <div className="flex flex-col gap-4">
-                  {Array.from({ length: 4 }).map((_, i) => (
+            <div className="flex flex-col gap-5">
+              {/* Sub-tab switcher: Generations / Albums */}
+              <div className="flex gap-1.5 p-1 rounded-full bg-white/[0.05] border border-white/[0.08] text-cyan-200">
+                <button
+                  onClick={() => {
+                    haptic.light();
+                    setHistoryTab('generations');
+                  }}
+                  className={cn(
+                    'flex-1 py-2.5 rounded-xl text-[13px] font-semibold transition-all relative z-10',
+                    historyTab === 'generations'
+                      ? ''
+                      : 'text-white/40 hover:text-white/60'
+                  )}
+                >
+                  {t('generationHistory')}
+                  {historyTab === 'generations' && (
                     <div
-                      key={i}
-                      className="flex items-center gap-4 animate-pulse"
-                    >
-                      <div className="size-11 rounded-xl bg-white/[0.05] shrink-0" />
-                      <div className="flex-1 flex flex-col gap-2">
-                        <div className="w-1/2 h-[14px] rounded bg-white/[0.05]" />
-                        <div className="w-1/3 h-[11px] rounded bg-white/[0.05]" />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : requests.length === 0 ? (
-                <p className="text-[15px] text-white/30">{t('noGenerations')}</p>
-              ) : (
-                <div className="flex flex-col gap-3">
-                  {requests.map((req) => (
-                    <RequestCard key={req.id} req={req} onNavigate={handleNavigate} />
-                  ))}
-
-                  {hasNextPage && (
-                    <button
-                      onClick={() => {
-                        haptic.light();
-                        fetchNextPage?.();
-                      }}
-                      disabled={isFetchingNextPage}
                       className={cn(
-                        'w-full py-3.5 rounded-[16px] text-[13px] font-medium text-white/40',
-                        'border border-white/[0.06] bg-white/[0.025]',
-                        'flex items-center justify-center gap-2',
-                        'hover:text-white/60 hover:border-white/[0.10]',
-                        'active:scale-[0.98] disabled:opacity-50',
+                        'absolute inset-0 z-[-1] animate-in fade-in zoom-in duration-300',
+                        glass.pill,
                         spring
                       )}
-                    >
-                      {isFetchingNextPage ? (
-                        <>
-                          <Loader2 size={13} className="animate-spin" />
-                          Loading…
-                        </>
-                      ) : (
-                        'Load more'
-                      )}
-                    </button>
+                    />
                   )}
-                </div>
+                </button>
+
+                <button
+                  onClick={() => {
+                    haptic.light();
+                    setHistoryTab('albums');
+                  }}
+                  className={cn(
+                    'flex-1 py-2.5 rounded-xl text-[13px] font-semibold transition-all relative z-10 ',
+                    historyTab === 'albums'
+                      ? ''
+                      : 'text-white/40 hover:text-white/60'
+                  )}
+                >
+                  {t('albumsTabLabel')}
+                  {historyTab === 'albums' && (
+                    <div
+                      className={cn(
+                        'absolute inset-0 z-[-1] animate-in fade-in zoom-in duration-300 text-cyan-200/80',
+                        glass.pill,
+                        spring
+                      )}
+                    />
+                  )}
+                </button>
+              </div>
+
+              {historyTab === 'generations' ? (
+                <>
+                  {reqLoading ? (
+                    <div className="flex flex-col gap-4">
+                      {Array.from({ length: 4 }).map((_, i) => (
+                        <div
+                          key={i}
+                          className="flex items-center gap-4 animate-pulse"
+                        >
+                          <div className="size-11 rounded-xl bg-white/[0.05] shrink-0" />
+
+                          <div className="flex-1 flex flex-col gap-2">
+                            <div className="w-1/2 h-[14px] rounded bg-white/[0.05]" />
+                            <div className="w-1/3 h-[11px] rounded bg-white/[0.05]" />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : requests.length === 0 ? (
+                    <p className="text-[15px] text-white/30">
+                      {t('noGenerations')}
+                    </p>
+                  ) : (
+                    <div className="flex flex-col gap-3">
+                      {requests.map((req) => (
+                        <RequestCard
+                          key={req.id}
+                          req={req}
+                          onNavigate={handleNavigate}
+                        />
+                      ))}
+
+                      {hasNextPage && (
+                        <button
+                          onClick={() => {
+                            haptic.light();
+                            fetchNextPage?.();
+                          }}
+                          disabled={isFetchingNextPage}
+                          className={cn(
+                            'w-full py-3.5 rounded-[16px] text-[13px] font-medium text-white/40',
+                            'border border-white/[0.06] bg-white/[0.025]',
+                            'flex items-center justify-center gap-2',
+                            'hover:text-white/60 hover:border-white/[0.10]',
+                            'active:scale-[0.98] disabled:opacity-50',
+                            spring
+                          )}
+                        >
+                          {isFetchingNextPage ? (
+                            <>
+                              <Loader2 size={13} className="animate-spin" />
+                              Loading...
+                            </>
+                          ) : (
+                            'Load more'
+                          )}
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </>
+              ) : (
+                <AlbumsTab />
               )}
             </div>
           </div>
@@ -792,12 +851,7 @@ export const Profile = () => {
         {activeTab === 'partnership' && (
           <div className="flex flex-col gap-5">
             {/* Hero Banner */}
-            <div
-              className={cn(
-                glass.panel,
-                'relative overflow-hidden p-6'
-              )}
-            >
+            <div className={cn(glass.panel, 'relative overflow-hidden p-6')}>
               <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/15 via-sky-500/8 to-transparent" />
               <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-cyan-400/40 to-transparent" />
               <div className="absolute top-0 right-0 p-6 opacity-[0.06] translate-x-4 -translate-y-2 pointer-events-none">
@@ -857,7 +911,10 @@ export const Profile = () => {
                 {[1, 2, 3].map((lvl) => {
                   const found = levelStats.find((l: any) => l.level === lvl);
                   return (
-                    <div key={lvl} className={cn(glass.tile, 'flex flex-col gap-1.5 p-4')}>
+                    <div
+                      key={lvl}
+                      className={cn(glass.tile, 'flex flex-col gap-1.5 p-4')}
+                    >
                       <span className="text-[10px] font-medium uppercase tracking-[0.5px] text-white/30">
                         {t('levelN', { n: lvl })}
                       </span>
@@ -932,7 +989,12 @@ export const Profile = () => {
                     {/* KPI Grid */}
                     <div className="grid grid-cols-2 gap-3">
                       {/* Users */}
-                      <div className={cn(glass.tile, 'flex flex-col justify-between p-5 gap-3')}>
+                      <div
+                        className={cn(
+                          glass.tile,
+                          'flex flex-col justify-between p-5 gap-3'
+                        )}
+                      >
                         <div className="flex items-center justify-between text-white/30">
                           <span className="text-[10px] font-medium uppercase tracking-[0.5px] flex items-center gap-1.5">
                             <Users size={11} /> {t('metricUsers')}
@@ -944,13 +1006,20 @@ export const Profile = () => {
                             {usersStats.total ?? 0}
                           </p>
                           <p className="text-[11px] text-emerald-400/80 font-medium mt-1.5">
-                            {t('metricNewUsers', { count: usersStats.new ?? 0 })}
+                            {t('metricNewUsers', {
+                              count: usersStats.new ?? 0,
+                            })}
                           </p>
                         </div>
                       </div>
 
                       {/* Revenue */}
-                      <div className={cn(glass.cyanCard, 'flex flex-col justify-between p-5 gap-3')}>
+                      <div
+                        className={cn(
+                          glass.cyanCard,
+                          'flex flex-col justify-between p-5 gap-3'
+                        )}
+                      >
                         <div className="flex items-center justify-between text-white/30">
                           <span className="text-[10px] font-medium uppercase tracking-[0.5px] flex items-center gap-1.5">
                             <Coins size={11} /> {t('metricRevenue')}
@@ -971,7 +1040,12 @@ export const Profile = () => {
                       </div>
 
                       {/* Requests */}
-                      <div className={cn(glass.tile, 'flex flex-col justify-between p-5 gap-3')}>
+                      <div
+                        className={cn(
+                          glass.tile,
+                          'flex flex-col justify-between p-5 gap-3'
+                        )}
+                      >
                         <div className="flex items-center justify-between text-white/30">
                           <span className="text-[10px] font-medium uppercase tracking-[0.5px] flex items-center gap-1.5">
                             <Zap size={11} /> {t('metricRequests')}
@@ -991,7 +1065,12 @@ export const Profile = () => {
                       </div>
 
                       {/* Conversion */}
-                      <div className={cn(glass.tile, 'flex flex-col justify-between p-5 gap-3')}>
+                      <div
+                        className={cn(
+                          glass.tile,
+                          'flex flex-col justify-between p-5 gap-3'
+                        )}
+                      >
                         <div className="flex items-center justify-between text-white/30">
                           <span className="text-[10px] font-medium uppercase tracking-[0.5px] flex items-center gap-1.5">
                             <TrendingUp size={11} /> {t('metricConversion')}
@@ -1019,35 +1098,49 @@ export const Profile = () => {
 
                       {[
                         {
-                          icon: <Star size={11} className="text-amber-300" fill="currentColor" />,
+                          icon: (
+                            <Star
+                              size={11}
+                              className="text-amber-300"
+                              fill="currentColor"
+                            />
+                          ),
                           label: t('cardPremium'),
                           value: `${usersStats.premium ?? 0} / ${usersStats.total ?? 0}`,
-                          pct: usersStats.total > 0
-                            ? (usersStats.premium / usersStats.total) * 100
-                            : 0,
+                          pct:
+                            usersStats.total > 0
+                              ? (usersStats.premium / usersStats.total) * 100
+                              : 0,
                           bar: 'bg-amber-400/70',
                         },
                         {
                           icon: <Globe size={11} className="text-sky-300" />,
                           label: t('cardTgTraffic'),
                           value: `${usersStats.tg ?? 0} / ${usersStats.total ?? 0}`,
-                          pct: usersStats.total > 0
-                            ? (usersStats.tg / usersStats.total) * 100
-                            : 0,
+                          pct:
+                            usersStats.total > 0
+                              ? (usersStats.tg / usersStats.total) * 100
+                              : 0,
                           bar: 'bg-sky-400/70',
                         },
                         {
-                          icon: <Repeat size={11} className="text-emerald-300" />,
+                          icon: (
+                            <Repeat size={11} className="text-emerald-300" />
+                          ),
                           label: t('cardRepeatPayments'),
                           value: `${repeatPayments.repeatPayersCount ?? 0}`,
-                          pct: paysStats.successCount > 0
-                            ? ((repeatPayments.repeatPayersCount || 0) /
-                              paysStats.successCount) * 100
-                            : 0,
+                          pct:
+                            paysStats.successCount > 0
+                              ? ((repeatPayments.repeatPayersCount || 0) /
+                                  paysStats.successCount) *
+                                100
+                              : 0,
                           bar: 'bg-emerald- 400/70',
                         },
                         {
-                          icon: <Sparkles size={11} className="text-indigo-300" />,
+                          icon: (
+                            <Sparkles size={11} className="text-indigo-300" />
+                          ),
                           label: t('cardTrialToPaid'),
                           value: `${trialToPaid.rate ?? 0}%`,
                           pct: trialToPaid.rate ?? 0,
@@ -1088,8 +1181,8 @@ export const Profile = () => {
                       const maxRev =
                         dailyPays.length > 0
                           ? Math.max(
-                            ...dailyPays.map((d: any) => d.revenue || 0)
-                          )
+                              ...dailyPays.map((d: any) => d.revenue || 0)
+                            )
                           : 0;
                       return (
                         <div
@@ -1108,28 +1201,32 @@ export const Profile = () => {
                           </div>
                           {dailyPays.length > 0 ? (
                             <div className="flex items-end justify-between gap-1 h-28">
-                              {dailyPays.slice(-14).map((d: any, idx: number) => {
-                                const pct =
-                                  maxRev > 0
-                                    ? ((d.revenue || 0) / maxRev) * 100
-                                    : 0;
-                                return (
-                                  <div
-                                    key={idx}
-                                    className="flex-1 flex flex-col items-center gap-1.5 h-full justify-end group/bar"
-                                  >
+                              {dailyPays
+                                .slice(-14)
+                                .map((d: any, idx: number) => {
+                                  const pct =
+                                    maxRev > 0
+                                      ? ((d.revenue || 0) / maxRev) * 100
+                                      : 0;
+                                  return (
                                     <div
-                                      style={{ height: `${Math.max(pct, 5)}%` }}
-                                      className="w-full rounded-t-[3px] bg-gradient-to-t from-cyan-500/60 to-cyan-300/80 group-hover/bar:from-cyan-400/80 group-hover/bar:to-cyan-200 transition-all duration-200"
-                                    />
-                                    <span className="text-[8px] font-medium text-white/20 truncate max-w-full">
-                                      {d.date
-                                        ? d.date.split('-').slice(2).join('/')
-                                        : idx + 1}
-                                    </span>
-                                  </div>
-                                );
-                              })}
+                                      key={idx}
+                                      className="flex-1 flex flex-col items-center gap-1.5 h-full justify-end group/bar"
+                                    >
+                                      <div
+                                        style={{
+                                          height: `${Math.max(pct, 5)}%`,
+                                        }}
+                                        className="w-full rounded-t-[3px] bg-gradient-to-t from-cyan-500/60 to-cyan-300/80 group-hover/bar:from-cyan-400/80 group-hover/bar:to-cyan-200 transition-all duration-200"
+                                      />
+                                      <span className="text-[8px] font-medium text-white/20 truncate max-w-full">
+                                        {d.date
+                                          ? d.date.split('-').slice(2).join('/')
+                                          : idx + 1}
+                                      </span>
+                                    </div>
+                                  );
+                                })}
                             </div>
                           ) : (
                             <div className="h-28 flex items-center justify-center text-white/20">
@@ -1145,7 +1242,9 @@ export const Profile = () => {
                       const allStatuses =
                         paysStats.allStatuses || payStatsAgg.allStatuses || [];
                       return (
-                        <div className={cn(glass.tile, 'p-5 flex flex-col gap-4')}>
+                        <div
+                          className={cn(glass.tile, 'p-5 flex flex-col gap-4')}
+                        >
                           <p className="text-[11px] font-medium uppercase tracking-[0.5px] text-white/30 flex items-center gap-1.5">
                             <CreditCard size={11} />{' '}
                             {t('financeStatusBreakdown')}
@@ -1158,9 +1257,7 @@ export const Profile = () => {
                                   st.status === 'success';
                                 const isRefunded = st.status === 'refunded';
                                 const maxRev = Math.max(
-                                  ...allStatuses.map(
-                                    (x: any) => x.revenue || 1
-                                  )
+                                  ...allStatuses.map((x: any) => x.revenue || 1)
                                 );
                                 const pct =
                                   maxRev > 0
@@ -1224,7 +1321,9 @@ export const Profile = () => {
 
                     {/* Currency breakdown */}
                     {payLangs.length > 0 && (
-                      <div className={cn(glass.tile, 'p-5 flex flex-col gap-4')}>
+                      <div
+                        className={cn(glass.tile, 'p-5 flex flex-col gap-4')}
+                      >
                         <p className="text-[11px] font-medium uppercase tracking-[0.5px] text-white/30 flex items-center gap-1.5">
                           <Globe size={11} /> {t('financeCurrencyBreakdown')}
                         </p>
@@ -1274,10 +1373,8 @@ export const Profile = () => {
                       const maxAct =
                         dailyAct.length > 0
                           ? Math.max(
-                            ...dailyAct.map(
-                              (d: any) => d.unique_users || 0
+                              ...dailyAct.map((d: any) => d.unique_users || 0)
                             )
-                          )
                           : 0;
                       return (
                         <div
@@ -1290,34 +1387,39 @@ export const Profile = () => {
                             </p>
                             {usersStats.total > 0 && (
                               <span className="text-[11px] text-white/40">
-                                {usersStats.total} {t('metricUsers').toLowerCase()}
+                                {usersStats.total}{' '}
+                                {t('metricUsers').toLowerCase()}
                               </span>
                             )}
                           </div>
                           {dailyAct.length > 0 ? (
                             <div className="flex items-end justify-between gap-1 h-28">
-                              {dailyAct.slice(-14).map((d: any, idx: number) => {
-                                const pct =
-                                  maxAct > 0
-                                    ? ((d.unique_users || 0) / maxAct) * 100
-                                    : 0;
-                                return (
-                                  <div
-                                    key={idx}
-                                    className="flex-1 flex flex-col items-center gap-1.5 h-full justify-end group/bar"
-                                  >
+                              {dailyAct
+                                .slice(-14)
+                                .map((d: any, idx: number) => {
+                                  const pct =
+                                    maxAct > 0
+                                      ? ((d.unique_users || 0) / maxAct) * 100
+                                      : 0;
+                                  return (
                                     <div
-                                      style={{ height: `${Math.max(pct, 5)}%` }}
-                                      className="w-full rounded-t-[3px] bg-gradient-to-t from-amber-500/60 to-amber-300/80 group-hover/bar:brightness-125 transition-all duration-200"
-                                    />
-                                    <span className="text-[8px] font-medium text-white/20 truncate max-w-full">
-                                      {d.date
-                                        ? d.date.split('-').slice(2).join('/')
-                                        : idx + 1}
-                                    </span>
-                                  </div>
-                                );
-                              })}
+                                      key={idx}
+                                      className="flex-1 flex flex-col items-center gap-1.5 h-full justify-end group/bar"
+                                    >
+                                      <div
+                                        style={{
+                                          height: `${Math.max(pct, 5)}%`,
+                                        }}
+                                        className="w-full rounded-t-[3px] bg-gradient-to-t from-amber-500/60 to-amber-300/80 group-hover/bar:brightness-125 transition-all duration-200"
+                                      />
+                                      <span className="text-[8px] font-medium text-white/20 truncate max-w-full">
+                                        {d.date
+                                          ? d.date.split('-').slice(2).join('/')
+                                          : idx + 1}
+                                      </span>
+                                    </div>
+                                  );
+                                })}
                             </div>
                           ) : (
                             <div className="h-28 flex items-center justify-center text-white/20">
@@ -1332,7 +1434,9 @@ export const Profile = () => {
                     {(() => {
                       const byBot = usersStats.byBot || [];
                       return byBot.length > 0 ? (
-                        <div className={cn(glass.tile, 'p-5 flex flex-col gap-4')}>
+                        <div
+                          className={cn(glass.tile, 'p-5 flex flex-col gap-4')}
+                        >
                           <p className="text-[11px] font-medium uppercase tracking-[0.5px] text-white/30 flex items-center gap-1.5">
                             <Bot size={11} /> {t('audienceBotBreakdown')}
                           </p>
@@ -1375,7 +1479,9 @@ export const Profile = () => {
                     {/* Models + Languages */}
                     <div className="grid grid-cols-1 gap-4">
                       {topModels.length > 0 && (
-                        <div className={cn(glass.tile, 'p-5 flex flex-col gap-4')}>
+                        <div
+                          className={cn(glass.tile, 'p-5 flex flex-col gap-4')}
+                        >
                           <p className="text-[11px] font-medium uppercase tracking-[0.5px] text-white/30 flex items-center gap-1.5">
                             <BarChart2 size={11} /> {t('audienceTopModels')}
                           </p>
@@ -1391,8 +1497,12 @@ export const Profile = () => {
                               return (
                                 <div key={i} className="flex flex-col gap-1.5">
                                   <div className="flex items-center justify-between text-[12px]">
-                                    <span className="text-white/60">{m.model}</span>
-                                    <span className="text-white/35">{m.count}</span>
+                                    <span className="text-white/60">
+                                      {m.model}
+                                    </span>
+                                    <span className="text-white/35">
+                                      {m.count}
+                                    </span>
                                   </div>
                                   <div className="h-1 w-full bg-white/[0.05] rounded-full overflow-hidden">
                                     <div
@@ -1408,7 +1518,9 @@ export const Profile = () => {
                       )}
 
                       {langStats.length > 0 && (
-                        <div className={cn(glass.tile, 'p-5 flex flex-col gap-4')}>
+                        <div
+                          className={cn(glass.tile, 'p-5 flex flex-col gap-4')}
+                        >
                           <p className="text-[11px] font-medium uppercase tracking-[0.5px] text-white/30 flex items-center gap-1.5">
                             <Languages size={11} /> {t('audienceLanguages')}
                           </p>
@@ -1487,50 +1599,49 @@ export const Profile = () => {
                               <div className="text-right text-[11px] text-white/30">
                                 {ref.created_at
                                   ? new Date(
-                                    ref.created_at
-                                  ).toLocaleDateString()
+                                      ref.created_at
+                                    ).toLocaleDateString()
                                   : '—'}
                               </div>
                             </div>
                           ))
-                        ) : (
-                          // Fallback to trackingReferrals if refData empty
-                          (trackingReferralsData?.rows || []).length > 0 ? (
-                            (trackingReferralsData?.rows || []).map(
-                              (ref: any, i: number) => (
-                                <div
-                                  key={i}
-                                  className="flex items-center justify-between py-3.5 border-b border-white/[0.05]"
-                                >
-                                  <div className="flex items-center gap-3">
-                                    <div className="size-9 rounded-xl bg-white/[0.05] flex items-center justify-center text-[13px] font-bold text-white/50">
-                                      {ref.user?.first_name?.[0]?.toUpperCase() ||
-                                        '?'}
-                                    </div>
-                                    <div>
-                                      <p className="text-[13px] font-medium text-white/80">
-                                        {ref.user?.first_name || t('listNameUnknown')}{' '}
-                                        {ref.user?.last_name || ''}
-                                      </p>
-                                      {ref.user?.username && (
-                                        <p className="text-[11px] text-cyan-400/70 mt-0.5">
-                                          @{ref.user.username}
-                                        </p>
-                                      )}
-                                    </div>
+                        ) : // Fallback to trackingReferrals if refData empty
+                        (trackingReferralsData?.rows || []).length > 0 ? (
+                          (trackingReferralsData?.rows || []).map(
+                            (ref: any, i: number) => (
+                              <div
+                                key={i}
+                                className="flex items-center justify-between py-3.5 border-b border-white/[0.05]"
+                              >
+                                <div className="flex items-center gap-3">
+                                  <div className="size-9 rounded-xl bg-white/[0.05] flex items-center justify-center text-[13px] font-bold text-white/50">
+                                    {ref.user?.first_name?.[0]?.toUpperCase() ||
+                                      '?'}
                                   </div>
-                                  <span className="text-[11px] text-white/20">
-                                    #{ref.user_id}
-                                  </span>
+                                  <div>
+                                    <p className="text-[13px] font-medium text-white/80">
+                                      {ref.user?.first_name ||
+                                        t('listNameUnknown')}{' '}
+                                      {ref.user?.last_name || ''}
+                                    </p>
+                                    {ref.user?.username && (
+                                      <p className="text-[11px] text-cyan-400/70 mt-0.5">
+                                        @{ref.user.username}
+                                      </p>
+                                    )}
+                                  </div>
                                 </div>
-                              )
+                                <span className="text-[11px] text-white/20">
+                                  #{ref.user_id}
+                                </span>
+                              </div>
                             )
-                          ) : (
-                            <div className="py-10 flex flex-col items-center gap-3 opacity-25">
-                              <Calendar size={28} />
-                              <p className="text-[14px]">{t('noData')}</p>
-                            </div>
                           )
+                        ) : (
+                          <div className="py-10 flex flex-col items-center gap-3 opacity-25">
+                            <Calendar size={28} />
+                            <p className="text-[14px]">{t('noData')}</p>
+                          </div>
                         )}
                       </div>
                     </div>

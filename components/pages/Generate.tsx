@@ -154,7 +154,7 @@ export const Generate = () => {
                   role_id: null,
                 })
               );
-            } catch { }
+            } catch {}
           }
           if (data.status === 'processing') {
             toast(t('generationStarted'));
@@ -436,75 +436,75 @@ export const Generate = () => {
       <div className="p-4 flex flex-col gap-10">
         {isLoading
           ? Array.from({ length: 4 }).map((_, i) => (
-            <div
-              key={i}
-              className="h-24 rounded-[32px] bg-zinc-900 animate-pulse"
-            />
-          ))
+              <div
+                key={i}
+                className="h-24 rounded-[32px] bg-zinc-900 animate-pulse"
+              />
+            ))
           : ['text', 'image', 'video', 'audio'].map((cat) => {
-            const catModels = models.filter(
-              (m) => m.mainCategory === cat || m.categories?.includes(cat)
-            );
-            if (!catModels.length) return null;
-            return (
-              <div key={cat} className="flex flex-col gap-4">
-                <h2 className="text-[13px] font-black uppercase tracking-widest text-white/30 px-2 flex items-center gap-2">
-                  {cat === 'text' ? (
-                    <Sparkles size={14} />
-                  ) : cat === 'image' ? (
-                    <Zap size={14} />
-                  ) : (
-                    <Zap size={14} />
-                  )}{' '}
-                  {t(
-                    `cat${cat.charAt(0).toUpperCase() + cat.slice(1)}` as any
-                  )}
-                </h2>
-                <div className="flex flex-col gap-3">
-                  {catModels.map((m) => {
-                    const cost =
-                      m.versions?.find((v: any) => v.default)?.cost ??
-                      m.versions?.[0]?.cost ??
-                      1;
-                    return (
-                      <button
-                        key={m.tech_name}
-                        onClick={() => {
-                          haptic.light();
-                          setSelectedTech(m.tech_name);
-                        }}
-                        className="flex items-center gap-4 px-4 py-3 rounded-[32px] bg-zinc-900/40 border border-white/5 hover:border-white/15 transition-all group active:scale-[0.98]"
-                      >
-                        <div className="w-14 h-14 overflow-hidden transition-colors">
-                          <Avatar className="size-full">
-                            <AvatarImage src={m.avatar} />
-                            <AvatarFallback>{m.model_name[0]}</AvatarFallback>
-                          </Avatar>
-                        </div>
-                        <div className="flex-1 text-left min-w-0">
-                          <p className="text-[17px] font-bold text-white group-hover:text-cyan-400 transition-colors truncate">
-                            {m.model_name}
-                          </p>
-                          <p className="text-[12px] font-medium text-white/20 uppercase tracking-widest mt-1">
-                            {m.versions?.[0]?.label}
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <div className="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-[13px] font-black text-white/40">
-                            ◈ {cost}
+              const catModels = models.filter(
+                (m) => m.mainCategory === cat || m.categories?.includes(cat)
+              );
+              if (!catModels.length) return null;
+              return (
+                <div key={cat} className="flex flex-col gap-4">
+                  <h2 className="text-[13px] font-black uppercase tracking-widest text-white/30 px-2 flex items-center gap-2">
+                    {cat === 'text' ? (
+                      <Sparkles size={14} />
+                    ) : cat === 'image' ? (
+                      <Zap size={14} />
+                    ) : (
+                      <Zap size={14} />
+                    )}{' '}
+                    {t(
+                      `cat${cat.charAt(0).toUpperCase() + cat.slice(1)}` as any
+                    )}
+                  </h2>
+                  <div className="flex flex-col gap-3">
+                    {catModels.map((m) => {
+                      const cost =
+                        m.versions?.find((v: any) => v.default)?.cost ??
+                        m.versions?.[0]?.cost ??
+                        1;
+                      return (
+                        <button
+                          key={m.tech_name}
+                          onClick={() => {
+                            haptic.light();
+                            setSelectedTech(m.tech_name);
+                          }}
+                          className="flex items-center gap-4 px-4 py-3 rounded-[32px] bg-zinc-900/40 border border-white/5 hover:border-white/15 transition-all group active:scale-[0.98]"
+                        >
+                          <div className="w-14 h-14 overflow-hidden transition-colors">
+                            <Avatar className="size-full">
+                              <AvatarImage src={m.avatar} />
+                              <AvatarFallback>{m.model_name[0]}</AvatarFallback>
+                            </Avatar>
                           </div>
-                          <ChevronRight
-                            size={18}
-                            className="text-white/10 group-hover:text-white transition-colors"
-                          />
-                        </div>
-                      </button>
-                    );
-                  })}
+                          <div className="flex-1 text-left min-w-0">
+                            <p className="text-[17px] font-bold text-white group-hover:text-cyan-400 transition-colors truncate">
+                              {m.model_name}
+                            </p>
+                            <p className="text-[12px] font-medium text-white/20 uppercase tracking-widest mt-1">
+                              {m.versions?.[0]?.label}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <div className="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-[13px] font-black text-white/40">
+                              ◈ {cost}
+                            </div>
+                            <ChevronRight
+                              size={18}
+                              className="text-white/10 group-hover:text-white transition-colors"
+                            />
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
-            );
-          })}
+              );
+            })}
       </div>
     </div>
   );

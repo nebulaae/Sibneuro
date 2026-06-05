@@ -8,29 +8,42 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
-  DialogFooter
+  DialogFooter,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { usePublishPost } from '@/hooks/usePosts';
 import { toast } from 'sonner';
 import { Loader2, Share2, EyeOff, Edit3, Type } from 'lucide-react';
-import { cn } from '@/lib/utils';
 
 interface PublishDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  message: any; // Message type from ChatPage
+  message: any;
+  dialogueId?: string;
 }
 
-export const PublishDialog = ({ isOpen, onClose, message }: PublishDialogProps) => {
+export const PublishDialog = ({
+  isOpen,
+  onClose,
+  message,
+  dialogueId,
+}: PublishDialogProps) => {
   const t = useTranslations('Publish');
   const publish = usePublishPost();
 
   const [hideText, setHideText] = useState(false);
-  const [mediaSettings, setMediaSettings] = useState<Record<number, { hide: boolean, replace: boolean }>>(
-    Object.fromEntries((message?.inputs?.media || []).map((_: any, i: number) => [i, { hide: false, replace: false }]))
+  const [mediaSettings, setMediaSettings] = useState<
+    Record<number, { hide: boolean; replace: boolean }>
+  >(
+    Object.fromEntries(
+      (message?.inputs?.media || []).map((_: any, i: number) => [
+        i,
+        { hide: false, replace: false },
+      ])
+    )
   );
 
   const handlePublish = async () => {
@@ -38,13 +51,14 @@ export const PublishDialog = ({ isOpen, onClose, message }: PublishDialogProps) 
       const inputs = {
         ...message.inputs,
         hide_text: hideText,
-        media: (message.inputs?.media || []).map((m: any, i: number) => ({
-          ...m,
-          input: {
-            ...(typeof m.input === 'object' ? m.input : { type: 'image', format: 'url', input: m.input }),
-            reference: mediaSettings[i] || { hide: false, replace: false }
-          }
-        }))
+        dialogueId,
+        messages: [
+          {
+            role: message.role_id ? 'user' : 'assistant', // или правильно определяй роль
+            content: message.inputs?.text || message.result?.text,
+            inputs: message.inputs,
+          },
+        ],
       };
 
       await publish.mutateAsync({
@@ -52,7 +66,7 @@ export const PublishDialog = ({ isOpen, onClose, message }: PublishDialogProps) 
         version_label: message.version,
         inputs,
         params: message.params || {},
-        result: message.result
+        result: message.result,
       });
 
       toast.success(t('success'));
@@ -68,83 +82,80 @@ export const PublishDialog = ({ isOpen, onClose, message }: PublishDialogProps) 
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="bg-neutral-900 border-white/10 text-white max-w-md">
         <DialogHeader>
-          <DialogTitle className="text-xl font-bold flex items-center gap-2">
-            <Share2 className="size-5 text-blue-400" />
+          <DialogTitle className="flex items-center gap-2">
+            <Share2 className="size-5 text-cyan-400" />
             {t('title')}
           </DialogTitle>
-          <DialogDescription className="text-white/50">
-            {t('description')}
-          </DialogDescription>
+          <DialogDescription>{t('description')}</DialogDescription>
         </DialogHeader>
 
-        <div className="py-4 space-y-6">
-          {/* Prompt Visibility */}
-          <div className="flex items-center justify-between p-4 rounded-2xl bg-white/5 border border-white/10">
-            <div className="space-y-0.5">
-              <Label className="text-base font-semibold flex items-center gap-2">
-                <Type className="size-4 text-white/60" />
-                {t('hidePrompt')}
-              </Label>
-              <p className="text-xs text-white/30">{t('hidePromptDesc')}</p>
+        <ScrollArea className="h-[420px] pr-4">
+          <div className="py-4 space-y-6">
+            {/* Hide prompt */}
+            <div className="flex items-center justify-between p-4 rounded-2xl bg-white/5 border border-white/10">
+              <div>
+                <Label>{t('hidePrompt')}</Label>
+                <p className="text-xs text-white/40">{t('hidePromptDesc')}</p>
+              </div>
+              <Switch checked={hideText} onCheckedChange={setHideText} />
             </div>
-            <Switch checked={hideText} onCheckedChange={setHideText} />
-          </div>
 
-          {/* Media Settings */}
-          {mediaList.length > 0 && (
-            <div className="space-y-3">
-              <Label className="text-[12px] font-bold uppercase tracking-wider text-white/40 px-1">
-                {t('mediaSettings')}
-              </Label>
-
+            {/* Media Settings */}
+            {mediaList.length > 0 && (
               <div className="space-y-3">
+                <Label className="uppercase text-xs tracking-widest text-white/40">
+                  {t('mediaSettings')}
+                </Label>
                 {mediaList.map((m: any, i: number) => (
-                  <div key={i} className="p-4 rounded-2xl bg-white/5 border border-white/10 space-y-4">
-                    <div className="flex items-center gap-3">
-                      <div className="size-10 rounded-lg bg-white/10 overflow-hidden">
-                        <img src={m.url || m.input?.input} alt="" className="size-full object-cover" />
-                      </div>
-                      <span className="text-sm font-medium text-white/80">{t('media')} #{i + 1}</span>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4 pt-2 border-t border-white/5">
-                      <div className="flex items-center justify-between">
-                        <Label className="text-xs flex items-center gap-1.5 cursor-pointer" htmlFor={`hide-${i}`}>
-                          <EyeOff className="size-3 text-white/40" />
-                          {t('hide')}
-                        </Label>
+                  <div
+                    key={i}
+                    className="p-4 rounded-2xl bg-white/5 border border-white/10 space-y-4"
+                  >
+                    {/* media preview + switches */}
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="flex justify-between">
+                        <Label>{t('hide')}</Label>
                         <Switch
-                          id={`hide-${i}`}
                           checked={mediaSettings[i]?.hide}
-                          onCheckedChange={(val: boolean) => setMediaSettings(prev => ({ ...prev, [i]: { ...prev[i], hide: val } }))}
+                          onCheckedChange={(v) =>
+                            setMediaSettings((p) => ({
+                              ...p,
+                              [i]: { ...(p[i] || {}), hide: v },
+                            }))
+                          }
                         />
                       </div>
-                      <div className="flex items-center justify-between">
-                        <Label className="text-xs flex items-center gap-1.5 cursor-pointer" htmlFor={`replace-${i}`}>
-                          <Edit3 className="size-3 text-white/40" />
-                          {t('replace')}
-                        </Label>
+                      <div className="flex justify-between">
+                        <Label>{t('replace')}</Label>
                         <Switch
-                          id={`replace-${i}`}
                           checked={mediaSettings[i]?.replace}
-                          onCheckedChange={(val: boolean) => setMediaSettings(prev => ({ ...prev, [i]: { ...prev[i], replace: val } }))}
+                          onCheckedChange={(v) =>
+                            setMediaSettings((p) => ({
+                              ...p,
+                              [i]: { ...(p[i] || {}), replace: v },
+                            }))
+                          }
                         />
                       </div>
                     </div>
                   </div>
                 ))}
               </div>
-            </div>
-          )}
-        </div>
+            )}
+          </div>
+        </ScrollArea>
 
-        <DialogFooter className="sm:justify-start">
+        <DialogFooter>
           <Button
-            disabled={publish.isPending}
             onClick={handlePublish}
-            className="w-full bg-cyan-600 hover:bg-cyan-700 text-white font-bold h-12 rounded-xl"
+            disabled={publish.isPending}
+            className="w-full h-16 rounded-[24px] flex items-center justify-center gap-3 font-black text-[17px] transition-all active:scale-[0.98] shadow-2xl bg-[#007AFF] text-white shadow-[0_0_30px_rgba(0,122,255,0.4)]"
           >
-            {publish.isPending ? <Loader2 className="animate-spin" /> : t('publish')}
+            {publish.isPending ? (
+              <Loader2 className="animate-spin" />
+            ) : (
+              t('publish')
+            )}
           </Button>
         </DialogFooter>
       </DialogContent>

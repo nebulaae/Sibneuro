@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 import { TrendDetail } from '@/components/pages/Trends';
@@ -19,10 +19,17 @@ const TrendDetailPage = () => {
       return null;
     }
   });
-  const { data: apiPost, isLoading } = usePost(postId);
+  const { data: apiPost, status } = usePost(postId);
   const post = cachedPost ?? apiPost ?? null;
 
-  if (!cachedPost && isLoading) {
+  // Redirect only after the query has fully settled with no result
+  useEffect(() => {
+    if (!cachedPost && status === 'error') {
+      router.replace('/trends');
+    }
+  }, [cachedPost, status, router]);
+
+  if (!cachedPost && status === 'pending') {
     return (
       <div className="grid min-h-svh place-items-center bg-[#05070b]">
         <Loader2 className="size-9 animate-spin text-cyan-100" />
@@ -30,10 +37,7 @@ const TrendDetailPage = () => {
     );
   }
 
-  if (!post) {
-    router.replace('/trends');
-    return null;
-  }
+  if (!post) return null;
 
   return <TrendDetail post={post} onBack={() => router.back()} />;
 };

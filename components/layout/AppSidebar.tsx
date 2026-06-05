@@ -29,7 +29,8 @@ export function AppSidebar() {
     thin: 'bg-white/[.06] backdrop-blur-xl border border-white/[.10] shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]',
     card: 'bg-white/[.055] backdrop-blur-2xl border border-white/[.10] shadow-[inset_0_1px_0_rgba(255,255,255,0.14),0_4px_20px_rgba(0,0,0,0.25)]',
     tab: 'bg-white/[.05] border border-white/[.08]',
-    activeTab: 'bg-cyan-400/15 border border-cyan-400/25 text-cyan-200 shadow-[0_0_16px_rgba(34,211,238,0.18)]',
+    activeTab:
+      'bg-cyan-400/15 border border-cyan-400/25 text-cyan-200 shadow-[0_0_16px_rgba(34,211,238,0.18)]',
   };
 
   const items = [
@@ -49,7 +50,7 @@ export function AppSidebar() {
     pathname === href || pathname.startsWith(href + '/');
 
   return (
-    <Sidebar variant="floating" collapsible="icon" className='bg-inherit'>
+    <Sidebar variant="floating" collapsible="icon" className="bg-inherit">
       <SidebarContent className={cn('rounded-xl py-1')}>
         <SidebarGroup>
           <SidebarGroupLabel className="px-3 py-2">
@@ -85,15 +86,9 @@ export function AppSidebar() {
                           'transition-all duration-220 ease-[cubic-bezier(0.32,0.72,0,1)]',
                           'active:scale-[0.96]',
                           active
-                            ? cn(
-                              glass.tab
-                            )
+                            ? cn(glass.tab)
                             : isCreate
-                              ? cn(
-                                glass.activeTab,
-                                '',
-                                'text-white'
-                              )
+                              ? cn(glass.activeTab, '', 'text-white')
                               : 'hover:bg-white/[.07]'
                         )}
                       >

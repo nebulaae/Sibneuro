@@ -12,18 +12,15 @@ import {
   Eye,
   EyeOff,
   ArrowLeft,
-  ExternalLink,
 } from 'lucide-react';
 import { useHaptic } from '@/hooks/useHaptic';
 import { cn } from '@/lib/utils';
-import { useTranslations, useLocale } from 'next-intl';
+import { useTranslations } from 'next-intl';
 import { getAppSource } from '@/lib/source';
 import { waitForPlatformInitData } from '@/lib/platform';
-import Link from 'next/link';
 import Image from 'next/image';
 
-type AppEnv = 'telegram' | 'max' | 'browser';
-type LoginView = 'main' | 'email-login' | 'email-register';
+type LoginView = 'main' | 'email-login' | 'email-register' | 'telegram-login';
 
 /* ─── Seamless Vertical Marquee ─── */
 const MARQUEE_IMAGES = [
@@ -36,6 +33,15 @@ const MARQUEE_IMAGES = [
 
 const col = (offset: number, count = 5) =>
   Array.from({ length: count }, (_, i) => MARQUEE_IMAGES[(offset + i) % MARQUEE_IMAGES.length]);
+
+const getTelegramOAuthOrigin = () => {
+  if (typeof window === 'undefined') return '';
+  if (window.location.hostname === 'neoaipro.com') {
+    return `${window.location.protocol}//www.neoaipro.com`;
+  }
+
+  return window.location.origin;
+};
 
 const MarqueeColumn = ({
   images,
@@ -81,7 +87,6 @@ const MarqueeColumn = ({
   );
 };
 
-/* ─── Messenger launch card ─── */
 const MessengerCard = ({
   href,
   icon,
@@ -97,8 +102,11 @@ const MessengerCard = ({
   accentColor: string;
   onClick?: () => void;
 }) => {
-  const inner = (
-    <div
+  const Wrapper = href ? 'a' : 'div';
+
+  return (
+    <Wrapper
+      href={href}
       className={cn(
         'p-4 w-full flex items-center gap-3.5 cursor-pointer select-none rounded-[20px] transition-all duration-200',
         'active:scale-[0.975]',
@@ -120,22 +128,12 @@ const MessengerCard = ({
         <span className="text-[15px] font-bold text-white/90 leading-none mb-[5px]">{label}</span>
         <span className="text-[13px] font-medium text-white/40 leading-[1.35] truncate">{sublabel}</span>
       </div>
-
-      <ExternalLink size={16} className="text-white/20 flex-shrink-0" />
-    </div>
+    </Wrapper>
   );
-
-  if (href) {
-    return (
-      <Link href={href} target="_blank" rel="noopener noreferrer" className="no-underline block">
-        {inner}
-      </Link>
-    );
-  }
-  return inner;
 };
 
-/* ─── Main component ─── */
+
+/* ─── Main Component ─── */
 export const Login = () => {
   const router = useRouter();
   const { user, login, isLoading: authLoading } = useAuth();
@@ -154,52 +152,29 @@ export const Login = () => {
   const [botInfo, setBotInfo] = useState<any>({});
   const attempted = useRef(false);
 
-  // Капча Яндекс стейты
+  // Yandex Captcha
   const captchaWidgetId = useRef<any>(null);
   const captchaContainerRef = useRef<HTMLDivElement>(null);
 
-
   useEffect(() => {
     try {
-      setBotInfo(
-        JSON.parse(localStorage.getItem('bot_info') || '{}')
-      );
+      setBotInfo(JSON.parse(localStorage.getItem('bot_info') || '{}'));
     } catch { }
   }, []);
-  const maxBotUsername: string | undefined = botInfo?.max_username;
+
   const telegramBotUsername: string | undefined = botInfo?.bot_username;
 
-  /* Обработка Telegram OAuth редиректа во всплывающем окне (исправление бага) */
+  /* Yandex SmartCaptcha */
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    if (window.location.hash && window.location.hash.includes('tgAuthResult')) {
-      try {
-        const hashParams = new URLSearchParams(window.location.hash.substring(1));
-        const tgAuthResult = hashParams.get('tgAuthResult');
-        if (tgAuthResult && window.opener) {
-          const decodedData = JSON.parse(atob(tgAuthResult));
-          window.opener.postMessage({ type: 'TELEGRAM_AUTH_SUCCESS', data: decodedData }, window.location.origin);
-          window.close();
-        }
-      } catch (err) {
-        console.error('Ошибка обработки tgAuthResult в попапе:', err);
-      }
-    }
-  }, []);
-
-  /* Инициализация Яндекс SmartCaptcha */
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-
-    const initYandexCaptcha = () => {
+    const initCaptcha = () => {
       if ((window as any).smartCaptcha && captchaContainerRef.current && captchaWidgetId.current === null) {
         captchaWidgetId.current = (window as any).smartCaptcha.render(captchaContainerRef.current, {
           sitekey: process.env.NEXT_PUBLIC_YANDEX_TOKEN,
           invisible: true,
           shieldPosition: 'bottom-right',
           callback: (token: string) => {
-            // Срабатывает, когда капча успешно пройдена человеком
             (window as any)._yandexCaptchaResolve?.(token);
           },
         });
@@ -211,27 +186,26 @@ export const Login = () => {
       script.src = 'https://captcha-api.yandex.cc/captcha.js?render=onload';
       script.defer = true;
       script.async = true;
-      script.onload = initYandexCaptcha;
+      script.onload = initCaptcha;
       document.head.appendChild(script);
     } else {
-      initYandexCaptcha();
+      initCaptcha();
     }
 
     return () => {
-      if (captchaWidgetId.current !== null && (window as any).smartCaptcha) {
+      if (captchaWidgetId.current && (window as any).smartCaptcha) {
         try {
           (window as any).smartCaptcha.destroy(captchaWidgetId.current);
-          captchaWidgetId.current = null;
-        } catch (e) { }
+        } catch { }
+        captchaWidgetId.current = null;
       }
     };
   }, [view]);
 
-  /* Функция вызова невидимой капчи */
   const executeCaptcha = (): Promise<string> => {
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       if (!(window as any).smartCaptcha || captchaWidgetId.current === null) {
-        resolve(''); // Если капча не загрузилась, не блокируем интерфейс жестко
+        resolve('');
         return;
       }
       (window as any)._yandexCaptchaResolve = (token: string) => {
@@ -240,44 +214,71 @@ export const Login = () => {
       };
       try {
         (window as any).smartCaptcha.execute(captchaWidgetId.current);
-      } catch (err) {
-        reject(err);
+      } catch {
+        resolve('');
       }
     });
   };
 
-  /* redirect if already logged in */
+  const openTelegramLogin = () => {
+    if (!(window as any).Telegram?.Login) return;
+
+    (window as any).Telegram.Login.auth(
+      {
+        client_id: bot?.bot_id,
+        request_access: ['phone', 'write'],
+      },
+      async (result: any) => {
+        if (result?.error) {
+          toast.error(result.error);
+          return;
+        }
+
+        await handleTelegramSuccess(result);
+      }
+    );
+  };
+
+  /* Redirect if logged in */
   useEffect(() => {
     if (!authLoading && user) router.replace('/');
   }, [user, authLoading, router]);
 
-  /* detect source */
+  /* Detect source */
   useEffect(() => {
     const syncSource = getAppSource();
     if (syncSource) { setSource(syncSource); return; }
+
     const timer = setInterval(() => {
       const s = getAppSource();
       if (s) { clearInterval(timer); setSource(s); }
     }, 100);
+
     return () => clearInterval(timer);
   }, []);
 
-  /* auto-login for TMA */
+  /* TMA Auto Login */
   const attemptTMALogin = useCallback(async () => {
     if (!source || source === 'browser' || authLoading || user || !bot?.bot_id || attempted.current) return;
     attempted.current = true;
     setAutoLogging(true);
-    const env = source === 'tg' ? 'telegram' : (source as AppEnv);
+
     const initData = await waitForPlatformInitData(8000);
-    if (!initData) { setAutoLogging(false); attempted.current = false; return; }
+    if (!initData) {
+      setAutoLogging(false);
+      attempted.current = false;
+      return;
+    }
+
     try {
       const referrerId = localStorage.getItem('pending_referrer_id');
       const { data } = await api.post('/api/auth/tma', {
         initData,
-        platform: env,
+        platform: source === 'tg' ? 'telegram' : source,
         bot_id: bot.bot_id,
-        ...(referrerId ? { referrer_id: Number(referrerId), ref: Number(referrerId) } : {}),
+        ...(referrerId ? { referrer_id: Number(referrerId) } : {}),
       });
+
       localStorage.setItem('auth_token', data.token);
       if (data.user?.id) localStorage.setItem('auth_user_id', String(data.user.id));
       localStorage.removeItem('pending_referrer_id');
@@ -291,7 +292,20 @@ export const Login = () => {
 
   useEffect(() => { attemptTMALogin(); }, [attemptTMALogin]);
 
-  /* email login */
+  /* Telegram Widget Success */
+  const handleTelegramSuccess = async (tgData: any) => {
+    try {
+      const { data } = await api.post(`/api/auth/telegram?bot_id=${bot?.bot_id}`, tgData);
+      localStorage.setItem('auth_token', data.token);
+      login(data.user);
+      haptic.success();
+      router.replace('/');
+    } catch (e: any) {
+      toast.error(e?.response?.data?.error || t('telegramLoginError'));
+    }
+  };
+
+  /* Email Handlers */
   const handleEmailLogin = async () => {
     if (!email.trim() || !password.trim()) return toast.error(t('emailRequired'));
     setEmailLoading(true);
@@ -302,7 +316,6 @@ export const Login = () => {
         { headers: { 'x-captcha-token': captchaToken } }
       );
       localStorage.setItem('auth_token', data.token);
-      localStorage.removeItem('pending_referrer_id');
       login(data.user);
       haptic.success();
       router.replace('/');
@@ -314,25 +327,18 @@ export const Login = () => {
     }
   };
 
-  /* email register */
   const handleEmailRegister = async () => {
     if (!email.trim() || !password.trim() || !name.trim()) return toast.error(t('emailEmpty'));
     setEmailLoading(true);
     try {
       const captchaToken = await executeCaptcha();
       const referrerId = localStorage.getItem('pending_referrer_id');
-      const queryParams = referrerId ? `&referrer_id=${referrerId}&ref=${referrerId}` : '';
-      const { data } = await api.post(`/api/auth/register/email?bot_id=${bot?.bot_id}${queryParams}`,
-        {
-          name: name.trim(),
-          email: email.trim(),
-          password,
-          ...(referrerId ? { referrer_id: Number(referrerId), ref: Number(referrerId) } : {}),
-        },
+      const query = referrerId ? `&referrer_id=${referrerId}&ref=${referrerId}` : '';
+      const { data } = await api.post(`/api/auth/register/email?bot_id=${bot?.bot_id}${query}`,
+        { name: name.trim(), email: email.trim(), password },
         { headers: { 'x-captcha-token': captchaToken } }
       );
       localStorage.setItem('auth_token', data.token);
-      localStorage.removeItem('pending_referrer_id');
       login(data.user);
       haptic.success();
       router.replace('/');
@@ -344,57 +350,6 @@ export const Login = () => {
     }
   };
 
-  useEffect(() => {
-    const handleMessage = async (event: MessageEvent) => {
-      if (event.origin !== window.location.origin) return;
-
-      let eventData = event.data;
-      if (eventData?.type === 'TELEGRAM_AUTH_SUCCESS') {
-        eventData = eventData.data;
-      } else {
-        if (typeof eventData === 'string') {
-          try {
-            eventData = JSON.parse(eventData);
-          } catch {
-            return;
-          }
-        }
-      }
-
-      if (!eventData || !eventData.id) return;
-
-      try {
-        const referrerId = localStorage.getItem('pending_referrer_id');
-        const { data } = await api.post('/api/auth/telegram', {
-          ...eventData,
-          bot_id: bot?.bot_id,
-          ...(referrerId ? { referrer_id: Number(referrerId), ref: Number(referrerId) } : {}),
-        });
-
-        localStorage.setItem('auth_token', data.token);
-
-        if (data.user?.id) {
-          localStorage.setItem(
-            'auth_user_id',
-            String(data.user.id)
-          );
-        }
-
-        localStorage.removeItem('pending_referrer_id');
-        login(data.user);
-        haptic.success();
-        router.replace('/');
-      } catch {
-        haptic.error();
-        toast.error(t('loginError'));
-      }
-    };
-
-    window.addEventListener('message', handleMessage);
-    return () => window.removeEventListener('message', handleMessage);
-  }, [bot, login, router, haptic, t]);
-
-  /* ── Auto-login screen ── */
   if (autoLogging) {
     return (
       <div className="min-h-screen bg-black flex flex-col items-center justify-center p-8 text-center">
@@ -407,22 +362,18 @@ export const Login = () => {
     );
   }
 
-  /* ── Main render ── */
   return (
     <div className="h-screen bg-black text-white overflow-hidden relative flex">
       <div className="absolute inset-0 bg-black" />
-
-      {/* Скрытый контейнер для Яндекс SmartCaptcha */}
-      <div ref={captchaContainerRef} className="hidden invisible" />
+      <div ref={captchaContainerRef} className="hidden" />
 
       <div className="relative z-10 flex w-full h-full">
-        {/* ── Left: form ── */}
+        {/* Left Side */}
         <div className="flex-1 flex items-center justify-center px-5 sm:px-8 lg:px-12 overflow-hidden">
           <div className="w-full max-w-[360px]">
 
             {view === 'main' ? (
               <div className="flex flex-col animate-in fade-in slide-in-from-bottom-6 duration-700">
-                {/* Hero */}
                 <div className="flex flex-col items-center text-center mb-8">
                   <div className="relative mb-5">
                     <div className="absolute -inset-4 bg-cyan-400/20 blur-[40px] rounded-full mix-blend-screen" />
@@ -430,12 +381,12 @@ export const Login = () => {
                       Sib<span className="text-cyan-400">neuro</span>
                     </h1>
                   </div>
+
                   <p className="text-[15px] font-medium text-white/40 leading-relaxed max-w-[260px]">
                     {t('tagline')}
                   </p>
                 </div>
 
-                {/* Login options */}
                 <div className="flex flex-col gap-2.5">
                   {telegramBotUsername && (
                     <MessengerCard
@@ -447,77 +398,48 @@ export const Login = () => {
                     />
                   )}
 
-                  {maxBotUsername && (
-                    <MessengerCard
-                      href={`https://max.ru/${maxBotUsername}?startapp=1`}
-                      icon="/max.png"
-                      label={t('openInMax')}
-                      sublabel={t('openInMaxSub')}
-                      accentColor="bg-violet-500/15"
-                    />
-                  )}
                   <MessengerCard
-                    onClick={() => { haptic.light(); setView('email-login'); }}
+                    onClick={() => setView('email-login')}
                     icon={<Mail size={22} className="text-white" />}
                     label={t('emailLogin')}
                     sublabel={t('emailLoginSubtitle')}
                     accentColor="bg-white/10"
                   />
+
+                  <MessengerCard
+                    onClick={() => setView('telegram-login')}
+                    icon="/telegram.png"
+                    label={t('continueWithTelegram')}
+                    sublabel={t('telegramWidgetSubtitle') || 'Через официальный виджет'}
+                    accentColor="bg-[#229ED9]/20"
+                  />
+                </div>
+              </div>
+            ) : view === 'telegram-login' ? (
+              <div className="flex flex-col animate-in fade-in slide-in-from-right-4 duration-400">
+                <button
+                  onClick={() => setView('main')}
+                  className="flex items-center gap-2 text-white/40 font-bold mb-10 hover:text-white transition-colors active:scale-90"
+                >
+                  <ArrowLeft size={18} /> {t('back')}
+                </button>
+
+                <h2 className="text-[34px] font-black tracking-tighter mb-6">
+                  {t('continueWithTelegram')}
+                </h2>
+                <p className="text-white/50 mb-8">{t('telegramLoginDescription') || 'Нажмите кнопку ниже для входа через Telegram'}</p>
+                <div className='w-full flex items-center justify-center'>
                   {bot?.bot_id ? (
-                    <div className="flex justify-center">
-                      <button
-                        onClick={() => {
-                          const width = 550;
-                          const height = 670;
-                          const left = window.screen.width / 2 - width / 2;
-                          const top = window.screen.height / 2 - height / 2;
-                          window.open(
-                            `https://oauth.telegram.org/auth?bot_id=${bot?.bot_id}&origin=${encodeURIComponent(window.location.origin)}&embed=1&request_access=write`,
-                            'telegram-auth',
-                            `width=${width},height=${height},left=${left},top=${top}`
-                          );
-                        }}
-                        className={cn(
-                          'group relative overflow-hidden',
-                          'w-full py-5 rounded-xl',
-                          'bg-[#229ED9]',
-                          'hover:bg-[#1d8ec5]',
-                          'transition-all duration-300',
-                          'active:scale-[0.98]',
-                          'shadow-[0_20px_50px_rgba(34,158,217,0.35)]',
-                          'border border-white/10'
-                        )}
-                      >
-                        <div className="absolute inset-0 bg-gradient-to-b from-white/20 to-transparent opacity-70" />
-
-                        <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
-                          <div className="absolute inset-0 bg-white/10 blur-2xl" />
-                        </div>
-
-                        <div className="relative z-10 flex items-center justify-center gap-3">
-                          <Image
-                            src="/telegram.png"
-                            width={22}
-                            height={22}
-                            alt="Telegram"
-                            className="drop-shadow"
-                          />
-
-                          <span className="font-black text-[16px] tracking-tight text-white">
-                            {t('continueWithTelegram')}
-                          </span>
-                        </div>
-                      </button>
-                    </div>
+                    <button onClick={openTelegramLogin} className='tg-auth-button shadow-xl shadow-blue-500/40'>
+                      {t('continueWithTelegram')}
+                    </button>
                   ) : (
-                    <div className="flex justify-center py-1.5">
-                      <Loader2 size={18} className="animate-spin text-white/25" />
-                    </div>
+                    <div className="text-center py-10 text-white/40">{t("botIdNotConfigured")}</div>
                   )}
                 </div>
               </div>
             ) : (
-              /* ── Email form ── */
+              /* Email Form */
               <div className="flex flex-col animate-in fade-in slide-in-from-right-4 duration-400">
                 <button
                   onClick={() => setView('main')}
@@ -568,7 +490,7 @@ export const Login = () => {
                   <button
                     onClick={view === 'email-login' ? handleEmailLogin : handleEmailRegister}
                     disabled={emailLoading}
-                    className="w-full py-5 rounded-[24px] bg-cyan-400 hover:bg-cyan-500 text-cyan-950 font-black text-[17px] shadow-[0_20px_40px_rgba(0,122,255,0.3)] mt-2 active:scale-95 transition-all flex items-center justify-center gap-3 disabled:opacity-60"
+                    className="w-full py-5 rounded-[24px] bg-cyan-400 hover:bg-[#0066CC] text-white font-black text-[17px] shadow-[0_20px_40px_rgba(0,122,255,0.3)] mt-2 active:scale-95 transition-all flex items-center justify-center disabled:opacity-60"
                   >
                     {emailLoading ? (
                       <Loader2 className="animate-spin" size={22} />
@@ -594,7 +516,7 @@ export const Login = () => {
           </div>
         </div>
 
-        {/* ── Right: seamless marquee gallery ── */}
+        {/* Right Side Marquee */}
         <div className="hidden lg:flex w-[480px] relative overflow-hidden">
           <div className="absolute top-0 inset-x-0 h-32 bg-gradient-to-b from-black to-transparent z-10 pointer-events-none" />
           <div className="absolute bottom-0 inset-x-0 h-32 bg-gradient-to-t from-black to-transparent z-10 pointer-events-none" />

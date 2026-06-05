@@ -19,7 +19,8 @@ const glass = {
   thin: 'bg-white/[.06] backdrop-blur-xl border border-white/[.10] shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]',
   card: 'bg-white/[.055] backdrop-blur-2xl border border-white/[.10] shadow-[inset_0_1px_0_rgba(255,255,255,0.14),0_4px_20px_rgba(0,0,0,0.25)]',
   tab: 'bg-white/[.05] border border-white/[.08]',
-  activeTab: 'bg-cyan-400/15 border border-cyan-400/25 text-cyan-200 shadow-[0_0_16px_rgba(34,211,238,0.18)]',
+  activeTab:
+    'bg-cyan-400/15 border border-cyan-400/25 text-cyan-200 shadow-[0_0_16px_rgba(34,211,238,0.18)]',
 };
 
 const CAT_ICON: Record<string, string> = {
@@ -78,8 +79,8 @@ export const Models = () => {
     tab === 'all'
       ? models || []
       : (models || []).filter(
-        (m) => m.categories?.includes(tab) || m.mainCategory === tab
-      );
+          (m) => m.categories?.includes(tab) || m.mainCategory === tab
+        );
 
   const handleModelClick = (techName: string) => {
     haptic.light();
@@ -139,39 +140,42 @@ export const Models = () => {
               <div className="flex gap-3 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden px-1">
                 {rolesLoading
                   ? Array.from({ length: 4 }).map((_, i) => (
-                    <div
-                      key={i}
-                      className="h-36 w-36 shrink-0 animate-pulse rounded-[22px] bg-white/[0.06] border border-white/[0.07]"
-                    />
-                  ))
+                      <div
+                        key={i}
+                        className="h-36 w-36 shrink-0 animate-pulse rounded-[22px] bg-white/[0.06] border border-white/[0.07]"
+                      />
+                    ))
                   : roles?.map((role) => (
-                    <button
-                      key={role.id}
-                      onClick={() => {
-                        haptic.light();
-                        router.push(`/chats?role=${role.id}`);
-                      }}
-                      className={cn(
-                        'w-36 shrink-0 rounded-[22px] p-4 text-left',
-                        glass.card,
-                        spring,
-                        'active:scale-[0.96] hover:border-cyan-300/20 hover:bg-white/[0.08]'
-                      )}
-                    >
-                      <Avatar className="mb-3 size-14 rounded-2xl border border-white/[0.12]">
-                        <AvatarImage src={role.image || ''} className='object-cover' />
-                        <AvatarFallback className="rounded-2xl bg-white/[0.10] text-lg font-bold">
-                          {localize(role.label).slice(0, 1)}
-                        </AvatarFallback>
-                      </Avatar>
-                      <p className="truncate text-[14px] font-bold text-white">
-                        {localize(role.label)}
-                      </p>
-                      <p className="mt-1 line-clamp-2 text-[11px] leading-4 text-white/35">
-                        {localize(role.description)}
-                      </p>
-                    </button>
-                  ))}
+                      <button
+                        key={role.id}
+                        onClick={() => {
+                          haptic.light();
+                          router.push(`/chats?role=${role.id}`);
+                        }}
+                        className={cn(
+                          'w-36 shrink-0 rounded-[22px] p-4 text-left',
+                          glass.card,
+                          spring,
+                          'active:scale-[0.96] hover:border-cyan-300/20 hover:bg-white/[0.08]'
+                        )}
+                      >
+                        <Avatar className="mb-3 size-14 rounded-2xl border border-white/[0.12]">
+                          <AvatarImage
+                            src={role.image || ''}
+                            className="object-cover"
+                          />
+                          <AvatarFallback className="rounded-2xl bg-white/[0.10] text-lg font-bold">
+                            {localize(role.label).slice(0, 1)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <p className="truncate text-[14px] font-bold text-white">
+                          {localize(role.label)}
+                        </p>
+                        <p className="mt-1 line-clamp-2 text-[11px] leading-4 text-white/35">
+                          {localize(role.description)}
+                        </p>
+                      </button>
+                    ))}
               </div>
             </section>
           )}

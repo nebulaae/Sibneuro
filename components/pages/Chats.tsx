@@ -5,20 +5,11 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useChats } from '@/hooks/useChats';
 import { useAIModels } from '@/hooks/useModels';
 import { useRoles } from '@/hooks/useRoles';
-import {
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
-} from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ChatsLoader } from '@/components/states/Loading';
 import { ChatsEmpty } from '@/components/states/Empty';
 import { ErrorComponent } from '@/components/states/Error';
-import {
-  MessageSquarePlus,
-  Loader2,
-  ChevronRight,
-  Plus,
-} from 'lucide-react';
+import { MessageSquarePlus, Loader2, ChevronRight, Plus } from 'lucide-react';
 import { cn, timeAgo } from '@/lib/utils';
 import { toast } from 'sonner';
 import { useHaptic } from '@/hooks/useHaptic';
@@ -37,7 +28,7 @@ function cacheDialogueModel(
       `dialogue_model_${dialogueId}`,
       JSON.stringify({ model, version, role_id: roleId ?? null })
     );
-  } catch { }
+  } catch {}
 }
 
 export const Chats = () => {
@@ -153,7 +144,10 @@ export const Chats = () => {
     return (
       <div className="flex flex-col items-center justify-center min-h-svh gap-6">
         <div className="w-16 h-16 rounded-[24px] bg-zinc-900 border border-white/5 flex items-center justify-center shadow-2xl">
-          <Loader2 className="size-8 animate-spin" style={{ color: ACCENT_CYAN }} />
+          <Loader2
+            className="size-8 animate-spin"
+            style={{ color: ACCENT_CYAN }}
+          />
         </div>
         <p className="text-[15px] font-black text-white/30 tracking-tight">
           {t('openingChat')}
@@ -236,7 +230,7 @@ export const Chats = () => {
                         chat.avatar ||
                         `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=18181b&color=ffffff`
                       }
-                      className='object-cover'
+                      className="object-cover"
                     />
                     <AvatarFallback className="bg-zinc-800 text-[14px] font-black text-white/40">
                       {displayName.slice(0, 2).toUpperCase()}

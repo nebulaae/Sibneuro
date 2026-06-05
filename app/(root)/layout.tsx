@@ -14,7 +14,6 @@ export default function RootLayout({
 
       {/* === Мягкий и минималистичный фон === */}
       <div className="fixed inset-0 -z-10 pointer-events-none overflow-hidden">
-
         {/* Очень тонкие радиальные градиенты */}
         <div className="absolute inset-0 bg-[radial-gradient(at_25%_25%,rgba(103,232,249,0.035)_0%,transparent_45%)]" />
         <div className="absolute inset-0 bg-[radial-gradient(at_75%_65%,rgba(52,211,153,0.035)_0%,transparent_50%)]" />

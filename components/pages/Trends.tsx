@@ -1,43 +1,67 @@
 'use client';
 
-import { memo, useCallback, useRef, useState } from 'react';
-import type { ChangeEvent, ReactNode } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRef, useEffect, useCallback, useState, memo } from 'react';
+
 import { useTranslations } from 'next-intl';
+import { useInfinitePosts, useLikePost, Post } from '@/hooks/usePosts';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
+  Sparkles,
   AlertCircle,
+  Loader2,
+  Play,
+  Lock,
   Camera,
   CheckCircle2,
   ChevronLeft,
-  Copy,
-  Globe,
-  Loader2,
-  Lock,
-  Play,
-  Send,
-  Share2,
-  Sparkles,
   Zap,
+  Share2,
+  Copy,
+  Send,
+  Globe,
+  Heart,
+  FolderPlus,
 } from 'lucide-react';
-import { toast } from 'sonner';
-import { useInfinitePosts, Post, getPostResultMedia } from '@/hooks/usePosts';
-import { useGenerateAI, convertMediaToInputs } from '@/hooks/useGenerations';
-import { useUpload } from '@/hooks/useApiExtras';
-import { useAIModels } from '@/hooks/useModels';
-import { useUser } from '@/hooks/useUser';
-import { useAuth } from '@/hooks/useAuth';
-import { useBot } from '@/app/providers/BotProvider';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { cn, cleanModelName } from '@/lib/utils';
 import { useHaptic } from '@/hooks/useHaptic';
-
-const shell = 'min-h-svh text-white pb-[calc(92px+max(16px,env(safe-area-inset-bottom)))]';
+import { cn } from '@/lib/utils';
+import { convertMediaToInputs, useGenerateAI } from '@/hooks/useGenerations';
+import { toast } from 'sonner';
+import { useUpload } from '@/hooks/useApiExtras';
+import { useUser } from '@/hooks/useUser';
+import { useAIModels } from '@/hooks/useModels';
+import { useBot } from '@/app/providers/BotProvider';
+import { useAuth } from '@/hooks/useAuth';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
+import { AddToAlbumDialog } from '@/components/dialogs/AddToAlbumsDialog';
+import { Button } from '../ui/button';
 
 export const Trends = () => {
   const t = useTranslations('Trends');
-  const { data, isLoading, isError, fetchNextPage, hasNextPage, isFetchingNextPage } =
-    useInfinitePosts({ limit: 12 });
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const postParam = searchParams?.get('post');
+  const haptic = useHaptic();
+
+  const [selectedPost, setSelectedPost] = useState<Post | null>(null);
+
+  const {
+    data,
+    isLoading,
+    isError,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useInfinitePosts({ limit: 12 });
+
   const posts = data?.pages.flatMap((page) => page.items) || [];
+
   const observer = useRef<IntersectionObserver | null>(null);
 
   const lastPostRef = useCallback(
@@ -49,177 +73,330 @@ export const Trends = () => {
             fetchNextPage();
           }
         },
-        { rootMargin: '320px' }
+        { rootMargin: '300px' }
       );
       if (node) observer.current.observe(node);
     },
     [fetchNextPage, hasNextPage, isFetchingNextPage]
   );
 
+  useEffect(() => {
+    if (postParam && posts.length > 0) {
+      const post = posts.find((x) => x.id === Number(postParam));
+      if (post) setSelectedPost(post);
+    }
+  }, [postParam, posts]);
+
   if (isError) {
     return (
-      <div className={cn(shell, 'grid place-items-center p-8 text-center')}>
-        <div className="flex max-w-xs flex-col items-center gap-5">
-          <div className="grid size-20 place-items-center rounded-[30px] border border-red-400/20 bg-red-500/10">
-            <AlertCircle className="size-9 text-red-300" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-black">{t('error')}</h1>
-            <p className="mt-2 text-white/45">{t('errorDesc')}</p>
-          </div>
+      <div className="flex flex-col items-center justify-center min-h-[80vh] p-8 text-center">
+        <div className="w-20 h-20 rounded-[32px] bg-red-500/10 border border-red-500/20 flex items-center justify-center mb-6">
+          <AlertCircle className="size-10 text-red-500" />
         </div>
+        <h2 className="text-2xl font-black text-white mb-2">{t('error')}</h2>
+        <p className="text-white/40 font-medium max-w-[240px]">
+          {t('errorDesc')}
+        </p>
       </div>
     );
   }
 
   return (
-    <div className={shell}>
-      <main className="mx-auto w-full max-w-5xl px-5 pt-10">
-        <header className="mb-8 flex items-end justify-between gap-4">
-          <div>
-            <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-cyan-200/15 bg-cyan-200/8 px-3 py-1.5 text-[12px] font-bold text-cyan-100/70 backdrop-blur-xl">
-              <Sparkles className="size-3.5" />
-              {t('community')}
-            </div>
-            <h1 className="text-[40px] font-black leading-none tracking-tight text-cyan-100">
-              {t('title')}
-            </h1>
-            <p className="mt-3 max-w-[420px] text-[15px] leading-6 text-white/45">
-              {t('subtitle')}
-            </p>
-          </div>
-        </header>
-
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-          {isLoading
-            ? Array.from({ length: 12 }).map((_, i) => (
-              <div
-                key={i}
-                className="aspect-3/4 animate-pulse rounded-[28px] border border-white/10 bg-white/8"
-              />
-            ))
-            : posts.map((post, index) => (
-              <div
-                key={post.id}
-                ref={index === posts.length - 1 ? lastPostRef : null}
-              >
-                <TrendCard post={post} />
+    <div className="flex flex-col min-h-screen pb-32 max-w-2xl mx-auto w-full">
+      <AnimatePresence mode="wait">
+        {!selectedPost ? (
+          <motion.div
+            key="grid"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="px-6 pt-12"
+          >
+            <div className="mb-10">
+              <div className="flex items-center gap-3 mb-2">
+                <h1 className="text-[34px] font-black tracking-tight text-cyan-400 leading-none">
+                  {t('title')}
+                </h1>
+                <div className="w-8 h-8 rounded-xl bg-cyan-400/20 flex items-center justify-center">
+                  <Sparkles size={18} className="text-cyan-400" />
+                </div>
               </div>
-            ))}
-        </div>
+              <p className="text-white/40 text-[16px] font-medium leading-relaxed max-w-[320px]">
+                {t('subtitle')}
+              </p>
+            </div>
 
-        {isFetchingNextPage && (
-          <div className="flex justify-center py-10">
-            <Loader2 className="size-7 animate-spin text-white/35" />
-          </div>
+            <div className="grid grid-cols-2 gap-4">
+              {isLoading
+                ? Array.from({ length: 6 }).map((_, i) => (
+                    <div
+                      key={i}
+                      className="aspect-3/4 rounded-3xl bg-zinc-900 border border-white/5 animate-pulse"
+                    />
+                  ))
+                : posts.map((post, index) => {
+                    const isLast = index === posts.length - 1;
+                    return (
+                      <div key={post.id} ref={isLast ? lastPostRef : null}>
+                        <TrendCard post={post} />
+                      </div>
+                    );
+                  })}
+            </div>
+
+            {isFetchingNextPage && (
+              <div className="flex justify-center py-10">
+                <Loader2 className="size-7 animate-spin text-white/40" />
+              </div>
+            )}
+          </motion.div>
+        ) : (
+          <div />
         )}
-      </main>
+      </AnimatePresence>
     </div>
   );
 };
+
+// ─── TrendCard — Pinterest-style likes bottom-right ───────────────────────────
 
 const TrendCard = memo(({ post }: { post: Post }) => {
   const t = useTranslations('Trends');
   const router = useRouter();
   const haptic = useHaptic();
-  const media = getPostResultMedia(post);
-  const title = (post as Post & { name?: string }).name || post.inputs?.text || t('trend');
+  const { data: userData } = useUser();
+  const { data: allModels } = useAIModels();
+  const likePost = useLikePost();
+  const { bot } = useBot();
+
+  const [albumDialogOpen, setAlbumDialogOpen] = useState(false);
+
+  const userId = userData?.user?.user_id ?? (userData?.user as any)?.id ?? 0;
+  const botId = (bot as any)?.bot_id ?? 0;
+
+  const onClick = useCallback(() => {
+    haptic.light();
+    try {
+      sessionStorage.setItem(`trend_post_${post.id}`, JSON.stringify(post));
+    } catch {}
+    router.push(`/trend/${post.id}`);
+  }, [post.id, post, router, haptic]);
+
+  const handleLike = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      if (!userId || !botId) return;
+      haptic.light();
+      likePost.mutate({ post_id: post.id, bot_id: botId, user_id: userId });
+    },
+    [post.id, botId, userId, haptic, likePost]
+  );
+
+  const handleAddToAlbum = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      haptic.light();
+      setAlbumDialogOpen(true);
+    },
+    [haptic]
+  );
+
+  const result = post.result as any;
+  const media = result?.media?.[0] || result;
+  const isVideo =
+    media?.type === 'video' ||
+    (typeof media?.input === 'string' && media.input.includes('.mp4'));
+  const mediaUrl = media?.url || media?.input || result?.url;
+  const trendName = (post as any).name || post.inputs?.text || t('trend');
+
+  const isLiked = (post as any).liked ?? false;
+  const likesCount = post.likes ?? 0;
 
   return (
-    <button
-      onClick={() => {
-        haptic.light();
-        try {
-          sessionStorage.setItem(`trend_post_${post.id}`, JSON.stringify(post));
-        } catch { }
-        router.push(`/trend/${post.id}`);
-      }}
-      className="group relative aspect-3/4 w-full overflow-hidden rounded-[28px] border border-white/10 bg-white/7 text-left shadow-[0_18px_54px_rgba(0,0,0,0.28)] transition hover:border-cyan-100/25 active:scale-[0.98]"
-    >
-      {media ? (
-        media.type === 'video' ? (
-          <video
-            src={media.url}
-            muted
-            loop
-            playsInline
-            className="absolute inset-0 size-full object-cover transition duration-700 group-hover:scale-105"
-            onMouseEnter={(e) => e.currentTarget.play()}
-            onMouseLeave={(e) => e.currentTarget.pause()}
-          />
+    <>
+      <motion.div
+        className="group relative aspect-3/4 rounded-3xl overflow-hidden cursor-pointer border border-white/10 bg-zinc-900 transition-all duration-500 hover:border-white/20 hover:shadow-[0_20px_50px_rgba(0,0,0,0.5)] w-full"
+        whileHover={{ scale: 1.02 }}
+        whileTap={{ scale: 0.96 }}
+        onClick={onClick}
+      >
+        {/* Media */}
+        {mediaUrl ? (
+          isVideo ? (
+            <video
+              src={mediaUrl}
+              className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+              muted
+              loop
+              playsInline
+              onMouseEnter={(e) => e.currentTarget.play()}
+              onMouseLeave={(e) => e.currentTarget.pause()}
+            />
+          ) : (
+            <img
+              src={mediaUrl}
+              alt=""
+              className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+            />
+          )
         ) : (
-          <img
-            src={media.url}
-            alt=""
-            className="absolute inset-0 size-full object-cover transition duration-700 group-hover:scale-105"
+          <div className="absolute inset-0 flex items-center justify-center bg-white/5">
+            <span className="text-[32px] animate-pulse">✨</span>
+          </div>
+        )}
+
+        {/* Gradient overlay */}
+        <div className="absolute inset-0 bg-linear-to-t from-black/90 via-black/20 to-transparent opacity-80 group-hover:opacity-100 transition-opacity" />
+
+        {/* Cost badge — top left */}
+        <div className="absolute top-3 left-3">
+          <div className="bg-black/40 backdrop-blur-xl border border-white/10 px-2 py-0.5 rounded-full flex items-center gap-1 shadow-lg">
+            <span className="text-[11px] font-black text-white">
+              {post.cost ?? 15}
+            </span>
+            <span className="text-[10px] text-cyan-400">◈</span>
+          </div>
+        </div>
+
+        {/* Video play icon */}
+        {isVideo && (
+          <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
+            <div className="w-8 h-8 rounded-full bg-white/20 backdrop-blur-md border border-white/30 flex items-center justify-center">
+              <Play className="size-4 fill-white text-white" />
+            </div>
+          </div>
+        )}
+
+        {/* ── Add to Album — top right, on hover ── */}
+        <motion.button
+          whileTap={{ scale: 0.82 }}
+          onClick={handleAddToAlbum}
+          className="absolute top-3 right-3 w-8 h-8 rounded-full bg-black/50 backdrop-blur-md border border-white/15 flex items-center justify-center shadow-lg hover:bg-black/70 transition-colors opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto"
+        >
+          <FolderPlus size={14} className="text-white/80" />
+        </motion.button>
+
+        {/* Bottom info */}
+        <div className="absolute inset-x-0 bottom-0 p-3 text-start">
+          <h3 className="text-white text-[14px] font-bold line-clamp-1 leading-tight group-hover:text-cyan-400 transition-colors pr-12">
+            {trendName}
+          </h3>
+          {post.model_name && (
+            <p className="text-[10px] text-white/40 font-medium mt-0.5">
+              by {post.model_name}
+            </p>
+          )}
+        </div>
+
+        {/* ── Pinterest-style Like — BOTTOM RIGHT, always visible ── */}
+        <motion.button
+          whileTap={{ scale: 0.75 }}
+          onClick={handleLike}
+          className={cn(
+            'absolute bottom-2.5 right-2.5 flex items-center gap-1 h-7 rounded-full backdrop-blur-md border shadow-lg transition-all duration-200',
+            likesCount > 0 ? 'pl-2 pr-2.5' : 'w-7 justify-center px-0',
+            isLiked
+              ? 'bg-red-500/85 border-red-400/40 shadow-[0_4px_12px_rgba(239,68,68,0.4)]'
+              : 'bg-black/50 border-white/15 hover:bg-black/70 hover:border-white/25'
+          )}
+        >
+          <Heart
+            size={13}
+            className={cn(
+              'transition-all duration-200 shrink-0',
+              isLiked
+                ? 'fill-white text-white scale-110'
+                : 'text-white/70 group-hover:text-white'
+            )}
           />
-        )
-      ) : (
-        <div className="absolute inset-0 grid place-items-center bg-linear-to-br from-cyan-300/10 to-white/5">
-          <Sparkles className="size-8 text-white/20" />
-        </div>
-      )}
-      <div className="absolute inset-0 bg-linear-to-t from-black/90 via-black/15 to-transparent" />
-      <div className="absolute right-3 top-3 rounded-full border border-white/15 bg-black/35 px-2.5 py-1 text-[11px] font-black backdrop-blur-xl">
-        {post.cost ?? 15} <span className="text-cyan-200">◆</span>
-      </div>
-      {media?.type === 'video' && (
-        <div className="absolute left-3 top-3 grid size-9 place-items-center rounded-full border border-white/20 bg-black/35 backdrop-blur-xl">
-          <Play className="size-4 fill-white" />
-        </div>
-      )}
-      <div className="absolute bottom-0 left-0 right-0 p-4">
-        <h2 className="line-clamp-2 text-[14px] font-black leading-tight">
-          {title}
-        </h2>
-        <p className="mt-1 text-[11px] font-semibold text-white/35">
-          {post.model_name || cleanModelName(post.model_tech_name)}
-        </p>
-      </div>
-    </button>
+          <AnimatePresence mode="popLayout">
+            {likesCount > 0 && (
+              <motion.span
+                key={likesCount}
+                initial={{ opacity: 0, y: -6, scale: 0.7 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 6, scale: 0.7 }}
+                transition={{ duration: 0.18, ease: 'easeOut' }}
+                className="text-[11px] font-black text-white leading-none tabular-nums"
+              >
+                {likesCount >= 1000
+                  ? `${(likesCount / 1000).toFixed(1)}k`
+                  : likesCount}
+              </motion.span>
+            )}
+          </AnimatePresence>
+        </motion.button>
+      </motion.div>
+
+      {/* Add to Album Dialog — outside card so clicks don't bubble */}
+      <AddToAlbumDialog
+        open={albumDialogOpen}
+        onClose={() => setAlbumDialogOpen(false)}
+        postId={post.id}
+      />
+    </>
   );
 });
 
 TrendCard.displayName = 'TrendCard';
 
-export const TrendDetail = ({ post, onBack }: { post: Post; onBack: () => void }) => {
+// ─── TrendDetail (unchanged) ──────────────────────────────────────────────────
+
+export const TrendDetail = ({
+  post,
+  onBack,
+}: {
+  post: Post;
+  onBack: () => void;
+}) => {
   const t = useTranslations('Trends');
   const haptic = useHaptic();
-  const router = useRouter();
   const generate = useGenerateAI();
   const upload = useUpload();
   const { data: userData } = useUser();
   const { data: allModels } = useAIModels();
+  const router = useRouter();
   const { bot } = useBot();
   const { user: authUser } = useAuth();
-  const [isShareOpen, setIsShareOpen] = useState(false);
-  const [copiedType, setCopiedType] = useState<'tg' | 'web' | null>(null);
-  const [userMedia, setUserMedia] = useState<Record<number, { url: string; file?: File }>>({});
-  const [activeMediaIndex, setActiveMediaIndex] = useState<number | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const userId =
+    userData?.user?.user_id ?? (userData?.user as any)?.id ?? authUser?.id;
 
-  const media = getPostResultMedia(post);
+  const [isShareOpen, setIsShareOpen] = useState(false);
+  const [albumDialogOpen, setAlbumDialogOpen] = useState(false);
+
+  const [userMedia, setUserMedia] = useState<
+    Record<number, { url: string; file?: File }>
+  >({});
+  const [userText] = useState<string>(post.inputs?.text || '');
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [activeMediaIndex, setActiveMediaIndex] = useState<number | null>(null);
+
   const tokens = userData?.user?.tokens ?? 0;
-  const model = allModels?.find((m) => m.tech_name === post.model_tech_name);
-  const version = model?.versions?.find((v) => v.label === post.version_label);
+  const model = allModels?.find(
+    (m: any) => m.tech_name === post.model_tech_name
+  );
+  const version = model?.versions?.find(
+    (v: any) => v.label === post.version_label
+  );
   const cost = post.cost ?? version?.cost ?? 15;
   const canAfford = tokens >= cost;
-  const mediaSlots = post.inputs?.media || [];
-  const userId = userData?.user?.user_id ?? authUser?.id;
 
-  const handleFile = async (e: ChangeEvent<HTMLInputElement>) => {
+  const mediaSlots = post.inputs?.media || [];
+
+  const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || activeMediaIndex === null) return;
     try {
       const uploaded = await upload.mutateAsync(file);
-      setUserMedia((prev) => ({ ...prev, [activeMediaIndex]: { url: uploaded.url, file } }));
+      setUserMedia((prev) => ({
+        ...prev,
+        [activeMediaIndex]: { url: uploaded.url, file },
+      }));
       toast.success(t('done'));
     } catch {
       toast.error(t('error'));
-    } finally {
-      setActiveMediaIndex(null);
-      if (fileInputRef.current) fileInputRef.current.value = '';
     }
+    setActiveMediaIndex(null);
   };
 
   const handleGenerate = () => {
@@ -227,24 +404,24 @@ export const TrendDetail = ({ post, onBack }: { post: Post; onBack: () => void }
       toast.error(t('insufficientCredits'));
       return;
     }
-
     haptic.medium();
-    const finalMedia: { type: string; format: string; input: string }[] = mediaSlots.map((slot, index) => {
+    const finalMedia = mediaSlots.map((slot, index) => {
       const override = userMedia[index];
-      const slotInput = slot.input as Partial<Post['inputs']['media'][number]['input']>;
-      const type = slotInput?.type && slotInput.type !== 'media' ? slotInput.type : slot.type === 'media' ? 'image' : slot.type;
+      const type = slot.type === 'media' ? 'image' : slot.type || 'image';
       return {
-        type: type || 'image',
+        type,
         format: 'url',
-        input: override?.url || slotInput?.input || '',
+        input: override
+          ? override.url
+          : (slot.input as any)?.input || slot.input,
       };
     });
-
+    const inputs = convertMediaToInputs(userText, finalMedia as any);
     generate.mutate(
       {
         tech_name: post.model_tech_name,
         version: post.version_label,
-        inputs: convertMediaToInputs(post.inputs?.text || '', finalMedia),
+        inputs,
         params: post.params,
         post_id: post.id,
       },
@@ -256,7 +433,6 @@ export const TrendDetail = ({ post, onBack }: { post: Post; onBack: () => void }
     );
   };
 
-  // Нативный шаринг в Telegram — открывает диалог выбора чата
   const handleShareTelegram = () => {
     haptic.light();
     const botUsername = bot?.bot_username || 'bot';
@@ -267,22 +443,15 @@ export const TrendDetail = ({ post, onBack }: { post: Post; onBack: () => void }
     setIsShareOpen(false);
   };
 
-  // Web Share API для браузера — нативный шит на мобиле, fallback копирование на десктопе
   const handleShareWeb = () => {
     haptic.light();
     const webLink = `${window.location.origin}/trend/${post.id}${userId ? `?ref=${userId}` : ''}`;
     if (typeof navigator.share === 'function') {
       navigator
-        .share({
-          title: post.inputs?.text || 'AI Generation',
-          url: webLink,
-        })
-        .catch(() => {
-          // пользователь отменил — ничего не делаем
-        });
+        .share({ title: post.inputs?.text || 'AI Generation', url: webLink })
+        .catch(() => {});
       setIsShareOpen(false);
     } else {
-      // fallback для десктопа
       navigator.clipboard.writeText(webLink).then(() => {
         haptic.success();
         toast.success(t('linkCopied') || 'Ссылка скопирована!');
@@ -291,173 +460,225 @@ export const TrendDetail = ({ post, onBack }: { post: Post; onBack: () => void }
     }
   };
 
+  const mediaUrl = post.result?.url || post.result?.media?.[0]?.input;
 
   return (
-    <div className="min-h-screen text-white">
-      <header className="sticky top-0 z-50 flex items-center gap-3 px-5 py-4">
+    <motion.div
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 1.05 }}
+      className="flex flex-col min-h-screen"
+    >
+      {/* Header */}
+      <header className="sticky top-0 z-50 px-6 py-5 flex items-center gap-4">
         <button
           onClick={onBack}
-          className="grid size-10 place-items-center rounded-full border border-white/10 bg-white/7 transition active:scale-90"
+          className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center transition-all active:scale-90"
         >
-          <ChevronLeft className="size-5 text-cyan-100" />
+          <ChevronLeft size={20} className="text-cyan-400" />
         </button>
-        <div className="min-w-0 flex-1">
-          <h1 className="truncate text-[17px] font-black tracking-tight">
-            {(post as Post & { name?: string }).name || post.inputs?.text || t('title')}
-          </h1>
-          <p className="mt-0.5 text-[11px] font-bold uppercase tracking-[0.16em] text-white/35">
-            {post.model_name || cleanModelName(post.model_tech_name)}
+        <div className="flex-1 min-w-0">
+          <h2 className="text-[17px] font-black tracking-tight text-white truncate leading-tight">
+            {post.inputs?.text || t('title')}
+          </h2>
+          <p className="text-[11px] font-bold text-white/30 uppercase tracking-widest mt-0.5">
+            {post.model_name || 'AI GENERATION'}
           </p>
         </div>
-        <button
-          onClick={() => setIsShareOpen(true)}
-          className="grid size-10 place-items-center rounded-full border border-white/10 bg-white/7 transition active:scale-90"
-        >
-          <Share2 className="size-5 text-cyan-100" />
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => {
+              haptic.light();
+              setAlbumDialogOpen(true);
+            }}
+            className="w-auto h-auto py-3 px-4 rounded-full text-cyan-400 font-black text-sm gap-2 bg-white/5 border border-white/10 flex items-center justify-center transition-all active:scale-90 shrink-0"
+          >
+            <FolderPlus size={18} className="text-cyan-400" />
+            {t('addToAlbum')}
+          </button>
+        </div>
       </header>
 
-      <main className="mx-auto flex w-full max-w-2xl flex-col gap-8 px-5 py-6 pb-32">
-        <section className="relative aspect-3/4 overflow-hidden rounded-[34px] border border-white/10 bg-white/7 shadow-[0_32px_80px_rgba(0,0,0,0.5)]">
-          {media ? (
-            media.type === 'video' ? (
-              <video src={media.url} controls playsInline className="size-full object-cover" />
-            ) : (
-              <img src={media.url} alt="" className="size-full object-cover" />
-            )
+      <div className="flex-1 overflow-y-auto px-6 py-8 flex flex-col gap-10">
+        {/* Hero Preview */}
+        <div className="relative aspect-3/4 rounded-[40px] overflow-hidden border border-white/10 shadow-[0_32px_64px_rgba(0,0,0,0.6)]">
+          {mediaUrl ? (
+            <img src={mediaUrl} alt="" className="w-full h-full object-cover" />
           ) : (
-            <div className="grid size-full place-items-center">
-              <Sparkles className="size-12 text-white/15" />
+            <div className="w-full h-full bg-zinc-900 flex items-center justify-center">
+              <Sparkles className="size-16 text-white/5" />
             </div>
           )}
-          <div className="absolute inset-x-0 bottom-0 bg-linear-to-t from-black/85 to-transparent p-5">
-            <div className="flex gap-3">
-              <div className="min-w-0 flex-1 rounded-3xl border border-white/12 bg-white/10 p-4 backdrop-blur-2xl">
-                <p className="text-[11px] font-black uppercase tracking-[0.16em] text-white/35">
+          <div className="absolute inset-0 bg-linear-to-t from-black/80 via-transparent to-transparent" />
+          <div className="absolute bottom-8 left-8 right-8">
+            <div className="flex items-center gap-4">
+              <div className="p-4 bg-white/10 backdrop-blur-2xl border border-white/20 rounded-[24px] flex-1">
+                <p className="text-[11px] font-black text-white/40 uppercase tracking-widest mb-1">
                   {t('model')}
                 </p>
-                <p className="mt-1 truncate text-[15px] font-black">
-                  {post.model_name || cleanModelName(post.model_tech_name)}
+                <p className="text-[15px] font-black text-white truncate">
+                  {post.model_name ||
+                    post.model_tech_name.replace(/^sosana\//, '')}
                 </p>
               </div>
-              <div className="rounded-3xl border border-cyan-200/20 bg-cyan-200/10 p-4 text-center backdrop-blur-2xl">
-                <p className="text-[11px] font-black uppercase tracking-[0.16em] text-cyan-100/55">
-                  {t('cost')}
+              <div className="p-4 bg-cyan-400/20 backdrop-blur-2xl border border-cyan-400/30 rounded-[24px] text-center min-w-[80px]">
+                <p className="text-[11px] font-black text-cyan-400 uppercase tracking-widest mb-1">
+                  COST
                 </p>
-                <p className="mt-1 text-[15px] font-black">{cost} ◆</p>
+                <p className="text-[15px] font-black text-white">{cost} ◈</p>
               </div>
             </div>
           </div>
-        </section>
+        </div>
 
-        {mediaSlots.some((slot) => slot.input?.reference?.replace) && (
-          <section>
-            <h2 className="mb-3 px-1 text-[12px] font-black uppercase tracking-[0.18em] text-white/35">
-              {t('uploadMedia')}
-            </h2>
-            <div className="grid grid-cols-2 gap-3">
-              {mediaSlots.map((slot, index) => {
-                const slotInput = slot.input as Partial<Post['inputs']['media'][number]['input']>;
-                const { hide, replace } = slotInput?.reference || {};
-                if (hide && !replace) return null;
-                const current = userMedia[index];
-                const originalUrl = slotInput?.input;
+        <div className="flex w-full items-center justify-center">
+          <button
+            onClick={() => {
+              haptic.light();
+              setIsShareOpen(true);
+            }}
+            className="w-full text-cyan-400 font-black text-base gap-2 py-4 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center transition-all active:scale-90 shrink-0"
+          >
+            <Share2 size={20} className="" />
+            <span>{t('share')}</span>
+          </button>
+        </div>
 
-                return (
-                  <button
-                    key={index}
-                    onClick={() => {
-                      if (replace || hide) {
-                        setActiveMediaIndex(index);
-                        fileInputRef.current?.click();
-                      }
-                    }}
-                    className={cn(
-                      'relative aspect-square overflow-hidden rounded-[28px] border border-white/10 bg-white/7',
-                      'grid place-items-center transition active:scale-[0.98]',
-                      current && 'border-cyan-200/45'
-                    )}
-                  >
-                    {current ? (
-                      <>
-                        <img
-                          src={current.file ? URL.createObjectURL(current.file) : current.url}
-                          alt=""
-                          className="absolute inset-0 size-full object-cover"
-                        />
-                        <div className="absolute inset-0 bg-black/35 backdrop-blur-[2px]" />
-                        <CheckCircle2 className="relative z-10 size-8 text-cyan-100" />
-                      </>
-                    ) : originalUrl && !hide ? (
-                      <>
-                        <img src={originalUrl} alt="" className="absolute inset-0 size-full object-cover opacity-35" />
-                        <Camera className="relative z-10 size-7 text-white/55" />
-                      </>
-                    ) : (
-                      <div className="flex flex-col items-center gap-2 px-4 text-center">
-                        <Camera className="size-7 text-white/35" />
-                        <p className="text-[11px] font-bold text-white/40">
-                          {t('uploadMediaDesc')}
-                        </p>
-                      </div>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          </section>
-        )}
-
-        <section>
-          <h2 className="mb-3 px-1 text-[12px] font-black uppercase tracking-[0.18em] text-white/35">
-            {t('prompt')}
-          </h2>
-          {post.inputs?.hide_text ? (
-            <div className="flex items-center gap-3 rounded-[26px] border border-cyan-200/20 bg-cyan-200/8 p-5">
-              <Lock className="size-5 text-cyan-100" />
-              <p className="text-[14px] font-semibold text-cyan-100/75">
-                {t('promptHidden')}
-              </p>
-            </div>
-          ) : (
-            <div className="rounded-[26px] border border-white/10 bg-white/7 p-5">
-              <p className="text-[15px] leading-7 text-white/75">
-                {post.inputs?.text || t('noPrompt')}
-              </p>
+        {/* Configuration Section */}
+        <div className="flex flex-col gap-8">
+          {mediaSlots.some((s) => s.input?.reference?.replace) && (
+            <div className="flex flex-col gap-4">
+              <h3 className="text-[13px] font-black uppercase tracking-[0.15em] text-white/30 px-2">
+                {t('uploadMedia')}
+              </h3>
+              <div className="grid grid-cols-2 gap-4">
+                {mediaSlots.map((slot, index) => {
+                  const { hide, replace } = slot.input?.reference || {};
+                  if (hide && !replace) return null;
+                  const current = userMedia[index];
+                  const originalUrl = (slot.input as any)?.input;
+                  return (
+                    <div
+                      key={index}
+                      onClick={() => {
+                        if (replace || hide) {
+                          setActiveMediaIndex(index);
+                          fileInputRef.current?.click();
+                        }
+                      }}
+                      className={cn(
+                        'relative aspect-square rounded-[32px] overflow-hidden border transition-all flex flex-col items-center justify-center gap-3',
+                        replace || hide
+                          ? 'cursor-pointer active:scale-95 bg-zinc-900/50 border-white/10 hover:border-white/20'
+                          : 'bg-zinc-900 border-transparent',
+                        current &&
+                          'border-cyan-400/50 bg-cyan-400/5 shadow-[0_0_20px_rgba(0,122,255,0.1)]'
+                      )}
+                    >
+                      {current ? (
+                        <>
+                          <img
+                            src={
+                              current.file
+                                ? URL.createObjectURL(current.file)
+                                : current.url
+                            }
+                            className="absolute inset-0 w-full h-full object-cover"
+                          />
+                          <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px]" />
+                          <CheckCircle2
+                            size={32}
+                            className="text-cyan-400 relative z-10"
+                          />
+                        </>
+                      ) : !hide && originalUrl && originalUrl !== 'null' ? (
+                        <>
+                          <img
+                            src={originalUrl}
+                            className="absolute inset-0 w-full h-full object-cover opacity-30"
+                          />
+                          <Camera
+                            size={24}
+                            className="text-white/40 relative z-10"
+                          />
+                          <p className="text-[11px] font-black text-white/40 uppercase tracking-widest relative z-10 text-center px-4">
+                            {t('uploadMediaDesc')}
+                          </p>
+                        </>
+                      ) : (
+                        <>
+                          <Camera size={28} className="text-white/20" />
+                          <p className="text-[11px] font-black text-white/20 uppercase tracking-widest text-center px-4">
+                            {t('uploadMediaDesc')}
+                          </p>
+                        </>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           )}
-          <div className="pb-[calc(18px+max(12px,env(safe-area-inset-bottom)))] pt-6">
-            <div className="mx-auto max-w-2xl">
-              <button
-                disabled={generate.isPending}
-                onClick={handleGenerate}
-                className={cn(
-                  'flex h-15 w-full items-center justify-center gap-3 rounded-[22px] text-[16px] font-black transition active:scale-[0.98]',
-                  canAfford
-                    ? 'bg-cyan-100 text-black shadow-[0_16px_40px_rgba(125,211,252,0.22)]'
-                    : 'border border-white/10 bg-white/7 text-white/35'
-                )}
-              >
-                {generate.isPending ? (
-                  <Loader2 className="size-5 animate-spin" />
-                ) : canAfford ? (
-                  <>
-                    <Zap className="size-5" />
-                    {t('generate')}
-                  </>
-                ) : (
-                  <>
-                    <Lock className="size-5" />
-                    {t('insufficientCredits')}
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
-        </section>
-      </main>
 
-      <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFile} className="hidden" />
+          <div className="flex flex-col gap-4">
+            <h3 className="text-[13px] font-black uppercase tracking-[0.15em] text-white/30 px-2">
+              {t('prompt')}
+            </h3>
+            {post.inputs?.hide_text ? (
+              <div className="p-6 rounded-[32px] bg-cyan-400/5 border border-cyan-400/20 flex items-center gap-4">
+                <div className="w-12 h-12 rounded-2xl bg-cyan-400/20 flex items-center justify-center">
+                  <Lock size={20} className="text-cyan-400" />
+                </div>
+                <p className="text-[15px] font-bold text-cyan-400/70 leading-tight">
+                  {t('promptHidden')}
+                </p>
+              </div>
+            ) : (
+              <div className="p-6 rounded-[32px] bg-zinc-900/40 border border-white/5">
+                <p className="text-[16px] font-medium text-white/90 leading-relaxed italic">
+                  "{post.inputs?.text || t('noPrompt')}"
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Bottom Action */}
+      <div className="sticky bottom-0 px-6 pt-6 pb-[calc(24px+max(12px,env(safe-area-inset-bottom)))] bg-black/80 backdrop-blur-3xl border-t border-white/5">
+        <button
+          disabled={generate.isPending}
+          onClick={handleGenerate}
+          className={cn(
+            'w-full h-16 rounded-[24px] flex items-center justify-center gap-3 font-black text-[17px] transition-all active:scale-[0.98] shadow-2xl',
+            canAfford
+              ? 'bg-cyan-400 text-white shadow-[0_0_30px_rgba(0,122,255,0.4)]'
+              : 'bg-white/5 text-white/20 border border-white/5 cursor-not-allowed'
+          )}
+        >
+          {generate.isPending ? (
+            <Loader2 className="animate-spin" />
+          ) : canAfford ? (
+            <>
+              <Zap size={20} fill="currentColor" />
+              {t('generate')}
+            </>
+          ) : (
+            <>
+              <Lock size={18} />
+              {t('insufficientCredits')}
+            </>
+          )}
+        </button>
+      </div>
+
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        onChange={handleFile}
+        className="hidden"
+      />
 
       {/* Share Modal */}
       <Dialog open={isShareOpen} onOpenChange={setIsShareOpen}>
@@ -468,14 +689,12 @@ export const TrendDetail = ({ post, onBack }: { post: Post; onBack: () => void }
             </DialogTitle>
             <DialogDescription className="hidden" />
           </DialogHeader>
-
           <div className="flex flex-col gap-4">
-            {/* Telegram — нативный шаринг с выбором чата */}
             <button
               onClick={handleShareTelegram}
-              className="w-full flex items-center gap-4 p-5 rounded-3xl bg-[#007AFF]/10 hover:bg-[#007AFF]/20 border border-[#007AFF]/20 transition-all text-left group active:scale-[0.98]"
+              className="w-full flex items-center gap-4 p-5 rounded-3xl bg-cyan-400/10 hover:bg-cyan-400/20 border border-cyan-400/20 transition-all text-left group active:scale-[0.98]"
             >
-              <div className="w-12 h-12 rounded-2xl bg-[#007AFF]/20 border border-[#007AFF]/30 flex items-center justify-center text-[#007AFF] group-hover:scale-105 transition-transform shrink-0">
+              <div className="w-12 h-12 rounded-2xl bg-cyan-400/20 border border-cyan-400/30 flex items-center justify-center text-cyan-400 group-hover:scale-105 transition-transform shrink-0">
                 <Send size={22} className="ml-[-2px] mt-[1px]" />
               </div>
               <div className="flex-1 min-w-0">
@@ -486,12 +705,10 @@ export const TrendDetail = ({ post, onBack }: { post: Post; onBack: () => void }
                   {t('tgAppLinkDesc')}
                 </p>
               </div>
-              <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-[#007AFF] shrink-0">
+              <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-cyan-400 shrink-0">
                 <Send size={16} className="ml-[-1px] mt-[1px]" />
               </div>
             </button>
-
-            {/* Web Share API / fallback копирование */}
             <button
               onClick={handleShareWeb}
               className="w-full flex items-center gap-4 p-5 rounded-3xl bg-zinc-900/40 hover:bg-zinc-900/60 border border-white/5 transition-all text-left group active:scale-[0.98]"
@@ -507,14 +724,21 @@ export const TrendDetail = ({ post, onBack }: { post: Post; onBack: () => void }
                   {t('webBrowserLinkDesc')}
                 </p>
               </div>
-              <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white/45 group-hover:text-[#007AFF] transition-colors shrink-0">
+              <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white/45 group-hover:text-cyan-400 transition-colors shrink-0">
                 <Copy size={16} />
               </div>
             </button>
           </div>
         </DialogContent>
       </Dialog>
-    </div>
+
+      {/* Add to Album Dialog */}
+      <AddToAlbumDialog
+        open={albumDialogOpen}
+        onClose={() => setAlbumDialogOpen(false)}
+        postId={post.id}
+      />
+    </motion.div>
   );
 };
 

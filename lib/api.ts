@@ -48,14 +48,13 @@ function getUserId(): number | null {
       const user = JSON.parse(tgUser);
       if (user?.id) return user.id;
     }
-  } catch { }
+  } catch {}
 
   return null;
 }
 
 function getBotId(): number | string | undefined {
-  if (typeof window === 'undefined')
-    return process.env.NEXT_PUBLIC_BOT_ID;
+  if (typeof window === 'undefined') return process.env.NEXT_PUBLIC_BOT_ID;
 
   try {
     const raw = localStorage.getItem('bot_info');
@@ -63,7 +62,7 @@ function getBotId(): number | string | undefined {
       const parsed = JSON.parse(raw);
       if (parsed?.bot_id) return parsed.bot_id;
     }
-  } catch { }
+  } catch {}
 
   return process.env.NEXT_PUBLIC_BOT_ID;
 }
@@ -106,7 +105,7 @@ api.interceptors.request.use((config) => {
   const skipUserId = config.params.skipUserId;
 
   if (botId && !config.params.bot_id) {
-    config.params.bot_id = 8560085473;
+    config.params.bot_id = botId;
   }
 
   if (userId && !skipUserId && !config.params.user_id) {

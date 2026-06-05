@@ -139,7 +139,11 @@
     "registerSuccess": "Account created! Please sign in.",
     "autoLoginLoading": "Logging in...",
     "back": "Back",
-    "continueWithTelegram": "Continue with Telegram"
+    "continueWithTelegram": "Continue with Telegram",
+    "telegramLoginError": "Telegram login error",
+    "telegramWidgetSubtitle": "Via official widget",
+    "telegramLoginDescription": "Click the button below to sign in via Telegram",
+    "botIdNotConfigured": "Bot id is not configured"
   },
   "Models": {
     "title": "Models",
@@ -392,7 +396,32 @@
     "totalRevenue": "Total",
     "paymentsCount": "{count} payments",
     "ofPayments": "of payments",
-    "funnels": "Funnel"
+    "funnels": "Funnel",
+    "albumsTabLabel": "Albums",
+    "albumsTitle": "My Albums",
+    "albumsEmpty": "No albums yet",
+    "albumNew": "New",
+    "albumPublic": "Public",
+    "albumPrivate": "Private",
+    "albumEmpty": "Album is empty",
+    "albumPostsCount": "items",
+    "albumCreateTitle": "New Album",
+    "albumNamePlaceholder": "Album name",
+    "albumCreate": "Create",
+    "albumCancel": "Cancel",
+    "albumCreated": "Album created",
+    "albumCreateError": "Failed to create album",
+    "albumNameExists": "Album with this name already exists",
+    "albumDeleted": "Album deleted",
+    "albumDeleteError": "Failed to delete album",
+    "albumConfirmDelete": "Delete this album?",
+    "albumMadePublic": "Album is now public",
+    "albumMadePrivate": "Album is now private",
+    "albumVisibilityError": "Failed to update visibility",
+    "albumLinkCopied": "Public link copied",
+    "withdrawFunds": "Withdraw Funds",
+    "partnerBalance": "Partner Balance",
+    "withdrawComingSoon": "Coming soon. Stay tuned!"
   },
   "Referrals": {
     "title": "Referrals",
@@ -453,7 +482,9 @@
     "tgAppLinkDesc": "Opens this post inside the app",
     "webBrowserLink": "Browser link",
     "webBrowserLinkDesc": "Opens the trend detail page",
-    "linkCopied": "Link copied"
+    "linkCopied": "Link copied",
+    "share": "Share with this trend",
+    "addToAlbum": "Add to album"
   },
   "Publish": {
     "title": "Publish to Trends",

@@ -5,7 +5,10 @@ export async function GET(request: NextRequest) {
   const urlParam = searchParams.get('url');
 
   if (!urlParam) {
-    return NextResponse.json({ error: 'Missing url parameter' }, { status: 400 });
+    return NextResponse.json(
+      { error: 'Missing url parameter' },
+      { status: 400 }
+    );
   }
 
   try {
@@ -14,7 +17,8 @@ export async function GET(request: NextRequest) {
       throw new Error(`Failed to fetch file: ${fileResponse.statusText}`);
     }
 
-    const contentType = fileResponse.headers.get('content-type') || 'application/octet-stream';
+    const contentType =
+      fileResponse.headers.get('content-type') || 'application/octet-stream';
     const filename = urlParam.split('/').pop()?.split('?')[0] || 'download';
 
     const headers = new Headers();
@@ -28,6 +32,9 @@ export async function GET(request: NextRequest) {
     });
   } catch (error: any) {
     console.error('Download proxy error:', error);
-    return NextResponse.json({ error: error.message || 'Failed to download file' }, { status: 500 });
+    return NextResponse.json(
+      { error: error.message || 'Failed to download file' },
+      { status: 500 }
+    );
   }
 }

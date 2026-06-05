@@ -1,4 +1,9 @@
-import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from '@tanstack/react-query';
+import {
+  useQuery,
+  useMutation,
+  useQueryClient,
+  useInfiniteQuery,
+} from '@tanstack/react-query';
 import api from '@/lib/api';
 
 export interface PostInputMedia {
@@ -39,6 +44,7 @@ export interface Post {
   cost?: number;
   priority: number;
   likes: number;
+  liked?: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -49,7 +55,6 @@ export interface GetPostsParams {
   limit?: number;
   page?: number;
   min_likes?: number;
-  skipUserId?: boolean;
 }
 export interface PostsResponse {
   success: boolean;
@@ -94,8 +99,6 @@ export const useInfinitePosts = (params: any = {}) => {
           ...params,
           page: pageParam,
           limit: params.limit || 12,
-
-          // 💣 CRITICAL FIX
           skipUserId: true,
         },
       });
@@ -125,27 +128,87 @@ export const usePublishPost = () => {
   });
 };
 
-export function getPostResultMedia(
-  post: Post
-): { url: string; type: 'image' | 'video' | 'audio' } | null {
-  const result = post.result as any;
-  const media = result?.media?.[0] || result;
-  const url = media?.url || media?.input || result?.url;
+// ─── Like / Unlike ───────────────────────────────────────────────────────────
 
-  if (!url || typeof url !== 'string') return null;
-
-  const rawType = String(media?.type || '').toLowerCase();
-  const type =
-    rawType === 'video' || /\.(mp4|webm|mov)(\?|$)/i.test(url)
-      ? 'video'
-      : rawType === 'audio' || /\.(mp3|wav|ogg|m4a)(\?|$)/i.test(url)
-        ? 'audio'
-        : 'image';
-
-  return { url, type };
+interface LikeParams {
+  post_id: number;
+  bot_id: number;
+  user_id: number;
 }
 
-export function getPostResultImage(post: Post): string | null {
-  const media = getPostResultMedia(post);
-  return media?.type === 'image' ? media.url : null;
+interface LikeResponse {
+  success: boolean;
+  liked: boolean;
+  likes: number;
 }
+
+export const useLikePost = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ post_id, bot_id, user_id }: LikeParams) => {
+      const { data } = await api.post<LikeResponse>('/api/posts/like', null, {
+        params: { bot_id, post_id, user_id },
+      });
+      return data;
+    },
+
+    // Optimistic update — мгновенно обновляем лайк в кэше
+    onMutate: async ({ post_id }) => {
+      await queryClient.cancelQueries({ queryKey: ['posts', 'infinite'] });
+
+      const previousData = queryClient.getQueryData(['posts', 'infinite']);
+
+      queryClient.setQueryData(['posts', 'infinite'], (old: any) => {
+        if (!old?.pages) return old;
+        return {
+          ...old,
+          pages: old.pages.map((page: any) => ({
+            ...page,
+            items: page.items.map((post: Post) => {
+              if (post.id !== post_id) return post;
+              const newLiked = !post.liked;
+              return {
+                ...post,
+                liked: newLiked,
+                likes: newLiked ? post.likes + 1 : Math.max(0, post.likes - 1),
+              };
+            }),
+          })),
+        };
+      });
+
+      return { previousData };
+    },
+
+    // При ошибке — откатываем
+    onError: (_err, _vars, context) => {
+      if (context?.previousData) {
+        queryClient.setQueryData(['posts', 'infinite'], context.previousData);
+      }
+    },
+
+    // После успешного ответа — синхронизируем реальные данные с сервера
+    onSuccess: (data, { post_id }) => {
+      queryClient.setQueryData(['posts', 'infinite'], (old: any) => {
+        if (!old?.pages) return old;
+        return {
+          ...old,
+          pages: old.pages.map((page: any) => ({
+            ...page,
+            items: page.items.map((post: Post) => {
+              if (post.id !== post_id) return post;
+              return { ...post, liked: data.liked, likes: data.likes };
+            }),
+          })),
+        };
+      });
+
+      // Обновляем и одиночный пост если он в кэше
+      queryClient.setQueryData(['posts', post_id], (old: Post | undefined) => {
+        if (!old) return old;
+        return { ...old, liked: data.liked, likes: data.likes };
+      });
+    },
+  });
+};
