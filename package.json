@@ -34,7 +34,8 @@
     "remark-gfm": "^4.0.1",
     "remark-math": "^6.0.0",
     "sonner": "^2.0.7",
-    "tailwind-merge": "^3.5.0"
+    "tailwind-merge": "^3.5.0",
+    "typescript": "5.9.3"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
