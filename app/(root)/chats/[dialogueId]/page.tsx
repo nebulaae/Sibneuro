@@ -33,6 +33,7 @@ import {
   Clock,
   CheckCheck,
   BookMarked,
+  Pin,
 } from 'lucide-react';
 import { PublishDialog } from '@/components/dialogs/PublishDialog';
 import { PromptsManagerDialog } from '@/components/dialogs/PromptsManagerDialog';
@@ -46,7 +47,11 @@ import remarkMath from 'remark-math';
 import remarkGfm from 'remark-gfm';
 import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
-import { useDraftPrompt } from '@/hooks/useSavedPrompts';
+import {
+  useDraftPrompt,
+  useSavedPrompts,
+  SavedPromptMedia,
+} from '@/hooks/useSavedPrompts';
 
 /* ── Types ── */
 interface MediaItem {
@@ -270,13 +275,25 @@ export default function ChatPage() {
 
   // ── Prompts manager ────────────────────────────────────────────────────────
   const [isPromptsOpen, setIsPromptsOpen] = useState(false);
+  const { addPrompt } = useSavedPrompts();
 
   const handleInsertPrompt = useCallback(
-    (promptText: string) => {
+    (promptText: string, media?: SavedPromptMedia[]) => {
       setText((prev) => {
         const newText = prev ? `${prev}\n${promptText}` : promptText;
         return newText;
       });
+      // Подтягиваем медиа из сохранённого промпта
+      if (media && media.length > 0) {
+        setUploadedFiles((prev) => [
+          ...prev,
+          ...media.map((m) => ({
+            url: m.url,
+            type: m.type,
+            file: undefined as unknown as File,
+          })),
+        ]);
+      }
       haptic.light();
       // Фокус на textarea после вставки
       setTimeout(() => textareaRef.current?.focus(), 80);
@@ -286,7 +303,7 @@ export default function ChatPage() {
 
   // ── Rest of state ──────────────────────────────────────────────────────────
   const [uploadedFiles, setUploadedFiles] = useState<
-    { url: string; type: string; file: File }[]
+    { url: string; type: string; file?: File }[]
   >([]);
   const [viewerSrc, setViewerSrc] = useState<{
     url: string;
@@ -359,6 +376,23 @@ export default function ChatPage() {
     ta.style.height = 'auto';
     ta.style.height = Math.min(ta.scrollHeight, 120) + 'px';
   }, [text]);
+
+  // ── Сохранение текущего промпта + медиа в "сохранённые" ───────────────────
+  const handlePinPrompt = useCallback(() => {
+    const trimmed = text.trim();
+    if (!trimmed && uploadedFiles.length === 0) return;
+    haptic.medium();
+    const title =
+      trimmed.length > 0
+        ? trimmed.slice(0, 12) + (trimmed.length > 12 ? '…' : '')
+        : 'Медиа';
+    const media: SavedPromptMedia[] = uploadedFiles.map((f) => ({
+      url: f.url,
+      type: f.type,
+    }));
+    addPrompt(title, trimmed || ' ', media);
+    toast.success('Промпт сохранён');
+  }, [text, uploadedFiles, haptic, addPrompt]);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -497,6 +531,9 @@ export default function ChatPage() {
     (!text.trim() && uploadedFiles.length === 0);
   const showRoles =
     msgsFromHistory.length === 0 && !isHistoryLoading && !!roles;
+
+  // Есть ли что сохранять (текст или медиа)
+  const hasContentToPin = text.trim().length > 0 || uploadedFiles.length > 0;
 
   return (
     <div className="flex flex-col h-dvh max-w-2xl mx-auto w-full text-white overflow-hidden -mb-[calc(80px+max(16px,env(safe-area-inset-bottom)))] relative z-40">
@@ -916,20 +953,33 @@ export default function ChatPage() {
               </button>
             )}
 
-            {/* ── Prompts manager button ── */}
-            <button
-              onClick={() => {
-                haptic.light();
-                setIsPromptsOpen(true);
-              }}
-              className="w-12 h-12 rounded-2xl bg-white/5 border border-white/5 flex items-center justify-center transition-all hover:bg-cyan-400/10 hover:border-cyan-400/20 active:scale-90 group"
-              title="Сохранённые промпты"
-            >
-              <BookMarked
-                size={20}
-                className="text-white/40 group-hover:text-cyan-400 transition-colors"
-              />
-            </button>
+            {/* ── Prompts manager / Pin button ── */}
+            {hasContentToPin ? (
+              <button
+                onClick={handlePinPrompt}
+                className="w-12 h-12 rounded-2xl bg-cyan-400/10 border border-cyan-400/25 flex items-center justify-center transition-all hover:bg-cyan-400/20 active:scale-90 group"
+                title="Закрепить промпт"
+              >
+                <Pin
+                  size={20}
+                  className="text-cyan-400 group-hover:rotate-12 transition-transform"
+                />
+              </button>
+            ) : (
+              <button
+                onClick={() => {
+                  haptic.light();
+                  setIsPromptsOpen(true);
+                }}
+                className="w-12 h-12 rounded-2xl bg-white/5 border border-white/5 flex items-center justify-center transition-all hover:bg-cyan-400/10 hover:border-cyan-400/20 active:scale-90 group"
+                title="Сохранённые промпты"
+              >
+                <BookMarked
+                  size={20}
+                  className="text-white/40 group-hover:text-cyan-400 transition-colors"
+                />
+              </button>
+            )}
 
             <input
               type="file"
