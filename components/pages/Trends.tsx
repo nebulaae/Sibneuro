@@ -129,19 +129,19 @@ export const Trends = () => {
             <div className="grid grid-cols-2 gap-4">
               {isLoading
                 ? Array.from({ length: 6 }).map((_, i) => (
-                    <div
-                      key={i}
-                      className="aspect-3/4 rounded-3xl bg-zinc-900 border border-white/5 animate-pulse"
-                    />
-                  ))
+                  <div
+                    key={i}
+                    className="aspect-3/4 rounded-3xl bg-zinc-900 border border-white/5 animate-pulse"
+                  />
+                ))
                 : posts.map((post, index) => {
-                    const isLast = index === posts.length - 1;
-                    return (
-                      <div key={post.id} ref={isLast ? lastPostRef : null}>
-                        <TrendCard post={post} />
-                      </div>
-                    );
-                  })}
+                  const isLast = index === posts.length - 1;
+                  return (
+                    <div key={post.id} ref={isLast ? lastPostRef : null}>
+                      <TrendCard post={post} />
+                    </div>
+                  );
+                })}
             </div>
 
             {isFetchingNextPage && (
@@ -178,7 +178,7 @@ const TrendCard = memo(({ post }: { post: Post }) => {
     haptic.light();
     try {
       sessionStorage.setItem(`trend_post_${post.id}`, JSON.stringify(post));
-    } catch {}
+    } catch { }
     router.push(`/trend/${post.id}`);
   }, [post.id, post, router, haptic]);
 
@@ -363,6 +363,7 @@ export const TrendDetail = ({
 
   const [isShareOpen, setIsShareOpen] = useState(false);
   const [albumDialogOpen, setAlbumDialogOpen] = useState(false);
+  const [fileInputKey, setFileInputKey] = useState(0); // 👈 добавить в useState
 
   const [userMedia, setUserMedia] = useState<
     Record<number, { url: string; file?: File }>
@@ -385,18 +386,22 @@ export const TrendDetail = ({
 
   const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || activeMediaIndex === null) return;
+    const indexSnapshot = activeMediaIndex; // 👈 снимаем снапшот сразу
+
+    setActiveMediaIndex(null);
+    setFileInputKey((k) => k + 1); // 👈 пересоздаём input для следующего открытия
+
+    if (!file || indexSnapshot === null) return;
     try {
       const uploaded = await upload.mutateAsync(file);
       setUserMedia((prev) => ({
         ...prev,
-        [activeMediaIndex]: { url: uploaded.url, file },
+        [indexSnapshot]: { url: uploaded.url, file },
       }));
       toast.success(t('done'));
     } catch {
       toast.error(t('error'));
     }
-    setActiveMediaIndex(null);
   };
 
   const handleGenerate = () => {
@@ -449,7 +454,7 @@ export const TrendDetail = ({
     if (typeof navigator.share === 'function') {
       navigator
         .share({ title: post.inputs?.text || 'AI Generation', url: webLink })
-        .catch(() => {});
+        .catch(() => { });
       setIsShareOpen(false);
     } else {
       navigator.clipboard.writeText(webLink).then(() => {
@@ -563,6 +568,9 @@ export const TrendDetail = ({
                       onClick={() => {
                         if (replace || hide) {
                           setActiveMediaIndex(index);
+                          if (fileInputRef.current) {
+                            fileInputRef.current.value = ''; // 👈 обязательно для iOS
+                          }
                           fileInputRef.current?.click();
                         }
                       }}
@@ -572,7 +580,7 @@ export const TrendDetail = ({
                           ? 'cursor-pointer active:scale-95 bg-zinc-900/50 border-white/10 hover:border-white/20'
                           : 'bg-zinc-900 border-transparent',
                         current &&
-                          'border-cyan-400/50 bg-cyan-400/5 shadow-[0_0_20px_rgba(0,122,255,0.1)]'
+                        'border-cyan-400/50 bg-cyan-400/5 shadow-[0_0_20px_rgba(0,122,255,0.1)]'
                       )}
                     >
                       {current ? (
@@ -673,6 +681,7 @@ export const TrendDetail = ({
       </div>
 
       <input
+        key={fileInputKey}  // 👈 это заставляет React пересоздать DOM-элемент
         ref={fileInputRef}
         type="file"
         accept="image/*"
