@@ -158,8 +158,6 @@ export const Trends = () => {
   );
 };
 
-// ─── TrendCard — Pinterest-style likes bottom-right ───────────────────────────
-
 const TrendCard = memo(({ post }: { post: Post }) => {
   const t = useTranslations('Trends');
   const router = useRouter();
@@ -220,7 +218,6 @@ const TrendCard = memo(({ post }: { post: Post }) => {
         whileTap={{ scale: 0.96 }}
         onClick={onClick}
       >
-        {/* Media */}
         {mediaUrl ? (
           isVideo ? (
             <video
@@ -245,10 +242,8 @@ const TrendCard = memo(({ post }: { post: Post }) => {
           </div>
         )}
 
-        {/* Gradient overlay */}
         <div className="absolute inset-0 bg-linear-to-t from-black/90 via-black/20 to-transparent opacity-80 group-hover:opacity-100 transition-opacity" />
 
-        {/* Cost badge — top left */}
         <div className="absolute top-3 left-3">
           <div className="bg-black/40 backdrop-blur-xl border border-white/10 px-2 py-0.5 rounded-full flex items-center gap-1 shadow-lg">
             <span className="text-[11px] font-black text-white">
@@ -258,7 +253,6 @@ const TrendCard = memo(({ post }: { post: Post }) => {
           </div>
         </div>
 
-        {/* Video play icon */}
         {isVideo && (
           <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
             <div className="w-8 h-8 rounded-full bg-white/20 backdrop-blur-md border border-white/30 flex items-center justify-center">
@@ -267,7 +261,6 @@ const TrendCard = memo(({ post }: { post: Post }) => {
           </div>
         )}
 
-        {/* ── Add to Album — top right, on hover ── */}
         <motion.button
           whileTap={{ scale: 0.82 }}
           onClick={handleAddToAlbum}
@@ -276,7 +269,6 @@ const TrendCard = memo(({ post }: { post: Post }) => {
           <FolderPlus size={14} className="text-white/80" />
         </motion.button>
 
-        {/* Bottom info */}
         <div className="absolute inset-x-0 bottom-0 p-3 text-start">
           <h3 className="text-white text-[14px] font-bold line-clamp-1 leading-tight group-hover:text-cyan-400 transition-colors pr-12">
             {trendName}
@@ -288,7 +280,6 @@ const TrendCard = memo(({ post }: { post: Post }) => {
           )}
         </div>
 
-        {/* ── Pinterest-style Like — BOTTOM RIGHT, always visible ── */}
         <motion.button
           whileTap={{ scale: 0.75 }}
           onClick={handleLike}
@@ -328,7 +319,6 @@ const TrendCard = memo(({ post }: { post: Post }) => {
         </motion.button>
       </motion.div>
 
-      {/* Add to Album Dialog — outside card so clicks don't bubble */}
       <AddToAlbumDialog
         open={albumDialogOpen}
         onClose={() => setAlbumDialogOpen(false)}
@@ -339,8 +329,6 @@ const TrendCard = memo(({ post }: { post: Post }) => {
 });
 
 TrendCard.displayName = 'TrendCard';
-
-// ─── TrendDetail (unchanged) ──────────────────────────────────────────────────
 
 export const TrendDetail = ({
   post,
@@ -363,7 +351,7 @@ export const TrendDetail = ({
 
   const [isShareOpen, setIsShareOpen] = useState(false);
   const [albumDialogOpen, setAlbumDialogOpen] = useState(false);
-  const [fileInputKey, setFileInputKey] = useState(0); // 👈 добавить в useState
+  const [fileInputKey, setFileInputKey] = useState(0);
 
   const [userMedia, setUserMedia] = useState<
     Record<number, { url: string; file?: File }>
@@ -386,12 +374,16 @@ export const TrendDetail = ({
 
   const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    const indexSnapshot = activeMediaIndex; // 👈 снимаем снапшот сразу
+    const indexSnapshot = activeMediaIndex;
 
-    setActiveMediaIndex(null);
-    setFileInputKey((k) => k + 1); // 👈 пересоздаём input для следующего открытия
+    // КРИТИЧЕСКИЙ ФИКС: Сбрасываем стейты только ПОСЛЕ проверки наличия файла, 
+    // чтобы Face ID / Blur на iOS не затирали контекст операции до завершения.
+    if (!file || indexSnapshot === null) {
+      setActiveMediaIndex(null);
+      setFileInputKey((k) => k + 1);
+      return;
+    }
 
-    if (!file || indexSnapshot === null) return;
     try {
       const uploaded = await upload.mutateAsync(file);
       setUserMedia((prev) => ({
@@ -401,6 +393,10 @@ export const TrendDetail = ({
       toast.success(t('done'));
     } catch {
       toast.error(t('error'));
+    } finally {
+      // Чистим стейты строго в самом конце
+      setActiveMediaIndex(null);
+      setFileInputKey((k) => k + 1);
     }
   };
 
@@ -474,7 +470,6 @@ export const TrendDetail = ({
       exit={{ opacity: 0, scale: 1.05 }}
       className="flex flex-col min-h-screen"
     >
-      {/* Header */}
       <header className="sticky top-0 z-50 px-6 py-5 flex items-center gap-4">
         <button
           onClick={onBack}
@@ -505,7 +500,6 @@ export const TrendDetail = ({
       </header>
 
       <div className="flex-1 overflow-y-auto px-6 py-8 flex flex-col gap-10">
-        {/* Hero Preview */}
         <div className="relative aspect-3/4 rounded-[40px] overflow-hidden border border-white/10 shadow-[0_32px_64px_rgba(0,0,0,0.6)]">
           {mediaUrl ? (
             <img src={mediaUrl} alt="" className="w-full h-full object-cover" />
@@ -549,7 +543,6 @@ export const TrendDetail = ({
           </button>
         </div>
 
-        {/* Configuration Section */}
         <div className="flex flex-col gap-8">
           {mediaSlots.some((s) => s.input?.reference?.replace) && (
             <div className="flex flex-col gap-4">
@@ -567,11 +560,16 @@ export const TrendDetail = ({
                       key={index}
                       onClick={() => {
                         if (replace || hide) {
-                          setActiveMediaIndex(index);
+                          // ФИКС: Сначала очищаем значение инпута, сохраняем индекс, И ТОЛЬКО ПОТОМ открываем.
+                          // Никаких изменений key инпута прямо здесь!
                           if (fileInputRef.current) {
-                            fileInputRef.current.value = ''; // 👈 обязательно для iOS
+                            fileInputRef.current.value = '';
                           }
-                          fileInputRef.current?.click();
+                          setActiveMediaIndex(index);
+                          // Используем setTimeout, чтобы гарантировать корректный фокус в WebView iOS
+                          setTimeout(() => {
+                            fileInputRef.current?.click();
+                          }, 50);
                         }
                       }}
                       className={cn(
@@ -652,7 +650,6 @@ export const TrendDetail = ({
         </div>
       </div>
 
-      {/* Bottom Action */}
       <div className="sticky bottom-0 px-6 pt-6 pb-[calc(24px+max(12px,env(safe-area-inset-bottom)))] bg-black/80 backdrop-blur-3xl border-t border-white/5">
         <button
           disabled={generate.isPending}
@@ -680,16 +677,24 @@ export const TrendDetail = ({
         </button>
       </div>
 
+      {/* КРИТИЧЕСКИЙ ФИКС СТИЛЕЙ ИНПУТА ДЛЯ iOS: 
+          Вместо className="hidden" (display: none), который iOS WebView отрубает при FaceID, 
+          делаем его невидимым через opacity и pointer-events, сохраняя в физическом DOM. */}
       <input
-        key={fileInputKey}  // 👈 это заставляет React пересоздать DOM-элемент
+        key={fileInputKey}
         ref={fileInputRef}
         type="file"
         accept="image/*"
         onChange={handleFile}
-        className="hidden"
+        style={{
+          opacity: 0,
+          position: 'absolute',
+          pointerEvents: 'none',
+          width: '1px',
+          height: '1px',
+        }}
       />
 
-      {/* Share Modal */}
       <Dialog open={isShareOpen} onOpenChange={setIsShareOpen}>
         <DialogContent className="bg-zinc-950/90 border-white/10 text-white max-w-md p-6 rounded-[32px] backdrop-blur-2xl shadow-2xl">
           <DialogHeader className="mb-4">
@@ -741,7 +746,6 @@ export const TrendDetail = ({
         </DialogContent>
       </Dialog>
 
-      {/* Add to Album Dialog */}
       <AddToAlbumDialog
         open={albumDialogOpen}
         onClose={() => setAlbumDialogOpen(false)}
