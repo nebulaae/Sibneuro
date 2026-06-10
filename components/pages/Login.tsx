@@ -221,24 +221,25 @@ export const Login = () => {
   };
 
   const openTelegramLogin = () => {
-    if (!(window as any).Telegram?.Login) return;
+    if (!(window as any).Telegram?.Login) {
+      toast.error('Telegram ещё загружается, подождите секунду');
+      return;
+    }
 
     (window as any).Telegram.Login.auth(
       {
         client_id: bot?.bot_id,
-        request_access: ['phone', 'write'],
+        request_access: ['write', 'phone'], // массив, не строка
       },
       async (result: any) => {
         if (result?.error) {
           toast.error(result.error);
           return;
         }
-
         await handleTelegramSuccess(result);
       }
     );
   };
-
   /* Redirect if logged in */
   useEffect(() => {
     if (!authLoading && user) router.replace('/');
