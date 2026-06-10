@@ -34,15 +34,6 @@ const MARQUEE_IMAGES = [
 const col = (offset: number, count = 5) =>
   Array.from({ length: count }, (_, i) => MARQUEE_IMAGES[(offset + i) % MARQUEE_IMAGES.length]);
 
-const getTelegramOAuthOrigin = () => {
-  if (typeof window === 'undefined') return '';
-  if (window.location.hostname === 'neoaipro.com') {
-    return `${window.location.protocol}//www.neoaipro.com`;
-  }
-
-  return window.location.origin;
-};
-
 const MarqueeColumn = ({
   images,
   direction = 'up',
@@ -78,7 +69,7 @@ const MarqueeColumn = ({
             className="relative rounded-2xl overflow-hidden flex-shrink-0 border border-white/10 shadow-xl"
             style={{ aspectRatio: '4/3', minHeight: 120 }}
           >
-            <img src={src} alt="huy" className="w-full h-full object-cover" loading="lazy" />
+            <img src={src} alt="marquee-item" className="w-full h-full object-cover" loading="lazy" />
             <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/30 to-black/60" />
           </div>
         ))}
@@ -220,18 +211,25 @@ export const Login = () => {
     });
   };
 
+  /* Открытие виджета авторизации Telegram */
   const openTelegramLogin = () => {
     if (!(window as any).Telegram?.Login) {
       toast.error('Telegram ещё загружается, подождите секунду');
       return;
     }
 
+    // Передаем полную конфигурацию принудительно во избежание потери контекста single-page-app
     (window as any).Telegram.Login.auth(
       {
-        client_id: bot?.bot_id,
-        request_access: ['write', 'phone'], // массив, не строка
+        client_id: Number(bot?.bot_id),
+        request_access: ['write', 'phone'],
+        redirect_uri: window.location.origin + window.location.pathname,
       },
       async (result: any) => {
+        if (!result) {
+          toast.error('Авторизация отменена пользователем или произошла ошибка.');
+          return;
+        }
         if (result?.error) {
           toast.error(result.error);
           return;
@@ -240,6 +238,7 @@ export const Login = () => {
       }
     );
   };
+
   /* Redirect if logged in */
   useEffect(() => {
     if (!authLoading && user) router.replace('/');
@@ -431,7 +430,7 @@ export const Login = () => {
                 <p className="text-white/50 mb-8">{t('telegramLoginDescription') || 'Нажмите кнопку ниже для входа через Telegram'}</p>
                 <div className='w-full flex items-center justify-center'>
                   {bot?.bot_id ? (
-                    <button onClick={openTelegramLogin} className='tg-auth-button shadow-xl shadow-blue-500/40'>
+                    <button onClick={openTelegramLogin} className='tg-auth-button shadow-xl shadow-blue-500/40 px-6 py-4 bg-[#229ED9] rounded-xl text-white font-bold transition-transform active:scale-95'>
                       {t('continueWithTelegram')}
                     </button>
                   ) : (

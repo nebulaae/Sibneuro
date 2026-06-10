@@ -48,7 +48,7 @@ function getUserId(): number | null {
       const user = JSON.parse(tgUser);
       if (user?.id) return user.id;
     }
-  } catch {}
+  } catch { }
 
   return null;
 }
@@ -62,7 +62,7 @@ function getBotId(): number | string | undefined {
       const parsed = JSON.parse(raw);
       if (parsed?.bot_id) return parsed.bot_id;
     }
-  } catch {}
+  } catch { }
 
   return process.env.NEXT_PUBLIC_BOT_ID;
 }
@@ -104,8 +104,10 @@ api.interceptors.request.use((config) => {
   // 👇 NEW: bypass flag
   const skipUserId = config.params.skipUserId;
 
+  // 8782963451
+
   if (botId && !config.params.bot_id) {
-    config.params.bot_id = 8782963451;
+    config.params.bot_id = botId;
   }
 
   if (userId && !skipUserId && !config.params.user_id) {
