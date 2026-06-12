@@ -37,7 +37,8 @@
     "version": "Version",
     "role": "Assistant",
     "close": "Close",
-    "download": "Download"
+    "download": "Download",
+    "selectRole": "Select role"
   },
   "Chats": {
     "title": "Chats",
@@ -175,7 +176,8 @@
     "catVideoEmoji": "🎬 Video",
     "catAudioEmoji": "🎵 Audio",
     "catAll": "All models",
-    "aiAssistants": "AI Assistants"
+    "aiAssistants": "AI Assistants",
+    "selectRole": "Select role"
   },
   "Generate": {
     "title": "Create",
@@ -309,7 +311,7 @@
     "apiTokens": "API Tokens",
     "createToken": "Create",
     "noTokens": "No tokens. Create one for API access.",
-    "generationHistory": "Generation History",
+    "generationHistory": "History",
     "noGenerations": "No generations",
     "loadMore": "Load more",
     "loading": "Loading...",
@@ -398,6 +400,9 @@
     "ofPayments": "of payments",
     "funnels": "Funnel",
     "albumsTabLabel": "Albums",
+    "publicationsTabLabel": "Publications",
+    "noPublications": "No publications yet",
+    "onModeration": "On moderation",
     "albumsTitle": "My Albums",
     "albumsEmpty": "No albums yet",
     "albumNew": "New",

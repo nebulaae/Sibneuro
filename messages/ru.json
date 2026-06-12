@@ -38,7 +38,8 @@
     "version": "Версия",
     "role": "Ассистент",
     "close": "Закрыть",
-    "download": "Скачать"
+    "download": "Скачать",
+    "selectRole": "Выбрать роль"
   },
   "Chats": {
     "title": "Чаты",
@@ -176,7 +177,8 @@
     "catVideoEmoji": "🎬 Видео",
     "catAudioEmoji": "🎵 Аудио",
     "catAll": "Все модели",
-    "aiAssistants": "AI \u0430\u0441\u0441\u0438\u0441\u0442\u0435\u043d\u0442\u044b"
+    "aiAssistants": "AI \u0430\u0441\u0441\u0438\u0441\u0442\u0435\u043d\u0442\u044b",
+    "selectRole": "\u0412\u044b\u0431\u0440\u0430\u0442\u044c \u0440\u043e\u043b\u044c"
   },
   "Generate": {
     "title": "Создать",
@@ -310,7 +312,7 @@
     "apiTokens": "API-токены",
     "createToken": "Создать",
     "noTokens": "Нет токенов. Создайте для доступа к API.",
-    "generationHistory": "История генераций",
+    "generationHistory": "История",
     "noGenerations": "Нет генераций",
     "loadMore": "Загрузить ещё",
     "loading": "Загрузка...",
@@ -399,6 +401,9 @@
     "ofPayments": "от оплат",
     "funnels": "Воронка",
     "albumsTabLabel": "Альбомы",
+    "publicationsTabLabel": "Публикации",
+    "noPublications": "Публикаций пока нет",
+    "onModeration": "На модерации",
     "albumsTitle": "Мои альбомы",
     "albumsEmpty": "Альбомов пока нет",
     "albumNew": "Создать",

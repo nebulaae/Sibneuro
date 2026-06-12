@@ -28,6 +28,52 @@ function getPlatformUser(): Record<string, any> | null {
   return null;
 }
 
+/** Юзер из JWT (auth_token) — fallback когда initDataUnsafe недоступен (web/desktop). */
+function getJwtUser(): Record<string, any> | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const token = localStorage.getItem('auth_token');
+    if (!token) return null;
+    const parts = token.split('.');
+    if (parts.length !== 3) return null;
+    const base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+    const decoded = JSON.parse(decodeURIComponent(escape(atob(base64))));
+    return decoded?.user || decoded || null;
+  } catch {}
+  return null;
+}
+
+/** Юзер из storage (email/MAX-сессия или legacy tg_user). */
+function getStoredUser(): Record<string, any> | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const su = localStorage.getItem('session_user');
+    if (su) return JSON.parse(su);
+    const tu = sessionStorage.getItem('tg_user');
+    if (tu) return JSON.parse(tu);
+  } catch {}
+  return null;
+}
+
+/** Текущая локаль: cookie next-intl → navigator. */
+function getLocale(): string | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const m = document.cookie.match(/(?:^|;\s*)NEXT_LOCALE=([^;]+)/);
+    if (m) return decodeURIComponent(m[1]);
+  } catch {}
+  try {
+    if (navigator.language) return navigator.language.split('-')[0];
+  } catch {}
+  return null;
+}
+
+function buildName(u: Record<string, any> | null): string {
+  if (!u) return '';
+  if (u.name) return String(u.name).trim();
+  return `${u.first_name || ''} ${u.last_name || ''}`.trim();
+}
+
 /**
  * Айди пригласившего (inviter).
  * Приоритет:
@@ -78,14 +124,23 @@ export function setInviterId(id: number | string): void {
 export function getUserAnalyticsParams(): UserAnalyticsParams {
   const out: UserAnalyticsParams = {};
 
-  const user = getPlatformUser();
-  if (user) {
-    const name = `${user.first_name || ''} ${user.last_name || ''}`.trim();
-    if (name) out.name = name;
-    if (user.username) out.username = String(user.username);
-    if (typeof user.is_premium === 'boolean') out.tg_premium = user.is_premium;
-    if (user.language_code) out.lang = String(user.language_code);
-  }
+  // Источники по убыванию надёжности: платформа (Telegram/Max) → JWT → storage.
+  const tgUser = getPlatformUser();
+  const fallbackUser = tgUser || getJwtUser() || getStoredUser();
+
+  const name = buildName(tgUser) || buildName(fallbackUser);
+  if (name) out.name = name;
+
+  const username = tgUser?.username || fallbackUser?.username;
+  if (username) out.username = String(username);
+
+  // tg_premium есть только у Telegram; иначе false (нужно для аналитики всегда).
+  out.tg_premium = typeof tgUser?.is_premium === 'boolean' ? tgUser.is_premium : false;
+
+  // lang: language_code из Telegram → локаль приложения → ru.
+  out.lang = String(
+    tgUser?.language_code || fallbackUser?.lang || getLocale() || 'ru'
+  );
 
   const inviter = getInviterId();
   if (inviter) out.inviter = inviter;

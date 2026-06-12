@@ -34,10 +34,17 @@ import {
   CheckCheck,
   BookMarked,
   Pin,
+  Sparkles,
 } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
 import { PublishDialog } from '@/components/dialogs/PublishDialog';
 import { PromptsManagerDialog } from '@/components/dialogs/PromptsManagerDialog';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { toast } from 'sonner';
 import { useHaptic } from '@/hooks/useHaptic';
 import { cn, localize } from '@/lib/utils';
@@ -324,6 +331,7 @@ export default function ChatPage() {
   const [selectedRoleId, setSelectedRoleId] = useState<number | null>(
     urlRole ? parseInt(urlRole) : null
   );
+  const [isRolePickerOpen, setIsRolePickerOpen] = useState(false);
   const { data: messages = [], isLoading: isHistoryLoading } = useChatHistory(
     dialogueId === 'new' ? null : dialogueId || null
   );
@@ -531,6 +539,8 @@ export default function ChatPage() {
     (!text.trim() && uploadedFiles.length === 0);
   const showRoles =
     msgsFromHistory.length === 0 && !isHistoryLoading && !!roles;
+  const selectedRole = roles?.find((r) => r.id === selectedRoleId) || null;
+  const hasRoles = !!roles && roles.length > 0;
 
   // Есть ли что сохранять (текст или медиа)
   const hasContentToPin = text.trim().length > 0 || uploadedFiles.length > 0;
@@ -573,6 +583,21 @@ export default function ChatPage() {
             ) : null}
           </div>
         </div>
+
+        {hasRoles && (
+          <button
+            onClick={() => {
+              haptic.light();
+              setIsRolePickerOpen(true);
+            }}
+            className="shrink-0 flex items-center gap-1.5 rounded-full px-3 py-2 text-[12px] font-bold text-cyan-300 border border-cyan-400/20 bg-cyan-400/10 active:scale-95 transition-all"
+          >
+            <Sparkles size={13} />
+            <span className="max-w-[110px] truncate">
+              {selectedRole ? localize(selectedRole.label) : t('selectRole')}
+            </span>
+          </button>
+        )}
       </header>
 
       {/* ── Messages ── */}
@@ -600,48 +625,16 @@ export default function ChatPage() {
                     <h3 className="text-[11px] font-bold uppercase tracking-widest text-white/25 mb-4">
                       {t('chooseAssistant')}
                     </h3>
-                    <div className="grid grid-cols-1 gap-2">
-                      {roles!.slice(0, 4).map((role) => (
-                        <button
-                          key={role.id}
-                          onClick={() => {
-                            haptic.light();
-                            setSelectedRoleId(role.id);
-                          }}
-                          className={cn(
-                            'flex items-center gap-3 p-3.5 rounded-2xl border transition-all active:scale-[0.98]',
-                            selectedRoleId === role.id
-                              ? 'bg-cyan-400/10 border-cyan-400/30 shadow-[0_0_20px_rgba(170,255,0,0.1)]'
-                              : 'bg-zinc-900/40 border-white/5 hover:border-white/10'
-                          )}
-                        >
-                          <Avatar className="w-10 h-10 rounded-xl">
-                            <AvatarImage src={role.image || ''} />
-                            <AvatarFallback className="bg-zinc-800 text-sm">
-                              {localize(role.label)[0]}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div className="flex-1 text-left">
-                            <p
-                              className={cn(
-                                'text-[14px] font-bold',
-                                selectedRoleId === role.id
-                                  ? 'text-cyan-400'
-                                  : 'text-white'
-                              )}
-                            >
-                              {localize(role.label)}
-                            </p>
-                            <p className="text-[11px] text-white/30 line-clamp-1">
-                              {localize(role.description)}
-                            </p>
-                          </div>
-                          {selectedRoleId === role.id && (
-                            <div className="w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_8px_#007AFF]" />
-                          )}
-                        </button>
-                      ))}
-                    </div>
+                    <button
+                      onClick={() => {
+                        haptic.light();
+                        setIsRolePickerOpen(true);
+                      }}
+                      className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-cyan-400/10 border border-cyan-400/25 text-cyan-300 font-bold active:scale-[0.98] transition-all"
+                    >
+                      <Sparkles size={16} />
+                      {selectedRole ? localize(selectedRole.label) : t('selectRole')}
+                    </button>
                   </div>
                 )}
               </div>
@@ -1039,6 +1032,73 @@ export default function ChatPage() {
         onClose={() => setIsPromptsOpen(false)}
         onInsert={handleInsertPrompt}
       />
+
+      {/* ── Role Picker (постер + описание + выбор) ── */}
+      <Dialog open={isRolePickerOpen} onOpenChange={setIsRolePickerOpen}>
+        <DialogContent className="bg-zinc-950/95 border-white/10 text-white max-w-md p-0 overflow-hidden rounded-[28px] backdrop-blur-2xl max-h-[85vh] flex flex-col">
+          <DialogHeader className="px-6 pt-6 pb-3 text-left">
+            <DialogTitle className="text-[20px] font-black tracking-tight">
+              {t('chooseAssistant')}
+            </DialogTitle>
+            <DialogDescription className="hidden" />
+          </DialogHeader>
+          <div className="flex flex-col gap-2 px-4 pb-6 overflow-y-auto">
+            {roles?.map((role) => {
+              const poster =
+                typeof role.description === 'object'
+                  ? role.description.poster
+                  : null;
+              const active = selectedRoleId === role.id;
+              return (
+                <button
+                  key={role.id}
+                  onClick={() => {
+                    haptic.light();
+                    setSelectedRoleId(role.id);
+                    setIsRolePickerOpen(false);
+                  }}
+                  className={cn(
+                    'flex gap-3 p-3 rounded-2xl border text-left transition-all active:scale-[0.98]',
+                    active
+                      ? 'bg-cyan-400/10 border-cyan-400/30'
+                      : 'bg-zinc-900/40 border-white/5 hover:border-white/10'
+                  )}
+                >
+                  <div className="w-16 h-16 rounded-xl overflow-hidden shrink-0 bg-zinc-800">
+                    {poster || role.image ? (
+                      <img
+                        src={poster || role.image || ''}
+                        alt=""
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-xl">
+                        🤖
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p
+                      className={cn(
+                        'text-[15px] font-bold',
+                        active ? 'text-cyan-300' : 'text-white'
+                      )}
+                    >
+                      {localize(role.label)}
+                    </p>
+                    <p className="text-[12px] text-white/40 line-clamp-2 mt-0.5">
+                      {localize(role.description)}
+                    </p>
+                  </div>
+                  {active && (
+                    <div className="self-center w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_8px_#007AFF]" />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

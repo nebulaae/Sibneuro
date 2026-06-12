@@ -41,10 +41,12 @@ export interface Post {
     }>;
   };
   model_name?: string;
+  name?: string | null;
   cost?: number;
   priority: number;
   likes: number;
   liked?: boolean;
+  published?: number; // 0 = на модерации, 1 = опубликован
   created_at: string;
   updated_at: string;
 }
@@ -86,6 +88,46 @@ export const usePost = (id: number | string | null | undefined) => {
       return data as Post;
     },
     enabled: !!id,
+  });
+};
+
+// GET /api/posts/one?bot_id=&post_id= — один пост по айди (bot_id добавит интерсептор)
+export const usePostOne = (id: number | string | null | undefined) => {
+  return useQuery({
+    queryKey: ['posts', 'one', id],
+    queryFn: async () => {
+      const { data } = await api.get('/api/posts/one', {
+        params: { post_id: id, skipUserId: true },
+      });
+      return data.post as Post;
+    },
+    enabled: !!id,
+  });
+};
+
+// GET /api/posts/all?user_id=&bot_id=&limit=&page= — все посты юзера (включая на модерации)
+export const useInfiniteUserPosts = (
+  userId: number | null | undefined,
+  params: { limit?: number } = {}
+) => {
+  return useInfiniteQuery({
+    queryKey: ['posts', 'all', userId],
+    queryFn: async ({ pageParam = 1 }) => {
+      const { data } = await api.get('/api/posts/all', {
+        params: {
+          user_id: userId,
+          page: pageParam,
+          limit: params.limit || 12,
+        },
+      });
+      return data as PostsResponse;
+    },
+    initialPageParam: 1,
+    getNextPageParam: (lastPage) => {
+      if (!lastPage?.hasNextPage) return undefined;
+      return lastPage.page + 1;
+    },
+    enabled: !!userId,
   });
 };
 

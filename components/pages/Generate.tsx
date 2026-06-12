@@ -341,6 +341,107 @@ export const Generate = () => {
             </div>
           )}
 
+          {/* Остальные параметры модели (всё, кроме aspect_ratio, который отрисован выше) */}
+          {(params || [])
+            .filter((p: any) => p.name !== 'aspect_ratio')
+            .map((p: any) => {
+              const label = getParamLabel(p.name, locale);
+              const values: any[] = Array.isArray(p.values) ? p.values : [];
+              const current = extraParams[p.name] ?? p.default;
+
+              // 1. Перечисление значений — чипсы
+              if (values.length > 0) {
+                return (
+                  <div key={p.name} className="flex flex-col gap-4">
+                    <h3 className="text-[13px] font-black uppercase tracking-widest text-white/30 px-2">
+                      {label}
+                    </h3>
+                    <div className="flex flex-wrap gap-2">
+                      {values.map((val: any) => {
+                        const v = String(val);
+                        const active = String(current) === v;
+                        return (
+                          <button
+                            key={v}
+                            onClick={() => {
+                              haptic.selection();
+                              setExtraParams((prev) => ({ ...prev, [p.name]: val }));
+                            }}
+                            className={cn(
+                              'px-4 py-2.5 rounded-full text-[13px] font-black border transition-all',
+                              active
+                                ? 'bg-white text-black border-white'
+                                : 'bg-zinc-900/60 text-white/40 border-white/5'
+                            )}
+                          >
+                            {getParamValueLabel(p.name, v, locale)}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              }
+
+              // 2. Булево — переключатель
+              if (typeof p.default === 'boolean' || p.type === 'boolean') {
+                const on = current === true || current === 'true';
+                return (
+                  <div
+                    key={p.name}
+                    className="flex items-center justify-between gap-4 px-2"
+                  >
+                    <h3 className="text-[13px] font-black uppercase tracking-widest text-white/30">
+                      {label}
+                    </h3>
+                    <button
+                      onClick={() => {
+                        haptic.selection();
+                        setExtraParams((prev) => ({ ...prev, [p.name]: !on }));
+                      }}
+                      className={cn(
+                        'relative w-12 h-7 rounded-full transition-colors shrink-0',
+                        on ? 'bg-cyan-500' : 'bg-white/10'
+                      )}
+                    >
+                      <span
+                        className={cn(
+                          'absolute top-1 size-5 rounded-full bg-white transition-all',
+                          on ? 'left-6' : 'left-1'
+                        )}
+                      />
+                    </button>
+                  </div>
+                );
+              }
+
+              // 3. Число / строка — инпут
+              const isNumber =
+                typeof p.default === 'number' || p.type === 'number';
+              return (
+                <div key={p.name} className="flex flex-col gap-4">
+                  <h3 className="text-[13px] font-black uppercase tracking-widest text-white/30 px-2">
+                    {label}
+                  </h3>
+                  <input
+                    type={isNumber ? 'number' : 'text'}
+                    value={current ?? ''}
+                    onChange={(e) =>
+                      setExtraParams((prev) => ({
+                        ...prev,
+                        [p.name]: isNumber
+                          ? e.target.value === ''
+                            ? ''
+                            : Number(e.target.value)
+                          : e.target.value,
+                      }))
+                    }
+                    className="w-full bg-zinc-900/40 border border-white/5 rounded-2xl p-4 text-[15px] font-medium placeholder:text-white/20 outline-none focus:border-cyan-500/30 transition-all"
+                  />
+                </div>
+              );
+            })}
+
           {canAttach && !isTextModel && (
             <div className="flex flex-col gap-4">
               <div className="flex justify-between items-center px-2">

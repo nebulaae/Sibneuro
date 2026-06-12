@@ -4,6 +4,8 @@ import { useRouter } from 'next/navigation';
 import { useState, useMemo } from 'react';
 import { useUser } from '@/hooks/useUser';
 import { GenerationRequest, MediaItem, useRequests } from '@/hooks/useRequests';
+import { useInfiniteUserPosts, type Post } from '@/hooks/usePosts';
+import { resolvePostMedia } from '@/lib/media';
 import { useAuth } from '@/hooks/useAuth';
 import {
   useReferrals,
@@ -321,6 +323,119 @@ function RequestCard({
   );
 }
 
+function PublicationsGrid({
+  posts,
+  isLoading,
+  hasMore,
+  isFetchingMore,
+  onLoadMore,
+  onOpen,
+  emptyLabel,
+  moderationLabel,
+}: {
+  posts: Post[];
+  isLoading: boolean;
+  hasMore: boolean;
+  isFetchingMore: boolean;
+  onLoadMore: () => void;
+  onOpen: (id: number) => void;
+  emptyLabel: string;
+  moderationLabel: string;
+}) {
+  if (isLoading) {
+    return (
+      <div className="grid grid-cols-2 gap-3">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div
+            key={i}
+            className="aspect-[4/5] rounded-[20px] bg-white/[0.05] animate-pulse"
+          />
+        ))}
+      </div>
+    );
+  }
+
+  if (posts.length === 0) {
+    return <p className="text-[15px] text-white/30">{emptyLabel}</p>;
+  }
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="grid grid-cols-2 gap-3">
+        {posts.map((post) => {
+          const { url, isVideo } = resolvePostMedia(post);
+          const onModeration = post.published === 0;
+          const title = post.name || post.inputs?.text || '';
+          return (
+            <button
+              key={post.id}
+              onClick={() => onOpen(post.id)}
+              className="group relative aspect-[4/5] rounded-[20px] overflow-hidden border border-white/[0.08] bg-white/[0.04] text-left active:scale-[0.98] transition-transform"
+            >
+              {url ? (
+                isVideo ? (
+                  <video
+                    src={url}
+                    className="absolute inset-0 h-full w-full object-cover"
+                    muted
+                    loop
+                    playsInline
+                  />
+                ) : (
+                  <img
+                    src={url}
+                    alt=""
+                    className="absolute inset-0 h-full w-full object-cover"
+                  />
+                )
+              ) : (
+                <div className="absolute inset-0 flex items-center justify-center bg-white/[0.04]">
+                  <ImageIcon size={24} className="text-white/15" />
+                </div>
+              )}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent" />
+              {onModeration && (
+                <div className="absolute top-2 left-2 flex items-center gap-1 rounded-full bg-amber-500/85 px-2 py-0.5 text-[10px] font-bold text-black">
+                  <Clock size={10} /> {moderationLabel}
+                </div>
+              )}
+              {title && (
+                <p className="absolute inset-x-0 bottom-0 p-2.5 text-[12px] font-semibold text-white line-clamp-2 leading-tight">
+                  {title}
+                </p>
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      {hasMore && (
+        <button
+          onClick={onLoadMore}
+          disabled={isFetchingMore}
+          className={cn(
+            'w-full py-3.5 rounded-[16px] text-[13px] font-medium text-white/40',
+            'border border-white/[0.06] bg-white/[0.025]',
+            'flex items-center justify-center gap-2',
+            'hover:text-white/60 hover:border-white/[0.10]',
+            'active:scale-[0.98] disabled:opacity-50',
+            spring
+          )}
+        >
+          {isFetchingMore ? (
+            <>
+              <Loader2 size={13} className="animate-spin" />
+              Loading...
+            </>
+          ) : (
+            'Load more'
+          )}
+        </button>
+      )}
+    </div>
+  );
+}
+
 export const Profile = () => {
   const t = useTranslations('Profile');
   const STATUS = getStatusMap(t);
@@ -342,6 +457,18 @@ export const Profile = () => {
   const { data: recurrentData } = useRecurrentStatus();
   const cancelRecurrent = useCancelRecurrent();
 
+  // Наши публикации (посты, ушедшие на модерацию через /posts/publish)
+  const currentUserId = userData?.user?.user_id ?? tgUser?.id;
+  const {
+    data: userPostsData,
+    isLoading: userPostsLoading,
+    fetchNextPage: fetchMorePosts,
+    hasNextPage: hasMorePosts,
+    isFetchingNextPage: isFetchingMorePosts,
+  } = useInfiniteUserPosts(currentUserId);
+  const publications: Post[] =
+    userPostsData?.pages.flatMap((p) => p.items) ?? [];
+
   const [activeTab, setActiveTab] = useState<Tab>('profile');
   const [partnershipPeriod, setPartnershipPeriod] =
     useState<PartnershipPeriod>('all');
@@ -349,9 +476,9 @@ export const Profile = () => {
     useState<PartnershipSubTab>('overview');
   const [copiedToken, setCopiedToken] = useState<string | null>(null);
   const [copiedRef, setCopiedRef] = useState(false);
-  const [historyTab, setHistoryTab] = useState<'generations' | 'albums'>(
-    'generations'
-  );
+  const [historyTab, setHistoryTab] = useState<
+    'publications' | 'generations' | 'albums'
+  >('publications');
 
   const { data: trackingStatsData, isLoading: trackingStatsLoading } =
     useTrackingStats(partnershipPeriod);
@@ -449,6 +576,11 @@ export const Profile = () => {
   const handleNavigate = (dialogueId: string | number) => {
     haptic.light();
     router.push(`/chats/${dialogueId}`);
+  };
+
+  const handleWithdraw = () => {
+    haptic.medium();
+    toast.info(t('withdrawComingSoon'));
   };
 
   const TABS: { key: Tab; label: string }[] = [
@@ -639,8 +771,32 @@ export const Profile = () => {
 
             {/* History */}
             <div className="flex flex-col gap-5">
-              {/* Sub-tab switcher: Generations / Albums */}
+              {/* Sub-tab switcher: Publications / Generations / Albums */}
               <div className="flex gap-1.5 p-1 rounded-full bg-white/[0.05] border border-white/[0.08] text-cyan-200">
+                <button
+                  onClick={() => {
+                    haptic.light();
+                    setHistoryTab('publications');
+                  }}
+                  className={cn(
+                    'flex-1 py-2.5 rounded-xl text-[13px] font-semibold transition-all relative z-10',
+                    historyTab === 'publications'
+                      ? ''
+                      : 'text-white/40 hover:text-white/60'
+                  )}
+                >
+                  {t('publicationsTabLabel')}
+                  {historyTab === 'publications' && (
+                    <div
+                      className={cn(
+                        'absolute inset-0 z-[-1] animate-in fade-in zoom-in duration-300',
+                        glass.pill,
+                        spring
+                      )}
+                    />
+                  )}
+                </button>
+
                 <button
                   onClick={() => {
                     haptic.light();
@@ -690,7 +846,24 @@ export const Profile = () => {
                 </button>
               </div>
 
-              {historyTab === 'generations' ? (
+              {historyTab === 'publications' ? (
+                <PublicationsGrid
+                  posts={publications}
+                  isLoading={userPostsLoading}
+                  hasMore={!!hasMorePosts}
+                  isFetchingMore={isFetchingMorePosts}
+                  onLoadMore={() => {
+                    haptic.light();
+                    fetchMorePosts?.();
+                  }}
+                  onOpen={(id) => {
+                    haptic.light();
+                    router.push(`/trend/${id}`);
+                  }}
+                  emptyLabel={t('noPublications')}
+                  moderationLabel={t('onModeration')}
+                />
+              ) : historyTab === 'generations' ? (
                 <>
                   {reqLoading ? (
                     <div className="flex flex-col gap-4">
@@ -873,6 +1046,34 @@ export const Profile = () => {
               </div>
             </div>
 
+            {/* Партнёрский баланс (balance из /user) + вывод средств */}
+            <div className={cn(glass.cyanCard, 'relative overflow-hidden p-5')}>
+              <div className="absolute inset-0 bg-gradient-to-br from-cyan-400/10 via-transparent pointer-events-none" />
+              <div className="relative flex items-center justify-between gap-4">
+                <div className="min-w-0">
+                  <p className="text-[11px] font-medium uppercase tracking-[0.5px] text-white/35 flex items-center gap-1.5">
+                    <Coins size={12} className="text-cyan-300" />
+                    {t('partnerBalance')}
+                  </p>
+                  <p className="mt-2 text-[32px] font-black leading-none tracking-tight text-cyan-100">
+                    {balance.toLocaleString('ru-RU')}{' '}
+                    <span className="text-[18px] font-bold text-white/40">₽</span>
+                  </p>
+                </div>
+                <button
+                  onClick={handleWithdraw}
+                  className={cn(
+                    'shrink-0 flex items-center gap-2 rounded-2xl px-4 py-3 text-[14px] font-bold text-cyan-100',
+                    'border border-cyan-400/25 bg-cyan-400/10 active:scale-95',
+                    spring
+                  )}
+                >
+                  <ArrowUpRight size={16} />
+                  {t('withdrawFunds')}
+                </button>
+              </div>
+            </div>
+
             {/* Referral Link */}
             {referralLink && (
               <div>
@@ -1029,7 +1230,7 @@ export const Profile = () => {
                         </div>
                         <div>
                           <p className="text-[30px] font-black text-cyan-200 leading-none tracking-tight">
-                            {balance}{' '}
+                            {paysStats.totalRevenue ?? 0}{' '}
                             <span className="text-[16px] text-white/30">◈</span>
                           </p>
                           <p className="text-[11px] text-white/35 font-medium mt-1.5">

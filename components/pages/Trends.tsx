@@ -41,14 +41,7 @@ import {
 } from '@/components/ui/dialog';
 import { AddToAlbumDialog } from '@/components/dialogs/AddToAlbumsDialog';
 import { Button } from '../ui/button';
-
-// Поддержка видео в трендах: распознаём по типу медиа или расширению URL.
-const VIDEO_EXT_RE = /\.(mp4|webm|mov|m4v|ogv|m3u8)(\?|#|$)/i;
-
-const isVideoMedia = (url?: string | null, type?: string | null): boolean => {
-  if (type === 'video') return true;
-  return typeof url === 'string' && VIDEO_EXT_RE.test(url);
-};
+import { isVideoMedia } from '@/lib/media';
 
 export const Trends = () => {
   const t = useTranslations('Trends');

@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 import { TrendDetail } from '@/components/pages/Trends';
-import { usePost, type Post } from '@/hooks/usePosts';
+import { usePostOne, type Post } from '@/hooks/usePosts';
 
 const TrendDetailPage = () => {
   const params = useParams();
@@ -19,7 +19,7 @@ const TrendDetailPage = () => {
       return null;
     }
   });
-  const { data: apiPost, status } = usePost(postId);
+  const { data: apiPost, status } = usePostOne(postId);
   const post = cachedPost ?? apiPost ?? null;
 
   // Redirect only after the query has fully settled with no result
