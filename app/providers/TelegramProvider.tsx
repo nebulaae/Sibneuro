@@ -7,6 +7,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useBot } from '@/app/providers/BotProvider';
 import { getAppSource } from '@/lib/source';
 import { waitForPlatformInitData } from '@/lib/platform';
+import { setInviterId } from '@/lib/analytics';
 
 export const TelegramProvider = ({
   children,
@@ -156,6 +157,8 @@ export const TelegramProvider = ({
 
         if (refMatch) {
           localStorage.setItem('pending_referrer_id', refMatch[1]);
+          // inviter_id переживает авторизацию (pending_referrer_id чистится после login)
+          setInviterId(refMatch[1]);
         }
 
         if (postMatch) {
@@ -168,6 +171,7 @@ export const TelegramProvider = ({
       const refMatch = startParam.match(/^(?:ref-)?(\d+)$/);
       if (refMatch) {
         localStorage.setItem('pending_referrer_id', refMatch[1]);
+        setInviterId(refMatch[1]);
       }
     };
 

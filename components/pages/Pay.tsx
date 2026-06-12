@@ -59,7 +59,7 @@ export const Pay = () => {
   const [timeLeft, setTimeLeft] = useState<string>('');
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const tokens = userData?.user?.tokens ?? 0;
+  const tokens = Number(userData?.user?.tokens ?? 0);
   const activePromo = packagesData?.promo as PromoData | null;
 
   // Countdown for active promo

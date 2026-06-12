@@ -1,6 +1,21 @@
 import api from '@/lib/api';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { queryKeys } from '@/lib/queryKeys';
+import { useAuth } from '@/hooks/useAuth';
+
+/** Надёжно достаём user_id: контекст авторизации → localStorage. */
+function resolveUserId(authUserId?: number | null): number | null {
+  if (authUserId && authUserId > 0) return authUserId;
+  if (typeof window === 'undefined') return null;
+  try {
+    const stored = localStorage.getItem('auth_user_id');
+    if (stored) {
+      const parsed = parseInt(stored, 10);
+      if (!isNaN(parsed) && parsed > 0) return parsed;
+    }
+  } catch {}
+  return null;
+}
 
 export interface PlanDescription {
   en?: string;
@@ -49,8 +64,14 @@ export interface CreatePaymentResponse {
 
 // GET /api/packages
 export const usePackages = () => {
+  const { user } = useAuth();
+  const userId = resolveUserId(user?.id);
+
   return useQuery<PackagesResponse>({
-    queryKey: queryKeys.packages,
+    // user_id в ключе — рефетч когда авторизация подтянулась
+    queryKey: [...queryKeys.packages, userId],
+    // Не дёргаем packages пока неизвестен user_id (иначе запрос уходит без него)
+    enabled: !!userId,
     queryFn: async (): Promise<PackagesResponse> => {
       const token =
         typeof window !== 'undefined'
@@ -58,7 +79,7 @@ export const usePackages = () => {
           : null;
 
       const { data } = await api.get('/api/packages', {
-        params: { auth_token: token },
+        params: { auth_token: token, user_id: userId },
       });
 
       return data;

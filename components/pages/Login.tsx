@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import { useHaptic } from '@/hooks/useHaptic';
 import { cn } from '@/lib/utils';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { getAppSource } from '@/lib/source';
 import { waitForPlatformInitData } from '@/lib/platform';
 import Image from 'next/image';
@@ -131,6 +131,7 @@ export const Login = () => {
   const { bot } = useBot();
   const haptic = useHaptic();
   const t = useTranslations('Login');
+  const locale = useLocale();
 
   const [source, setSource] = useState<string | null>(null);
   const [autoLogging, setAutoLogging] = useState(false);
@@ -218,12 +219,14 @@ export const Login = () => {
       return;
     }
 
-    // Передаем полную конфигурацию принудительно во избежание потери контекста single-page-app
+    // Новая библиотека telegram-login.js сама управляет popup/redirect_uri через origin страницы.
+    // Передаём ТОЛЬКО документированные опции (client_id, request_access, lang).
+    // Лишний redirect_uri ломал post_message-флоу → ошибка "redirect_uri required".
     (window as any).Telegram.Login.auth(
       {
         client_id: Number(bot?.bot_id),
         request_access: ['write', 'phone'],
-        redirect_uri: window.location.origin + window.location.pathname,
+        lang: locale,
       },
       async (result: any) => {
         if (!result) {

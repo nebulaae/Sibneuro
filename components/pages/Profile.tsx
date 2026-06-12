@@ -360,7 +360,8 @@ export const Profile = () => {
   const { data: trackingPaymentsStatsData } =
     useTrackingPaymentsStats(partnershipPeriod);
 
-  const tokens = userData?.user?.tokens ?? 0;
+  const tokens = Number(userData?.user?.tokens ?? 0);
+  const balance = Number(userData?.user?.balance ?? 0);
   const isPremium = userData?.user?.premium ?? false;
   const premiumEnd = userData?.user?.premium_end;
   const requests = reqData?.pages.flatMap((p) => p) ?? [];
@@ -1028,7 +1029,7 @@ export const Profile = () => {
                         </div>
                         <div>
                           <p className="text-[30px] font-black text-cyan-200 leading-none tracking-tight">
-                            {paysStats.totalRevenue ?? 0}{' '}
+                            {balance}{' '}
                             <span className="text-[16px] text-white/30">◈</span>
                           </p>
                           <p className="text-[11px] text-white/35 font-medium mt-1.5">

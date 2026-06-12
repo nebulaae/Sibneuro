@@ -42,6 +42,14 @@ import {
 import { AddToAlbumDialog } from '@/components/dialogs/AddToAlbumsDialog';
 import { Button } from '../ui/button';
 
+// Поддержка видео в трендах: распознаём по типу медиа или расширению URL.
+const VIDEO_EXT_RE = /\.(mp4|webm|mov|m4v|ogv|m3u8)(\?|#|$)/i;
+
+const isVideoMedia = (url?: string | null, type?: string | null): boolean => {
+  if (type === 'video') return true;
+  return typeof url === 'string' && VIDEO_EXT_RE.test(url);
+};
+
 export const Trends = () => {
   const t = useTranslations('Trends');
   const router = useRouter();
@@ -201,10 +209,8 @@ const TrendCard = memo(({ post }: { post: Post }) => {
 
   const result = post.result as any;
   const media = result?.media?.[0] || result;
-  const isVideo =
-    media?.type === 'video' ||
-    (typeof media?.input === 'string' && media.input.includes('.mp4'));
   const mediaUrl = media?.url || media?.input || result?.url;
+  const isVideo = isVideoMedia(mediaUrl, media?.type);
   const trendName = (post as any).name || post.inputs?.text || t('trend');
 
   const isLiked = (post as any).liked ?? false;
@@ -360,7 +366,7 @@ export const TrendDetail = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [activeMediaIndex, setActiveMediaIndex] = useState<number | null>(null);
 
-  const tokens = userData?.user?.tokens ?? 0;
+  const tokens = Number(userData?.user?.tokens ?? 0);
   const model = allModels?.find(
     (m: any) => m.tech_name === post.model_tech_name
   );
@@ -461,7 +467,9 @@ export const TrendDetail = ({
     }
   };
 
-  const mediaUrl = post.result?.url || post.result?.media?.[0]?.input;
+  const resultMedia = post.result?.media?.[0];
+  const mediaUrl = resultMedia?.input || post.result?.url;
+  const mediaIsVideo = isVideoMedia(mediaUrl, resultMedia?.type);
 
   return (
     <motion.div
@@ -502,7 +510,23 @@ export const TrendDetail = ({
       <div className="flex-1 overflow-y-auto px-6 py-8 flex flex-col gap-10">
         <div className="relative aspect-3/4 rounded-[40px] overflow-hidden border border-white/10 shadow-[0_32px_64px_rgba(0,0,0,0.6)]">
           {mediaUrl ? (
-            <img src={mediaUrl} alt="" className="w-full h-full object-cover" />
+            mediaIsVideo ? (
+              <video
+                src={mediaUrl}
+                className="w-full h-full object-cover"
+                controls
+                autoPlay
+                loop
+                muted
+                playsInline
+              />
+            ) : (
+              <img
+                src={mediaUrl}
+                alt=""
+                className="w-full h-full object-cover"
+              />
+            )
           ) : (
             <div className="w-full h-full bg-zinc-900 flex items-center justify-center">
               <Sparkles className="size-16 text-white/5" />

@@ -126,7 +126,7 @@ export const Home = () => {
     useInfinitePosts({ limit: 12 });
   const posts = data?.pages.flatMap((page) => page.items) || [];
   const userId = userData?.user?.user_id ?? 0;
-  const tokens = Math.trunc(userData?.user?.tokens ?? 0);
+  const tokens = Math.trunc(Number(userData?.user?.tokens ?? 0));
   const observer = useRef<IntersectionObserver | null>(null);
 
   const lastPostRef = useCallback(
