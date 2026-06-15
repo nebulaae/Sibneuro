@@ -10,7 +10,6 @@ import {
   Loader2,
   Music,
   PenLine,
-  Play,
   Sparkles,
   Video,
   Zap,
@@ -18,6 +17,7 @@ import {
 import { useUser } from '@/hooks/useUser';
 import { usePaymentLink } from '@/hooks/useApiExtras';
 import { useInfinitePosts, useLikePost } from '@/hooks/usePosts';
+import { resolvePostMedia } from '@/lib/media';
 import { cn } from '@/lib/utils';
 import { useHaptic } from '@/hooks/useHaptic';
 
@@ -72,6 +72,180 @@ const marqueeItems = [
   'marqueeMusic',
 ] as const;
 
+type CategoryItem = (typeof categories)[number];
+
+function SoundWaves() {
+  const bars = Array.from({ length: 26 });
+  return (
+    <div className="pointer-events-none absolute inset-0 flex items-center justify-center gap-[3px] opacity-40">
+      {bars.map((_, i) => (
+        <span
+          key={i}
+          className="h-8 w-1 origin-center rounded-full bg-gradient-to-t from-rose-400 to-pink-200 animate-[soundwave_1.1s_ease-in-out_infinite]"
+          style={{ animationDelay: `${(i % 9) * 0.11}s` }}
+        />
+      ))}
+    </div>
+  );
+}
+
+function CategoryBackground({
+  catKey,
+  photos,
+  videoUrl,
+  t,
+}: {
+  catKey: CategoryItem['key'];
+  photos: string[];
+  videoUrl?: string;
+  t: ReturnType<typeof useTranslations>;
+}) {
+  if (catKey === 'video' && videoUrl) {
+    return (
+      <video
+        src={videoUrl}
+        autoPlay
+        muted
+        loop
+        playsInline
+        className="absolute inset-0 h-full w-full object-cover opacity-45"
+      />
+    );
+  }
+
+  if (catKey === 'image' && photos.length > 0) {
+    const strip = [...photos, ...photos, ...photos];
+    return (
+      <div className="pointer-events-none absolute inset-0 flex flex-col justify-center gap-1.5 opacity-50">
+        <div className="flex w-max gap-1.5 animate-[marquee_26s_linear_infinite]">
+          {strip.map((src, i) => (
+            <img
+              key={i}
+              src={src}
+              alt=""
+              className="size-14 rounded-xl object-cover"
+            />
+          ))}
+        </div>
+        <div
+          className="flex w-max gap-1.5 animate-[marquee_34s_linear_infinite]"
+          style={{ animationDirection: 'reverse' }}
+        >
+          {strip.map((src, i) => (
+            <img
+              key={i}
+              src={src}
+              alt=""
+              className="size-14 rounded-xl object-cover"
+            />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (catKey === 'text') {
+    const words = [
+      t('marqueeText'),
+      t('marqueeImage'),
+      t('marqueeVideo'),
+      t('marqueeMusic'),
+    ];
+    const strip = [...words, ...words, ...words];
+    const rows = [
+      { dur: '24s', reverse: false },
+      { dur: '32s', reverse: true },
+      { dur: '28s', reverse: false },
+    ];
+    return (
+      <div className="pointer-events-none absolute inset-0 flex flex-col justify-center gap-2 opacity-[0.16]">
+        {rows.map((row, ri) => (
+          <div
+            key={ri}
+            className="flex w-max gap-4 whitespace-nowrap"
+            style={{
+              animation: `marquee ${row.dur} linear infinite`,
+              animationDirection: row.reverse ? 'reverse' : 'normal',
+            }}
+          >
+            {strip.map((w, i) => (
+              <span
+                key={i}
+                className="text-[15px] font-black uppercase tracking-tight text-white"
+              >
+                {w}
+              </span>
+            ))}
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  if (catKey === 'music') {
+    return <SoundWaves />;
+  }
+
+  return null;
+}
+
+function CategoryCard({
+  cat,
+  photos,
+  videoUrl,
+  t,
+  onSelect,
+}: {
+  cat: CategoryItem;
+  photos: string[];
+  videoUrl?: string;
+  t: ReturnType<typeof useTranslations>;
+  onSelect: () => void;
+}) {
+  const Icon = cat.icon;
+  return (
+    <button
+      onClick={onSelect}
+      className={cn(
+        'group relative min-h-[160px] overflow-hidden rounded-[26px] border border-white/[0.10] bg-white/[0.055] p-4 text-left',
+        'shadow-[inset_0_1px_0_rgba(255,255,255,0.18)] backdrop-blur-3xl',
+        'transition-all duration-300 active:scale-[0.97]',
+        'hover:border-white/20'
+      )}
+    >
+      {/* Dynamic background per category */}
+      <CategoryBackground
+        catKey={cat.key}
+        photos={photos}
+        videoUrl={videoUrl}
+        t={t}
+      />
+      {/* Color tint */}
+      <div className={cn('absolute inset-0 bg-gradient-to-br', cat.gradient)} />
+      {/* Readability overlay */}
+      <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+      {/* Glow spot */}
+      <div
+        className="absolute -top-6 -left-6 h-28 w-28 rounded-full opacity-60 blur-2xl transition-opacity duration-500 group-hover:opacity-90"
+        style={{ background: cat.glow }}
+      />
+      <div className="relative z-10 flex h-full flex-col justify-between">
+        <div className="grid size-12 place-items-center rounded-2xl border border-white/[0.12] bg-black/30 backdrop-blur-2xl">
+          <Icon className="size-5 text-white" />
+        </div>
+        <div>
+          <p className="text-[17px] font-black tracking-tight">
+            {t(`cat.${cat.key}.title`)}
+          </p>
+          <p className="mt-1 text-[12px] leading-5 text-white/50">
+            {t(`cat.${cat.key}.subtitle`)}
+          </p>
+        </div>
+      </div>
+    </button>
+  );
+}
+
 function LikeButton({
   postId,
   botId,
@@ -125,6 +299,15 @@ export const Home = () => {
   const { data, isLoading, fetchNextPage, hasNextPage, isFetchingNextPage } =
     useInfinitePosts({ limit: 12 });
   const posts = data?.pages.flatMap((page) => page.items) || [];
+
+  // Медиа из трендов для анимированных фонов карточек-категорий.
+  const trendMedia = posts.map((p) => resolvePostMedia(p));
+  const photoUrls = trendMedia
+    .filter((m) => m.url && !m.isVideo)
+    .map((m) => m.url as string)
+    .slice(0, 10);
+  const videoUrl = trendMedia.find((m) => m.url && m.isVideo)?.url ?? undefined;
+
   const userId = userData?.user?.user_id ?? 0;
   const tokens = Math.trunc(Number(userData?.user?.tokens ?? 0));
   const observer = useRef<IntersectionObserver | null>(null);
@@ -231,50 +414,19 @@ export const Home = () => {
 
           {/* Category 2×2 grid */}
           <div className="grid grid-cols-2 sm:grid-cols-1 gap-3">
-            {categories.map((cat) => {
-              const Icon = cat.icon;
-              return (
-                <button
-                  key={cat.key}
-                  onClick={() => {
-                    haptic.selection();
-                    router.push(cat.href);
-                  }}
-                  className={cn(
-                    'group relative min-h-[160px] overflow-hidden rounded-[26px] border border-white/[0.10] bg-white/[0.055] p-4 text-left',
-                    'shadow-[inset_0_1px_0_rgba(255,255,255,0.18)] backdrop-blur-3xl',
-                    'transition-all duration-300 active:scale-[0.97]',
-                    'hover:border-white/20'
-                  )}
-                >
-                  {/* Gradient fill */}
-                  <div
-                    className={cn(
-                      'absolute inset-0 bg-gradient-to-br opacity-100',
-                      cat.gradient
-                    )}
-                  />
-                  {/* Glow spot */}
-                  <div
-                    className="absolute -top-6 -left-6 w-28 h-28 rounded-full blur-2xl opacity-60 transition-opacity duration-500 group-hover:opacity-90"
-                    style={{ background: cat.glow }}
-                  />
-                  <div className="relative z-10 flex h-full flex-col justify-between">
-                    <div className="grid size-12 place-items-center rounded-2xl border border-white/[0.12] bg-black/25 backdrop-blur-2xl">
-                      <Icon className="size-5 text-white" />
-                    </div>
-                    <div>
-                      <p className="text-[17px] font-black tracking-tight">
-                        {t(`cat.${cat.key}.title`)}
-                      </p>
-                      <p className="mt-1 text-[12px] leading-5 text-white/40">
-                        {t(`cat.${cat.key}.subtitle`)}
-                      </p>
-                    </div>
-                  </div>
-                </button>
-              );
-            })}
+            {categories.map((cat) => (
+              <CategoryCard
+                key={cat.key}
+                cat={cat}
+                photos={photoUrls}
+                videoUrl={videoUrl}
+                t={t}
+                onSelect={() => {
+                  haptic.selection();
+                  router.push(cat.href);
+                }}
+              />
+            ))}
           </div>
         </section>
 
@@ -349,11 +501,10 @@ export const Home = () => {
                             <video
                               src={mediaUrl}
                               className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                              autoPlay
                               muted
                               loop
                               playsInline
-                              onMouseEnter={(e) => e.currentTarget.play()}
-                              onMouseLeave={(e) => e.currentTarget.pause()}
                             />
                           ) : (
                             <img
@@ -400,14 +551,6 @@ export const Home = () => {
                       </div>
                     </div> */}
 
-                        {/* Video play icon — top left */}
-                        {isVideo && (
-                          <div className="absolute top-4 left-4 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <div className="w-8 h-8 rounded-full bg-white/20 backdrop-blur-md border border-white/30 flex items-center justify-center">
-                              <Play className="size-4 fill-white text-white" />
-                            </div>
-                          </div>
-                        )}
                       </div>
                     </div>
                   );
@@ -437,6 +580,10 @@ export const Home = () => {
         @keyframes marquee {
           from { transform: translateX(0); }
           to { transform: translateX(-33.333%); }
+        }
+        @keyframes soundwave {
+          0%, 100% { transform: scaleY(0.3); }
+          50% { transform: scaleY(1); }
         }
         @keyframes aurora1 {
           0%, 100% { transform: translate(0, 0) scale(1); }

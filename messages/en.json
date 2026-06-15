@@ -489,7 +489,19 @@
     "webBrowserLinkDesc": "Opens the trend detail page",
     "linkCopied": "Link copied",
     "share": "Share with this trend",
-    "addToAlbum": "Add to album"
+    "addToAlbum": "Add to album",
+    "linkMedia": "Paste link",
+    "linkMediaTitle": "Media link",
+    "linkMediaPlaceholder": "Paste a link to your media file",
+    "linkMediaApply": "Apply",
+    "linkMediaInvalid": "Enter a valid link",
+    "linkMediaInstruction": "To get a link to your media:",
+    "linkStep1": "Open the bot",
+    "linkStep2": "Send the /start command",
+    "linkStep3": "Choose “Upload media” in the menu",
+    "linkStep4": "Send your media — the bot will reply with a link",
+    "linkStep5": "Copy the link and paste it into the field above",
+    "uploadErrorLink": "Failed to upload the file. Try pasting a link via the bot."
   },
   "Publish": {
     "title": "Publish to Trends",

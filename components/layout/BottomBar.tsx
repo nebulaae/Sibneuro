@@ -8,7 +8,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslations } from 'next-intl';
 import { useHaptic } from '@/hooks/useHaptic';
 
-const ACCENT = 'oklch(71.5% 0.143 215.221)';
+const ACCENT = '#22d3ee';
 
 const INACTIVE_ICON = 'rgba(255,255,255,0.42)';
 const INACTIVE_LABEL = 'rgba(255,255,255,0.30)';
@@ -21,20 +21,22 @@ const glassBase: React.CSSProperties = {
   position: 'relative',
   overflow: 'hidden',
 
-  background: 'rgba(18,18,20,0.34)',
+  // More transparent → more of the page shows through the glass
+  background: 'rgba(16,16,18,0.20)',
 
-  backdropFilter: 'blur(14px) saturate(180%)',
-  WebkitBackdropFilter: 'blur(14px) saturate(180%)',
+  // Lighter blur → more "reflective"/see-through, less frosted
+  backdropFilter: 'blur(10px) saturate(150%)',
+  WebkitBackdropFilter: 'blur(10px) saturate(150%)',
 
-  border: '1px solid rgba(255,255,255,0.07)',
+  border: '1px solid rgba(255,255,255,0.06)',
 
+  // Flatter: softened top inset highlight, no bulge
   boxShadow: `
-    inset 0 1px 0 rgba(255,255,255,0.12),
-    inset 0 -1px 0 rgba(255,255,255,0.04),
+    inset 0 0.5px 0 rgba(255,255,255,0.07),
 
-    0 10px 40px rgba(0,0,0,0.42),
+    0 8px 30px rgba(0,0,0,0.36),
 
-    0 0 0 0.5px rgba(255,255,255,0.04)
+    0 0 0 0.5px rgba(255,255,255,0.03)
   `,
 
   isolation: 'isolate',
@@ -46,7 +48,7 @@ const glassBase: React.CSSProperties = {
 const LiquidGlass = ({ radius }: { radius: number | string }) => {
   return (
     <>
-      {/* MAIN REFRACTION */}
+      {/* MAIN REFRACTION — lighter blur lets more show through */}
       <span
         aria-hidden
         style={{
@@ -56,14 +58,14 @@ const LiquidGlass = ({ radius }: { radius: number | string }) => {
           pointerEvents: 'none',
           zIndex: 0,
 
-          backdropFilter: 'blur(24px)',
-          WebkitBackdropFilter: 'blur(24px)',
+          backdropFilter: 'blur(14px)',
+          WebkitBackdropFilter: 'blur(14px)',
 
-          opacity: 0.9,
+          opacity: 0.65,
         }}
       />
 
-      {/* EDGE DISTORTION */}
+      {/* EDGE DISTORTION — toned down so it reads flat, not bulging */}
       <span
         aria-hidden
         style={{
@@ -76,58 +78,51 @@ const LiquidGlass = ({ radius }: { radius: number | string }) => {
           background: `
             radial-gradient(
               circle at top left,
-              rgba(255,255,255,0.10),
-              transparent 28%
+              rgba(255,255,255,0.05),
+              transparent 26%
             ),
 
             radial-gradient(
               circle at top right,
-              rgba(255,255,255,0.08),
-              transparent 24%
-            ),
-
-            radial-gradient(
-              circle at bottom center,
               rgba(255,255,255,0.04),
-              transparent 40%
+              transparent 22%
             )
           `,
 
           mixBlendMode: 'screen',
 
-          filter: 'blur(18px)',
+          filter: 'blur(16px)',
         }}
       />
 
-      {/* CURVED REFLECTION */}
+      {/* TOP SHEEN — thin, flat highlight (no convex dome) */}
       <span
         aria-hidden
         style={{
           position: 'absolute',
 
-          left: '12%',
-          right: '12%',
-          top: 2,
+          left: '8%',
+          right: '8%',
+          top: 1,
 
-          height: '42%',
+          height: '22%',
 
           borderRadius: '999px',
 
           background: `
-            radial-gradient(
-              ellipse at top,
-              rgba(255,255,255,0.14) 0%,
-              rgba(255,255,255,0.05) 36%,
-              rgba(255,255,255,0.015) 54%,
-              transparent 72%
+            linear-gradient(
+              180deg,
+              rgba(255,255,255,0.08) 0%,
+              rgba(255,255,255,0.02) 60%,
+              transparent 100%
             )
           `,
 
-          filter: 'blur(12px)',
+          filter: 'blur(6px)',
 
           zIndex: 2,
 
-          opacity: 0.75,
+          opacity: 0.5,
 
           pointerEvents: 'none',
         }}
@@ -158,88 +153,19 @@ const LiquidGlass = ({ radius }: { radius: number | string }) => {
 const activePillStyle: React.CSSProperties = {
   position: 'absolute',
   inset: 3,
+
   borderRadius: 999,
 
-  background: `
-    linear-gradient(
-      180deg,
-      rgba(0, 255, 255, 0.22) 0%,
-      rgba(0, 200, 200, 0.18) 50%,
-      rgba(0, 150, 150, 0.16) 100%
-    )
-  `,
+  background: 'rgba(34, 211, 238, 0.10)',
 
-  backdropFilter: 'blur(26px) saturate(180%)',
-  WebkitBackdropFilter: 'blur(26px) saturate(180%)',
 
-  border: '1px solid rgba(180, 255, 255, 0.10)',
-
-  boxShadow: `
-    inset 0 1px 0 rgba(255,255,255,0.10),
-    inset 0 -10px 18px rgba(0, 120, 120, 0.18)
-  `,
+  backdropFilter: 'blur(12px) saturate(160%)',
 
   overflow: 'hidden',
 };
 
 const ActiveLiquidEffects = () => (
   <>
-    {/* REFRACTION */}
-    <span
-      style={{
-        position: 'absolute',
-        inset: -10,
-
-        backdropFilter: 'blur(18px)',
-        WebkitBackdropFilter: 'blur(18px)',
-
-        opacity: 0.9,
-      }}
-    />
-
-    {/* INTERNAL REFLECTION */}
-    <span
-      style={{
-        position: 'absolute',
-
-        left: '10%',
-        right: '10%',
-        top: 2,
-
-        height: '42%',
-
-        borderRadius: '999px',
-
-        background: `
-          radial-gradient(
-            ellipse at top,
-            rgba(255,255,255,0.24) 0%,
-            rgba(255,255,255,0.10) 35%,
-            transparent 70%
-          )
-        `,
-
-        filter: 'blur(10px)',
-      }}
-    />
-
-    {/* BLUE EDGE GLOW */}
-    <span
-      style={{
-        position: 'absolute',
-        inset: 0,
-
-        borderRadius: 999,
-
-        boxShadow: `
-          inset 0 0 0 1px rgba(180,220,255,0.12),
-
-          0 0 18px rgba(0,122,255,0.26),
-
-          0 0 38px rgba(0,122,255,0.18)
-        `,
-      }}
-    />
   </>
 );
 
@@ -282,7 +208,7 @@ export const BottomBar = () => {
 
   return (
     <nav className="fixed bottom-3 left-0 right-0 z-50 flex justify-center px-3 md:hidden">
-      <div className="flex w-full max-w-sm items-center gap-2">
+      <div className="flex w-full max-w-sm items-center gap-1">
         {/* HOME */}
         <Link
           href="/"
@@ -328,14 +254,18 @@ export const BottomBar = () => {
           </AnimatePresence>
 
           <motion.span
-            animate={{
-              scale: isActive('/') ? 1 : 0.92,
-            }}
-            transition={{
-              type: 'spring',
-              stiffness: 400,
-              damping: 28,
-            }}
+            animate={
+              isActive('/') ? { scale: [0.9, 1.18, 1] } : { scale: 0.92 }
+            }
+            transition={
+              isActive('/')
+                ? {
+                  duration: 0.42,
+                  times: [0, 0.55, 1],
+                  ease: [0.34, 1.56, 0.64, 1],
+                }
+                : { type: 'spring', stiffness: 400, damping: 28 }
+            }
             style={{
               position: 'relative',
               zIndex: 10,
@@ -343,10 +273,10 @@ export const BottomBar = () => {
             }}
           >
             <Home
-              size={20}
+              size={21}
               color={isActive('/') ? ACCENT : INACTIVE_ICON}
-              fill={isActive('/') ? ACCENT : INACTIVE_ICON}
-              strokeWidth={0}
+              fill="none"
+              strokeWidth={2}
             />
           </motion.span>
 
@@ -432,14 +362,18 @@ export const BottomBar = () => {
                 </AnimatePresence>
 
                 <motion.span
-                  animate={{
-                    scale: active ? 1 : 0.9,
-                  }}
-                  transition={{
-                    type: 'spring',
-                    stiffness: 420,
-                    damping: 28,
-                  }}
+                  animate={
+                    active ? { scale: [0.9, 1.18, 1] } : { scale: 0.9 }
+                  }
+                  transition={
+                    active
+                      ? {
+                        duration: 0.42,
+                        times: [0, 0.55, 1],
+                        ease: [0.34, 1.56, 0.64, 1],
+                      }
+                      : { type: 'spring', stiffness: 420, damping: 28 }
+                  }
                   style={{
                     position: 'relative',
                     zIndex: 10,
@@ -447,10 +381,10 @@ export const BottomBar = () => {
                   }}
                 >
                   <Icon
-                    size={isCreate ? 21 : 19}
+                    size={isCreate ? 22 : 20}
                     color={active ? ACCENT : INACTIVE_ICON}
-                    fill={active ? ACCENT : INACTIVE_ICON}
-                    strokeWidth={0}
+                    fill="none"
+                    strokeWidth={2}
                   />
                 </motion.span>
 
@@ -522,14 +456,20 @@ export const BottomBar = () => {
           </AnimatePresence>
 
           <motion.span
-            animate={{
-              scale: isActive('/profile') ? 1 : 0.92,
-            }}
-            transition={{
-              type: 'spring',
-              stiffness: 400,
-              damping: 28,
-            }}
+            animate={
+              isActive('/profile')
+                ? { scale: [0.9, 1.18, 1] }
+                : { scale: 0.92 }
+            }
+            transition={
+              isActive('/profile')
+                ? {
+                  duration: 0.42,
+                  times: [0, 0.55, 1],
+                  ease: [0.34, 1.56, 0.64, 1],
+                }
+                : { type: 'spring', stiffness: 400, damping: 28 }
+            }
             style={{
               position: 'relative',
               zIndex: 10,
@@ -537,10 +477,10 @@ export const BottomBar = () => {
             }}
           >
             <UserRound
-              size={20}
+              size={21}
               color={isActive('/profile') ? ACCENT : INACTIVE_ICON}
-              fill={isActive('/profile') ? ACCENT : INACTIVE_ICON}
-              strokeWidth={0}
+              fill="none"
+              strokeWidth={2}
             />
           </motion.span>
 

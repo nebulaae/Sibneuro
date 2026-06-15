@@ -10,7 +10,6 @@ import {
   Sparkles,
   AlertCircle,
   Loader2,
-  Play,
   Lock,
   Camera,
   CheckCircle2,
@@ -22,6 +21,7 @@ import {
   Globe,
   Heart,
   FolderPlus,
+  Link2,
 } from 'lucide-react';
 import { useHaptic } from '@/hooks/useHaptic';
 import { cn } from '@/lib/utils';
@@ -41,6 +41,7 @@ import {
 } from '@/components/ui/dialog';
 import { AddToAlbumDialog } from '@/components/dialogs/AddToAlbumsDialog';
 import { Button } from '../ui/button';
+import { Input } from '../ui/input';
 import { isVideoMedia } from '@/lib/media';
 
 export const Trends = () => {
@@ -222,11 +223,10 @@ const TrendCard = memo(({ post }: { post: Post }) => {
             <video
               src={mediaUrl}
               className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+              autoPlay
               muted
               loop
               playsInline
-              onMouseEnter={(e) => e.currentTarget.play()}
-              onMouseLeave={(e) => e.currentTarget.pause()}
             />
           ) : (
             <img
@@ -251,14 +251,6 @@ const TrendCard = memo(({ post }: { post: Post }) => {
             <span className="text-[10px] text-cyan-400">◈</span>
           </div>
         </div>
-
-        {isVideo && (
-          <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
-            <div className="w-8 h-8 rounded-full bg-white/20 backdrop-blur-md border border-white/30 flex items-center justify-center">
-              <Play className="size-4 fill-white text-white" />
-            </div>
-          </div>
-        )}
 
         <motion.button
           whileTap={{ scale: 0.82 }}
@@ -349,6 +341,8 @@ export const TrendDetail = ({
     userData?.user?.user_id ?? (userData?.user as any)?.id ?? authUser?.id;
 
   const [isShareOpen, setIsShareOpen] = useState(false);
+  const [isLinkOpen, setIsLinkOpen] = useState(false);
+  const [linkValue, setLinkValue] = useState('');
   const [albumDialogOpen, setAlbumDialogOpen] = useState(false);
   const [fileInputKey, setFileInputKey] = useState(0);
 
@@ -371,6 +365,36 @@ export const TrendDetail = ({
 
   const mediaSlots = post.inputs?.media || [];
 
+  // Индексы слотов, в которые пользователь может загрузить своё медиа.
+  const editableIndexes = mediaSlots
+    .map((slot, i) => [slot, i] as const)
+    .filter(([slot]) => Boolean(slot.input?.reference?.replace))
+    .map(([, i]) => i);
+
+  const botLink = bot?.bot_username
+    ? `https://t.me/${bot.bot_username}`
+    : undefined;
+
+  // Применяем вставленную ссылку как медиа-вложение для генерации.
+  const applyLink = () => {
+    const url = linkValue.trim();
+    if (!url) {
+      toast.error(t('linkMediaInvalid'));
+      return;
+    }
+    const target =
+      activeMediaIndex ??
+      editableIndexes.find((i) => !userMedia[i]) ??
+      editableIndexes[0] ??
+      0;
+    setUserMedia((prev) => ({ ...prev, [target]: { url } }));
+    setLinkValue('');
+    setActiveMediaIndex(null);
+    setIsLinkOpen(false);
+    haptic.success();
+    toast.success(t('done'));
+  };
+
   const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     const indexSnapshot = activeMediaIndex;
@@ -391,7 +415,15 @@ export const TrendDetail = ({
       }));
       toast.success(t('done'));
     } catch {
-      toast.error(t('error'));
+      toast.error(t('uploadErrorLink'), {
+        action: {
+          label: t('linkMedia'),
+          onClick: () => {
+            setActiveMediaIndex(indexSnapshot);
+            setIsLinkOpen(true);
+          },
+        },
+      });
     } finally {
       // Чистим стейты строго в самом конце
       setActiveMediaIndex(null);
@@ -507,7 +539,6 @@ export const TrendDetail = ({
               <video
                 src={mediaUrl}
                 className="w-full h-full object-cover"
-                controls
                 autoPlay
                 loop
                 muted
@@ -563,9 +594,22 @@ export const TrendDetail = ({
         <div className="flex flex-col gap-8">
           {mediaSlots.some((s) => s.input?.reference?.replace) && (
             <div className="flex flex-col gap-4">
-              <h3 className="text-[13px] font-black uppercase tracking-[0.15em] text-white/30 px-2">
-                {t('uploadMedia')}
-              </h3>
+              <div className="flex items-center justify-between gap-3 px-2">
+                <h3 className="text-[13px] font-black uppercase tracking-[0.15em] text-white/30">
+                  {t('uploadMedia')}
+                </h3>
+                <button
+                  onClick={() => {
+                    haptic.light();
+                    setActiveMediaIndex(null);
+                    setIsLinkOpen(true);
+                  }}
+                  className="flex items-center gap-1.5 rounded-full bg-cyan-400/10 border border-cyan-400/25 px-3 py-1.5 text-[12px] font-black text-cyan-300 transition-all active:scale-90 hover:bg-cyan-400/20"
+                >
+                  <Link2 size={14} />
+                  {t('linkMedia')}
+                </button>
+              </div>
               <div className="grid grid-cols-2 gap-4">
                 {mediaSlots.map((slot, index) => {
                   const { hide, replace } = slot.input?.reference || {};
@@ -759,6 +803,85 @@ export const TrendDetail = ({
                 <Copy size={16} />
               </div>
             </button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isLinkOpen} onOpenChange={setIsLinkOpen}>
+        <DialogContent className="bg-zinc-950/95 border-white/10 text-white max-w-md p-0 rounded-[32px] backdrop-blur-2xl shadow-2xl max-h-[85vh] flex flex-col overflow-hidden">
+          <DialogHeader className="p-6 pb-3 shrink-0">
+            <DialogTitle className="text-[20px] font-black tracking-tight text-white">
+              {t('linkMediaTitle')}
+            </DialogTitle>
+            <DialogDescription className="hidden" />
+          </DialogHeader>
+
+          <div className="flex flex-col gap-5 overflow-y-auto px-6 pb-6">
+            {/* Поле ввода ссылки — на самом верху */}
+            <div className="flex flex-col gap-3">
+              <Input
+                value={linkValue}
+                onChange={(e) => setLinkValue(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') applyLink();
+                }}
+                placeholder={t('linkMediaPlaceholder')}
+                inputMode="url"
+                autoComplete="off"
+                className="h-12 rounded-2xl border-white/10 bg-white/5 px-4 text-[15px] text-white placeholder:text-white/30"
+              />
+              <button
+                onClick={applyLink}
+                className="h-12 w-full rounded-2xl bg-cyan-400 font-black text-[15px] text-white shadow-[0_0_24px_rgba(0,122,255,0.35)] transition-all active:scale-[0.98]"
+              >
+                {t('linkMediaApply')}
+              </button>
+            </div>
+
+            {/* Инструкция */}
+            <div className="flex flex-col gap-3">
+              <p className="text-[13px] font-bold text-white/50">
+                {t('linkMediaInstruction')}
+              </p>
+              <ol className="flex flex-col gap-2.5">
+                {[
+                  botLink ? (
+                    <a
+                      href={botLink}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="font-bold text-cyan-400 underline underline-offset-2"
+                    >
+                      {t('linkStep1')}
+                    </a>
+                  ) : (
+                    t('linkStep1')
+                  ),
+                  t('linkStep2'),
+                  t('linkStep3'),
+                  t('linkStep4'),
+                  t('linkStep5'),
+                ].map((step, i) => (
+                  <li key={i} className="flex items-start gap-3">
+                    <span className="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full bg-cyan-400/15 text-[11px] font-black text-cyan-300">
+                      {i + 1}
+                    </span>
+                    <span className="text-[14px] leading-tight text-white/80">
+                      {step}
+                    </span>
+                  </li>
+                ))}
+              </ol>
+            </div>
+
+            {/* Картинка-подсказка */}
+            <div className="overflow-hidden rounded-2xl border border-white/10">
+              <img
+                src="/instruction-image.jpg"
+                alt=""
+                className="h-full w-full object-cover"
+              />
+            </div>
           </div>
         </DialogContent>
       </Dialog>
