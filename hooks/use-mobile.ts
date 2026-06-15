@@ -1,7 +1,7 @@
 import * as React from 'react';
 
 const MOBILE_BREAKPOINT = 768;
-// hook for detecting the mobile device
+// hook for detecting
 export function useIsMobile() {
   const [isMobile, setIsMobile] = React.useState<boolean | undefined>(
     undefined
