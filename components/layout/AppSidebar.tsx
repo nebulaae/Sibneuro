@@ -13,7 +13,13 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
 } from '@/components/ui/sidebar';
-import { Brain, Home, MessageCircle, Sparkle, UserRound } from 'lucide-react';
+import {
+  TrendingUp,
+  Home,
+  MessageCircle,
+  Sparkle,
+  UserRound,
+} from 'lucide-react';
 import { useHaptic } from '@/hooks/useHaptic';
 import { cn } from '@/lib/utils';
 import { useTranslations } from 'next-intl';
@@ -35,7 +41,7 @@ export function AppSidebar() {
 
   const items = [
     { id: 1, href: '/', label: t('home'), icon: Home },
-    { id: 2, href: '/models', label: t('models'), icon: Brain },
+    { id: 2, href: '/trends', label: t('trends'), icon: TrendingUp },
     { id: 3, href: '/generate', label: t('create'), icon: Sparkle },
     { id: 4, href: '/chats', label: t('chats'), icon: MessageCircle },
     { id: 5, href: '/profile', label: t('profile'), icon: UserRound },

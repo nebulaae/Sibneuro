@@ -8,6 +8,8 @@ import { useBot } from '@/app/providers/BotProvider';
 import { getAppSource } from '@/lib/source';
 import { waitForPlatformInitData } from '@/lib/platform';
 import { setInviterId } from '@/lib/analytics';
+import { setAuthInProgress, clearAuthInProgress } from '@/lib/authState';
+import { track } from '@/lib/logger';
 
 export const TelegramProvider = ({
   children,
@@ -28,6 +30,9 @@ export const TelegramProvider = ({
     async (botId: number) => {
       if (attempted.current) return;
       attempted.current = true;
+      setAuthInProgress();
+      const authStart = Date.now();
+      track.auth.attempt('telegram', retryCount.current + 1);
 
       // Expand/ready сразу
       if (!expanded.current) {
@@ -42,9 +47,7 @@ export const TelegramProvider = ({
       const initData = await waitForPlatformInitData(8000);
 
       if (!initData) {
-        console.warn(
-          `[TelegramProvider] initData not available (attempt ${retryCount.current + 1}/${MAX_RETRIES})`
-        );
+        track.auth.noInitData('telegram', retryCount.current + 1);
         attempted.current = false;
         retryCount.current++;
 
@@ -53,6 +56,9 @@ export const TelegramProvider = ({
           retryTimeout.current = setTimeout(() => {
             doAuth(botId);
           }, 1000);
+        } else {
+          // Исчерпали попытки — снимаем флаг, AuthGuard может вести на /login.
+          clearAuthInProgress();
         }
         return;
       }
@@ -91,9 +97,14 @@ export const TelegramProvider = ({
           localStorage.setItem('auth_user_id', String(data.user.id));
         }
         localStorage.removeItem('pending_referrer_id');
+        clearAuthInProgress();
+        track.auth.ok('telegram', Date.now() - authStart);
         login(data.user);
       } catch (err) {
-        console.error('[TelegramProvider] auth/tma error:', err);
+        track.auth.error(
+          'telegram',
+          err instanceof Error ? err.message : 'auth/tma failed'
+        );
         attempted.current = false;
         retryCount.current++;
 
@@ -101,6 +112,8 @@ export const TelegramProvider = ({
           retryTimeout.current = setTimeout(() => {
             doAuth(botId);
           }, 1500);
+        } else {
+          clearAuthInProgress();
         }
       }
     },

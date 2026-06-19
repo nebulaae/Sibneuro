@@ -1,18 +1,31 @@
 import api from '@/lib/api';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '@/lib/queryKeys';
+import { sanitizeMediaUrl } from '@/lib/utils';
+import { track, newRequestId } from '@/lib/logger';
 
 // POST /api/upload
 export const useUpload = () => {
   return useMutation({
     mutationFn: async (file: File) => {
-      const formData = new FormData();
-      formData.append('file', file);
-      const { data } = await api.post('/api/upload', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
-      if (!data.success) throw new Error(data.error || 'Upload failed');
-      return data as { success: true; url: string; type: string };
+      const rid = newRequestId();
+      const start = Date.now();
+      track.upload.start(rid, file.name, file.size, file.type);
+      try {
+        const formData = new FormData();
+        formData.append('file', file);
+        const { data } = await api.post('/api/upload', formData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        });
+        if (!data.success) throw new Error(data.error || 'Upload failed');
+        // Чистим URL, который вернул бекенд, на случай хвостовых пробелов/переносов.
+        const url = sanitizeMediaUrl(data.url) || data.url;
+        track.upload.ok(rid, Date.now() - start, url);
+        return { ...data, url } as { success: true; url: string; type: string };
+      } catch (e: any) {
+        track.upload.error(rid, Date.now() - start, e?.message || 'upload failed');
+        throw e;
+      }
     },
   });
 };

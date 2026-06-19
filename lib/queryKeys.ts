@@ -17,4 +17,6 @@ export const queryKeys = {
   postLikes: (postId: number) => ['post-likes', postId] as const,
   apiTokens: ['api-tokens'] as const,
   packages: ['packages'] as const,
+  withdrawalMinAmount: ['withdrawal', 'min-amount'] as const,
+  withdrawals: (status?: string) => ['withdrawal', 'list', status ?? 'all'] as const,
 };

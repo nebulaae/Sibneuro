@@ -7,6 +7,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { useBot } from '@/app/providers/BotProvider';
 import { getAppSource } from '@/lib/source';
 import { waitForPlatformInitData } from '@/lib/platform';
+import { setAuthInProgress, clearAuthInProgress } from '@/lib/authState';
+import { track } from '@/lib/logger';
 
 export const MaxProvider = ({ children }: { children: React.ReactNode }) => {
   const { user, login } = useAuth();
@@ -22,6 +24,9 @@ export const MaxProvider = ({ children }: { children: React.ReactNode }) => {
     async (botId: number) => {
       if (attempted.current) return;
       attempted.current = true;
+      setAuthInProgress();
+      const authStart = Date.now();
+      track.auth.attempt('max', retryCount.current + 1);
 
       // Expand/ready сразу
       if (!expanded.current) {
@@ -37,9 +42,7 @@ export const MaxProvider = ({ children }: { children: React.ReactNode }) => {
       const initData = await waitForPlatformInitData(8000);
 
       if (!initData) {
-        console.warn(
-          `[MaxProvider] initData not available (attempt ${retryCount.current + 1}/${MAX_RETRIES})`
-        );
+        track.auth.noInitData('max', retryCount.current + 1);
         attempted.current = false;
         retryCount.current++;
 
@@ -47,6 +50,8 @@ export const MaxProvider = ({ children }: { children: React.ReactNode }) => {
           retryTimeout.current = setTimeout(() => {
             doAuth(botId);
           }, 1000);
+        } else {
+          clearAuthInProgress();
         }
         return;
       }
@@ -61,9 +66,14 @@ export const MaxProvider = ({ children }: { children: React.ReactNode }) => {
         if (data.user?.id) {
           localStorage.setItem('auth_user_id', String(data.user.id));
         }
+        clearAuthInProgress();
+        track.auth.ok('max', Date.now() - authStart);
         login(data.user);
       } catch (err) {
-        console.error('[MaxProvider] auth/tma error:', err);
+        track.auth.error(
+          'max',
+          err instanceof Error ? err.message : 'auth/tma failed'
+        );
         attempted.current = false;
         retryCount.current++;
 
@@ -71,6 +81,8 @@ export const MaxProvider = ({ children }: { children: React.ReactNode }) => {
           retryTimeout.current = setTimeout(() => {
             doAuth(botId);
           }, 1500);
+        } else {
+          clearAuthInProgress();
         }
       }
     },

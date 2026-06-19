@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { getAppSource } from '@/lib/source';
 import { getPlatformInitData } from './platform';
+import { log, newRequestId, getSessionId } from '@/lib/logger';
 
 const AUTH_FREE_PATHS = [
   '/api/auth/create/email',
@@ -123,13 +124,42 @@ api.interceptors.request.use((config) => {
     delete config.params.skipUserId;
   }
 
+  // Трейсинг: request id + session id в заголовки и в метаданные для логов.
+  const rid = newRequestId();
+  config.headers['X-Request-Id'] = rid;
+  config.headers['X-Session-Id'] = getSessionId();
+  (config as any).__meta = { rid, start: Date.now() };
+
   return config;
 });
 
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    const meta = (response.config as any)?.__meta;
+    if (meta) {
+      log.debug('api', 'ok', {
+        rid: meta.rid,
+        url: response.config?.url,
+        status: response.status,
+        ms: Date.now() - meta.start,
+      });
+    }
+    return response;
+  },
   (error) => {
     const url = error.config?.url || '';
+    const meta = (error.config as any)?.__meta;
+    log.error('api', 'error', {
+      rid: meta?.rid,
+      url,
+      status: error.response?.status ?? null,
+      ms: meta ? Date.now() - meta.start : null,
+      code: error.code,
+      message:
+        error.response?.data?.error ||
+        error.response?.data?.message ||
+        error.message,
+    });
 
     if (error.response?.status === 401 && !isAuthFreePath(url)) {
       localStorage.removeItem('auth_token');

@@ -12,11 +12,9 @@ import { PlatformScripts } from './providers/PlatformScripts';
 import './globals.css';
 import { ThemeProviders } from './providers/ThemeProviders';
 import { TelegramLoginScript } from './providers/TelegramLoginScript';
+import { defaultMetadata, organizationJsonLd } from '@/lib/seo';
 
-export const metadata: Metadata = {
-  title: 'Sibneuro',
-  description: 'AI Platform',
-};
+export const metadata: Metadata = defaultMetadata;
 
 export default async function RootLayout({
   children,
@@ -40,6 +38,13 @@ export default async function RootLayout({
         <meta
           name="viewport"
           content="width=device-width, initial-scale=1, viewport-fit=cover"
+        />
+        {/* Structured data: организация, сайт, приложение */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify(organizationJsonLd()),
+          }}
         />
       </head>
       <body style={{ fontFamily: 'var(--font-sf)', margin: 0 }}>

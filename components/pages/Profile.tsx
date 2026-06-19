@@ -60,6 +60,7 @@ import { useHaptic } from '@/hooks/useHaptic';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import { AlbumsTab } from '../shared/profile/AlbumsTab';
+import { WithdrawalDialog } from '@/components/dialogs/WithdrawalDialog';
 
 type Tab = 'profile' | 'account' | 'partnership';
 type PartnershipSubTab = 'overview' | 'finance' | 'audience' | 'lists';
@@ -578,9 +579,10 @@ export const Profile = () => {
     router.push(`/chats/${dialogueId}`);
   };
 
+  const [withdrawOpen, setWithdrawOpen] = useState(false);
   const handleWithdraw = () => {
     haptic.medium();
-    toast.info(t('withdrawComingSoon'));
+    setWithdrawOpen(true);
   };
 
   const TABS: { key: Tab; label: string }[] = [
@@ -1072,7 +1074,38 @@ export const Profile = () => {
                   {t('withdrawFunds')}
                 </button>
               </div>
+
+              {/* Заработано / выведено (новые поля из /user) */}
+              <div className="relative mt-4 grid grid-cols-2 gap-2">
+                <div className="rounded-2xl bg-white/5 border border-white/10 p-3">
+                  <p className="text-[10px] font-bold uppercase tracking-wide text-white/35">
+                    {t('totalEarned')}
+                  </p>
+                  <p className="mt-1 text-[18px] font-black text-cyan-100">
+                    {Number(
+                      userData?.user?.total_rewards ?? 0
+                    ).toLocaleString('ru-RU')}{' '}
+                    <span className="text-[12px] text-white/40">₽</span>
+                  </p>
+                </div>
+                <div className="rounded-2xl bg-white/5 border border-white/10 p-3">
+                  <p className="text-[10px] font-bold uppercase tracking-wide text-white/35">
+                    {t('totalWithdrawn')}
+                  </p>
+                  <p className="mt-1 text-[18px] font-black text-white">
+                    {Number(
+                      userData?.user?.total_withdrawals ?? 0
+                    ).toLocaleString('ru-RU')}{' '}
+                    <span className="text-[12px] text-white/40">₽</span>
+                  </p>
+                </div>
+              </div>
             </div>
+
+            <WithdrawalDialog
+              open={withdrawOpen}
+              onClose={() => setWithdrawOpen(false)}
+            />
 
             {/* Referral Link */}
             {referralLink && (

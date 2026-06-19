@@ -293,7 +293,18 @@
       }
     },
     "catText": "Text",
-    "model": "Model"
+    "model": "Model",
+    "segChat": "Chat",
+    "segImage": "Image",
+    "segVideo": "Video",
+    "segAudio": "Audio",
+    "segRoles": "Roles",
+    "searchPlaceholder": "Search models and roles",
+    "noResults": "Nothing found",
+    "favoritesOnly": "Favorites",
+    "recommended": "Great for",
+    "supports": "Accepts",
+    "roleCta": "Start chat"
   },
   "Profile": {
     "title": "Profile",
@@ -426,7 +437,9 @@
     "albumLinkCopied": "Public link copied",
     "withdrawFunds": "Withdraw Funds",
     "partnerBalance": "Partner Balance",
-    "withdrawComingSoon": "Coming soon. Stay tuned!"
+    "withdrawComingSoon": "Coming soon. Stay tuned!",
+    "totalEarned": "Earned",
+    "totalWithdrawn": "Withdrawn"
   },
   "Referrals": {
     "title": "Referrals",
@@ -488,7 +501,7 @@
     "webBrowserLink": "Browser link",
     "webBrowserLinkDesc": "Opens the trend detail page",
     "linkCopied": "Link copied",
-    "share": "Share with this trend",
+    "share": "Share",
     "addToAlbum": "Add to album",
     "linkMedia": "Paste link",
     "linkMediaTitle": "Media link",
@@ -501,7 +514,9 @@
     "linkStep3": "Choose “Upload media” in the menu",
     "linkStep4": "Send your media — the bot will reply with a link",
     "linkStep5": "Copy the link and paste it into the field above",
-    "uploadErrorLink": "Failed to upload the file. Try pasting a link via the bot."
+    "uploadErrorLink": "Failed to upload the file. Try pasting a link via the bot.",
+    "repeat": "Repeat",
+    "underModeration": "In review"
   },
   "Publish": {
     "title": "Publish to Trends",
@@ -550,5 +565,24 @@
     "promoInvalid": "Invalid or expired promo code",
     "promoError": "Failed to apply promo code. Try again.",
     "promoDiscountActive": "{discount}% discount active"
+  },
+  "Guest": {
+    "heroTitle": "Create photos and videos with AI",
+    "heroSubtitle": "Dozens of neural networks for images, video, music and chat — in one app.",
+    "ctaRegister": "Start for free",
+    "ctaLogin": "I have an account",
+    "benefitsTitle": "Why you’ll love it",
+    "b1Title": "Fast",
+    "b1Desc": "Results in seconds, right inside Telegram",
+    "b2Title": "Many models",
+    "b2Desc": "GPT, Kling, Suno, Nano Banana and more",
+    "b3Title": "Trends",
+    "b3Desc": "Recreate popular generations in one tap",
+    "b4Title": "Free to start",
+    "b4Desc": "Starter tokens right after sign up",
+    "popularModels": "Popular models",
+    "popularRoles": "Popular roles",
+    "examples": "Examples",
+    "footnote": "Sign up takes less than a minute"
   }
 }

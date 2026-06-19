@@ -10,6 +10,9 @@ export interface User {
   // backend может вернуть число или строку ("9000052.00") — приводим через Number() на месте
   tokens: number | string;
   balance?: number | string;
+  // Реферальная экономика: всего заработано / всего выведено (для экрана выводов).
+  total_rewards?: number | string;
+  total_withdrawals?: number | string;
   source?: string;
   lang?: string;
   inviter?: number | null;

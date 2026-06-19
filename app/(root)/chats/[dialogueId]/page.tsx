@@ -47,7 +47,8 @@ import { PublishDialog } from '@/components/dialogs/PublishDialog';
 import { PromptsManagerDialog } from '@/components/dialogs/PromptsManagerDialog';
 import { toast } from 'sonner';
 import { useHaptic } from '@/hooks/useHaptic';
-import { cn, localize } from '@/lib/utils';
+import { cn, localize, sanitizeMediaUrl } from '@/lib/utils';
+import { SmartImage } from '@/components/shared/SmartImage';
 import { useTranslations } from 'next-intl';
 import ReactMarkdown from 'react-markdown';
 import remarkMath from 'remark-math';
@@ -508,8 +509,13 @@ export default function ChatPage() {
     }
   };
 
-  const handleDownload = (url: string) => {
+  const handleDownload = (rawUrl: string) => {
     haptic.selection();
+    const url = sanitizeMediaUrl(rawUrl);
+    if (!url) {
+      toast.error(t('uploadError'));
+      return;
+    }
     const proxyUrl = `/api/download?url=${encodeURIComponent(url)}`;
     const isTelegram =
       typeof window !== 'undefined' && !!(window as any).Telegram?.WebApp;
@@ -870,13 +876,17 @@ export default function ChatPage() {
         >
           <div className="relative w-full max-w-4xl h-full flex flex-col items-center justify-center">
             {viewerSrc.type === 'image' ? (
-              <img
+              <SmartImage
                 src={viewerSrc.url}
-                className="max-w-full max-h-[80vh] object-contain rounded-2xl shadow-[0_0_50px_rgba(0,0,0,0.5)]"
+                fit="contain"
+                loading="eager"
+                maxRetries={3}
+                className="w-full max-w-3xl h-[80vh] !bg-transparent rounded-2xl shadow-[0_0_50px_rgba(0,0,0,0.5)]"
+                ctx={{ surface: 'chat-viewer' }}
               />
             ) : (
               <video
-                src={viewerSrc.url}
+                src={sanitizeMediaUrl(viewerSrc.url)}
                 controls
                 autoPlay
                 className="max-w-full max-h-[80vh] rounded-2xl"

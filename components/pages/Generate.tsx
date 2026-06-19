@@ -3,33 +3,36 @@
 import { useState, useRef, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAIModels, useModelParams } from '@/hooks/useModels';
+import { useRoles } from '@/hooks/useRoles';
 import { convertMediaToInputs, useGenerateAI } from '@/hooks/useGenerations';
 import { useUpload } from '@/hooks/useApiExtras';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { SmartImage } from '@/components/shared/SmartImage';
 import {
   Loader2,
   ChevronLeft,
   ImagePlus,
   X,
-  CheckCircle,
   AlertCircle,
-  Settings2,
-  ChevronDown,
   Sparkles,
-  ChevronRight,
   Zap,
   CheckCircle2,
-  Lock,
+  Search,
+  Star,
+  MessageSquare,
+  ImageIcon,
+  Film,
+  Music,
+  Drama,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useQuery } from '@tanstack/react-query';
 import api from '@/lib/api';
 import { useHaptic } from '@/hooks/useHaptic';
-import { cn } from '@/lib/utils';
+import { cn, localize } from '@/lib/utils';
 import { useLocale, useTranslations } from 'next-intl';
 import { getParamLabel, getParamValueLabel } from '@/lib/paramHelpers';
-
-const ACCENT_BLUE = 'oklch(71.5% 0.143 215.221)';
+import { describeModel, getModelKind, type ModelKind } from '@/lib/modelMeta';
 
 function useGenerationStatus(dialogueId: string | null, enabled: boolean) {
   return useQuery({
@@ -77,6 +80,33 @@ export const Generate = () => {
     selected?.versions?.[0]?.label;
   const { data: params } = useModelParams(selectedTech, currentVersion);
   const { data: lastMessage } = useGenerationStatus(pendingId, isWaiting);
+  const { data: roles } = useRoles();
+
+  // Сегментированный каталог: чат/фото/видео/аудио/роли + поиск + избранное.
+  const [segment, setSegment] = useState<ModelKind | 'roles'>('image');
+  const [search, setSearch] = useState('');
+  const [favOnly, setFavOnly] = useState(false);
+  const [favorites, setFavorites] = useState<string[]>([]);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('generate_favorites');
+      if (raw) setFavorites(JSON.parse(raw));
+    } catch {}
+  }, []);
+
+  const toggleFav = (id: string) => {
+    haptic.selection();
+    setFavorites((prev) => {
+      const next = prev.includes(id)
+        ? prev.filter((x) => x !== id)
+        : [...prev, id];
+      try {
+        localStorage.setItem('generate_favorites', JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+  };
 
   useEffect(() => {
     if (modelParam) setSelectedTech(modelParam);
@@ -526,89 +556,264 @@ export const Generate = () => {
     );
   }
 
+  const SEGMENTS: { key: ModelKind | 'roles'; label: string; icon: typeof Zap }[] =
+    [
+      { key: 'text', label: t('segChat'), icon: MessageSquare },
+      { key: 'image', label: t('segImage'), icon: ImageIcon },
+      { key: 'video', label: t('segVideo'), icon: Film },
+      { key: 'audio', label: t('segAudio'), icon: Music },
+      { key: 'roles', label: t('segRoles'), icon: Drama },
+    ];
+
+  const q = search.trim().toLowerCase();
+  const segModels =
+    segment === 'roles'
+      ? []
+      : models.filter((m) => getModelKind(m) === segment);
+  const visibleModels = segModels.filter((m) => {
+    if (favOnly && !favorites.includes(m.tech_name)) return false;
+    if (q && !m.model_name.toLowerCase().includes(q)) return false;
+    return true;
+  });
+  const visibleRoles = (roles || []).filter((r) => {
+    if (favOnly && !favorites.includes(`role:${r.id}`)) return false;
+    if (q && !localize(r.label, locale).toLowerCase().includes(q)) return false;
+    return true;
+  });
+
+  const showEmpty =
+    !isLoading &&
+    (segment === 'roles'
+      ? visibleRoles.length === 0
+      : visibleModels.length === 0);
+
   return (
-    <div className="flex flex-col min-h-svh pb-32">
-      <header className="sticky top-0 z-50 px-5 py-4">
-        <h1 className="text-[30px] font-black tracking-tight bg-gradient-to-r from-cyan-200 via-sky-300 to-emerald-200 bg-clip-text text-transparent leading-tight">
+    <div className="flex flex-col min-h-svh pb-32 max-w-2xl mx-auto w-full">
+      {/* Header */}
+      <header className="px-5 pt-12 pb-2">
+        <h1 className="text-[32px] font-black tracking-tight text-white leading-none mb-1.5">
           {t('title')}
         </h1>
+        <p className="text-white/35 text-[15px] font-medium">{t('subtitle')}</p>
       </header>
 
-      <div className="p-4 flex flex-col gap-10">
-        {isLoading
-          ? Array.from({ length: 4 }).map((_, i) => (
+      {/* Search */}
+      <div className="px-5 pt-4">
+        <div className="relative">
+          <Search
+            size={17}
+            className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30"
+          />
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder={t('searchPlaceholder')}
+            className="w-full h-12 pl-11 pr-4 rounded-2xl bg-zinc-900/60 border border-white/10 text-[15px] text-white placeholder:text-white/25 outline-none focus:border-cyan-500/40 transition-colors"
+          />
+        </div>
+      </div>
+
+      {/* Segmented control */}
+      <div className="px-5 pt-4 flex items-center gap-2 overflow-x-auto [&::-webkit-scrollbar]:hidden">
+        {SEGMENTS.map((s) => {
+          const Icon = s.icon;
+          const active = segment === s.key;
+          return (
+            <button
+              key={s.key}
+              onClick={() => {
+                haptic.selection();
+                setSegment(s.key);
+              }}
+              className={cn(
+                'flex items-center gap-1.5 h-10 px-4 rounded-full text-[14px] font-black whitespace-nowrap transition-all active:scale-95 border',
+                active
+                  ? 'bg-cyan-500 text-black border-cyan-400 shadow-[0_0_20px_rgba(34,211,238,0.35)]'
+                  : 'bg-white/5 text-white/45 border-white/10'
+              )}
+            >
+              <Icon size={15} />
+              {s.label}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Favorites filter */}
+      <div className="px-5 pt-3">
+        <button
+          onClick={() => {
+            haptic.selection();
+            setFavOnly((v) => !v);
+          }}
+          className={cn(
+            'inline-flex items-center gap-1.5 h-8 px-3 rounded-full text-[12px] font-bold transition-all active:scale-95 border',
+            favOnly
+              ? 'bg-amber-400/15 text-amber-300 border-amber-400/30'
+              : 'bg-white/5 text-white/40 border-white/10'
+          )}
+        >
+          <Star
+            size={13}
+            className={favOnly ? 'fill-amber-300 text-amber-300' : ''}
+          />
+          {t('favoritesOnly')}
+        </button>
+      </div>
+
+      {/* Content */}
+      <div className="px-5 pt-5">
+        {isLoading ? (
+          <div className="grid grid-cols-2 gap-3">
+            {Array.from({ length: 6 }).map((_, i) => (
               <div
                 key={i}
-                className="h-24 rounded-[32px] bg-zinc-900 animate-pulse"
+                className="aspect-[3/4] rounded-3xl bg-zinc-900 animate-pulse"
               />
-            ))
-          : ['text', 'image', 'video', 'audio'].map((cat) => {
-              const catModels = models.filter(
-                (m) => m.mainCategory === cat || m.categories?.includes(cat)
-              );
-              if (!catModels.length) return null;
+            ))}
+          </div>
+        ) : showEmpty ? (
+          <div className="flex flex-col items-center justify-center py-24 text-center gap-3">
+            <div className="w-16 h-16 rounded-3xl bg-white/5 border border-white/10 flex items-center justify-center">
+              <Search size={26} className="text-white/30" />
+            </div>
+            <p className="text-white/40 font-medium">{t('noResults')}</p>
+          </div>
+        ) : segment === 'roles' ? (
+          <div className="grid grid-cols-2 gap-3">
+            {visibleRoles.map((r) => {
+              const favId = `role:${r.id}`;
+              const isFav = favorites.includes(favId);
+              const label = localize(r.label, locale);
+              const desc = localize(r.description, locale);
               return (
-                <div key={cat} className="flex flex-col gap-4">
-                  <h2 className="text-[13px] font-black uppercase tracking-widest text-white/30 px-2 flex items-center gap-2">
-                    {cat === 'text' ? (
-                      <Sparkles size={14} />
-                    ) : cat === 'image' ? (
-                      <Zap size={14} />
-                    ) : (
-                      <Zap size={14} />
-                    )}{' '}
-                    {t(
-                      `cat${cat.charAt(0).toUpperCase() + cat.slice(1)}` as any
-                    )}
-                  </h2>
-                  <div className="flex flex-col gap-3">
-                    {catModels.map((m) => {
-                      const cost =
-                        m.versions?.find((v: any) => v.default)?.cost ??
-                        m.versions?.[0]?.cost ??
-                        1;
-                      return (
-                        <button
-                          key={m.tech_name}
-                          onClick={() => {
-                            haptic.light();
-                            setSelectedTech(m.tech_name);
-                          }}
-                          className="flex items-center gap-4 px-4 py-3 rounded-[32px] bg-zinc-900/40 border border-white/5 hover:border-white/15 transition-all group active:scale-[0.98]"
-                        >
-                          <div className="w-14 h-14 overflow-hidden transition-colors">
-                            <Avatar className="size-full">
-                              <AvatarImage src={m.avatar} />
-                              <AvatarFallback>{m.model_name[0]}</AvatarFallback>
-                            </Avatar>
-                          </div>
-                          <div className="flex-1 text-left min-w-0">
-                            <p className="text-[17px] font-bold text-white group-hover:text-cyan-400 transition-colors truncate">
-                              {m.model_name}
-                            </p>
-                            <p className="text-[12px] font-medium text-white/20 uppercase tracking-widest mt-1">
-                              {m.versions?.[0]?.label}
-                            </p>
-                          </div>
-                          <div className="flex items-center gap-3">
-                            <div className="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-[13px] font-black text-white/40">
-                              ◈ {cost}
-                            </div>
-                            <ChevronRight
-                              size={18}
-                              className="text-white/10 group-hover:text-white transition-colors"
-                            />
-                          </div>
-                        </button>
-                      );
-                    })}
+                <button
+                  key={r.id}
+                  onClick={() => {
+                    haptic.light();
+                    router.push(`/chats/new?role=${r.id}`);
+                  }}
+                  className="group relative flex flex-col text-left rounded-3xl overflow-hidden border border-white/10 bg-zinc-900/40 active:scale-[0.98] transition-all"
+                >
+                  <div className="relative aspect-square w-full">
+                    <SmartImage
+                      src={r.image}
+                      alt={label}
+                      className="absolute inset-0 w-full h-full"
+                      ctx={{ surface: 'roles', roleId: r.id }}
+                    />
+                    <FavStar
+                      active={isFav}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleFav(favId);
+                      }}
+                    />
                   </div>
-                </div>
+                  <div className="p-3 flex flex-col gap-1.5 flex-1">
+                    <p className="text-[15px] font-black text-white leading-tight truncate">
+                      {label}
+                    </p>
+                    {desc && (
+                      <p className="text-[12px] font-medium text-white/40 leading-snug line-clamp-2">
+                        {desc}
+                      </p>
+                    )}
+                    <span className="mt-auto pt-1 text-[12px] font-black text-cyan-400">
+                      {t('roleCta')} →
+                    </span>
+                  </div>
+                </button>
               );
             })}
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-3">
+            {visibleModels.map((m) => {
+              const meta = describeModel(m, locale);
+              const isFav = favorites.includes(m.tech_name);
+              return (
+                <button
+                  key={m.tech_name}
+                  onClick={() => {
+                    haptic.light();
+                    setSelectedTech(m.tech_name);
+                  }}
+                  className="group relative flex flex-col text-left rounded-3xl overflow-hidden border border-white/10 bg-zinc-900/40 hover:border-white/20 active:scale-[0.98] transition-all"
+                >
+                  <div className="relative aspect-square w-full">
+                    <SmartImage
+                      src={m.avatar}
+                      alt={m.model_name}
+                      className="absolute inset-0 w-full h-full"
+                      ctx={{ surface: 'models', tech: m.tech_name }}
+                    />
+                    <FavStar
+                      active={isFav}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleFav(m.tech_name);
+                      }}
+                    />
+                    <div className="absolute bottom-2 left-2 px-2 py-0.5 rounded-full bg-black/55 backdrop-blur border border-white/10 text-[11px] font-black text-white">
+                      ◈ {meta.cost}
+                    </div>
+                  </div>
+                  <div className="p-3 flex flex-col gap-1.5 flex-1">
+                    <p className="text-[15px] font-black text-white leading-tight truncate">
+                      {m.model_name}
+                    </p>
+                    <p className="text-[12px] font-medium text-white/40 leading-snug line-clamp-2">
+                      {meta.description}
+                    </p>
+                    {meta.inputs.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mt-0.5">
+                        {meta.inputs.map((inp) => (
+                          <span
+                            key={inp}
+                            className="px-1.5 py-0.5 rounded-md bg-white/5 border border-white/10 text-[10px] font-bold text-white/50"
+                          >
+                            {inp}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );
 };
+
+// Звезда «избранное» — общий оверлей для карточек моделей и ролей.
+function FavStar({
+  active,
+  onClick,
+}: {
+  active: boolean;
+  onClick: (e: React.MouseEvent) => void;
+}) {
+  return (
+    <span
+      role="button"
+      onClick={onClick}
+      className={cn(
+        'absolute top-2 right-2 w-8 h-8 rounded-full flex items-center justify-center backdrop-blur border transition-all active:scale-90',
+        active
+          ? 'bg-amber-400/90 border-amber-300'
+          : 'bg-black/45 border-white/15'
+      )}
+    >
+      <Star
+        size={15}
+        className={active ? 'fill-black text-black' : 'text-white'}
+      />
+    </span>
+  );
+}
 
 export default Generate;

@@ -15,6 +15,8 @@ import {
 } from 'lucide-react';
 import { useState, useEffect, useCallback } from 'react';
 import { AlbumPost, usePublicAlbum } from '@/hooks/useAlbums';
+import { SmartImage } from '@/components/shared/SmartImage';
+import { sanitizeMediaUrl } from '@/lib/utils';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -33,12 +35,13 @@ function getBg(id: number) {
 }
 
 function getMediaUrl(post: AlbumPost): string | null {
-  return (
+  const raw =
     post.result?.url ??
     (Array.isArray(post.result?.media) && post.result.media!.length > 0
       ? post.result.media![0].input
-      : null)
-  );
+      : null);
+  // Чиним битые ссылки (%0A/пробелы) централизованно для грида и лайтбокса.
+  return sanitizeMediaUrl(raw) || null;
 }
 
 // ─── Skeleton ─────────────────────────────────────────────────────────────────
@@ -75,11 +78,13 @@ function PostCard({
       className="group relative aspect-square w-full overflow-hidden rounded-2xl bg-zinc-950 ring-1 ring-white/[0.07] hover:ring-white/20 transition-all duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
     >
       {url ? (
-        <img
+        <SmartImage
           src={url}
           alt={post.model_name ?? ''}
-          className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.04]"
           loading="lazy"
+          className="absolute inset-0 w-full h-full !bg-transparent"
+          imgClassName="transition-transform duration-500 group-hover:scale-[1.04]"
+          ctx={{ surface: 'album-grid', postId: post.id }}
         />
       ) : (
         <div
@@ -200,10 +205,13 @@ function Lightbox({
             className="relative max-h-full"
           >
             {url ? (
-              <img
+              <SmartImage
                 src={url}
-                alt=""
-                className="max-h-[calc(100vh-180px)] max-w-full rounded-2xl object-contain"
+                fit="contain"
+                loading="eager"
+                maxRetries={3}
+                className="w-[88vw] max-w-3xl h-[calc(100vh-180px)] !bg-transparent rounded-2xl"
+                ctx={{ surface: 'album-lightbox', postId: post.id }}
               />
             ) : (
               <div
@@ -353,7 +361,7 @@ export default function PublicAlbumPage() {
             <div className="w-[60px] h-[60px] rounded-2xl overflow-hidden shrink-0 ring-1 ring-white/10">
               {album.picture ? (
                 <img
-                  src={album.picture}
+                  src={sanitizeMediaUrl(album.picture)}
                   alt={album.name}
                   className="w-full h-full object-cover"
                 />
