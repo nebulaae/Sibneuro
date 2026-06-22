@@ -49,6 +49,7 @@ import { toast } from 'sonner';
 import { useHaptic } from '@/hooks/useHaptic';
 import { cn, localize, sanitizeMediaUrl } from '@/lib/utils';
 import { SmartImage } from '@/components/shared/SmartImage';
+import { SmartVideo } from '@/components/shared/SmartVideo';
 import { useTranslations } from 'next-intl';
 import ReactMarkdown from 'react-markdown';
 import remarkMath from 'remark-math';
@@ -777,6 +778,8 @@ export default function ChatPage() {
                                               {m.type === 'image' ? (
                                                 <img
                                                   src={m.url}
+                                                  referrerPolicy="no-referrer"
+                                                  decoding="async"
                                                   className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                                                 />
                                               ) : (
@@ -787,6 +790,7 @@ export default function ChatPage() {
                                                   muted
                                                   loop
                                                   playsInline
+                                                  preload="metadata"
                                                   onMouseEnter={(e) =>
                                                     e.currentTarget.play()
                                                   }
@@ -885,11 +889,14 @@ export default function ChatPage() {
                 ctx={{ surface: 'chat-viewer' }}
               />
             ) : (
-              <video
-                src={sanitizeMediaUrl(viewerSrc.url)}
+              <SmartVideo
+                src={viewerSrc.url}
+                active
                 controls
-                autoPlay
-                className="max-w-full max-h-[80vh] rounded-2xl"
+                loop={false}
+                fit="contain"
+                className="w-full max-w-3xl h-[80vh] !bg-transparent rounded-2xl"
+                ctx={{ surface: 'chat-viewer' }}
               />
             )}
             <div className="flex gap-4 mt-8">

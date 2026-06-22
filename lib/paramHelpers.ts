@@ -16,6 +16,7 @@ const PARAM_LABELS_RU: Record<string, string> = {
   instrumental: 'Инструментал',
   custom_mode: 'Кастомный режим',
   enable_web_search: 'Веб-поиск',
+  prompt_optimization: 'Улучшение промпта',
 };
 
 const PARAM_LABELS_EN: Record<string, string> = {
@@ -36,6 +37,7 @@ const PARAM_LABELS_EN: Record<string, string> = {
   instrumental: 'Instrumental',
   custom_mode: 'Custom mode',
   enable_web_search: 'Web search',
+  prompt_optimization: 'Prompt enhancement',
 };
 
 // Значения которые требуют перевода — остальные (числа, размеры, форматы) оставляем как есть
@@ -44,6 +46,7 @@ const PARAM_VALUES_RU: Record<string, Record<string, string>> = {
   instrumental: { true: 'Да', false: 'Нет' },
   custom_mode: { true: 'Вкл', false: 'Выкл' },
   enable_web_search: { true: 'Вкл', false: 'Выкл' },
+  prompt_optimization: { true: 'Улучшать', false: 'Как есть' },
   background: {
     auto: 'Авто',
     transparent: 'Прозрачный',
@@ -60,6 +63,7 @@ const PARAM_VALUES_EN: Record<string, Record<string, string>> = {
   instrumental: { true: 'Yes', false: 'No' },
   custom_mode: { true: 'On', false: 'Off' },
   enable_web_search: { true: 'On', false: 'Off' },
+  prompt_optimization: { true: 'Enhance', false: 'As is' },
   background: { auto: 'Auto', transparent: 'Transparent', opaque: 'Opaque' },
   quality: { low: 'Low', medium: 'Medium', high: 'High' },
   input_fidelity: { low: 'Low', high: 'High' },

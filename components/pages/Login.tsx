@@ -6,16 +6,10 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { useBot } from '@/app/providers/BotProvider';
 import { useEffect, useState, useRef, useCallback } from 'react';
-import {
-  Loader2,
-  Mail,
-  Eye,
-  EyeOff,
-  ArrowLeft,
-} from 'lucide-react';
+import { Loader2, Mail, Eye, EyeOff, ArrowLeft } from 'lucide-react';
 import { useHaptic } from '@/hooks/useHaptic';
 import { cn } from '@/lib/utils';
-import { useLocale, useTranslations } from 'next-intl';
+import { useTranslations } from 'next-intl';
 import { getAppSource } from '@/lib/source';
 import { waitForPlatformInitData } from '@/lib/platform';
 import Image from 'next/image';
@@ -32,7 +26,19 @@ const MARQUEE_IMAGES = [
 ];
 
 const col = (offset: number, count = 5) =>
-  Array.from({ length: count }, (_, i) => MARQUEE_IMAGES[(offset + i) % MARQUEE_IMAGES.length]);
+  Array.from(
+    { length: count },
+    (_, i) => MARQUEE_IMAGES[(offset + i) % MARQUEE_IMAGES.length]
+  );
+
+const getTelegramOAuthOrigin = () => {
+  if (typeof window === 'undefined') return '';
+  if (window.location.hostname === 'neoaipro.com') {
+    return `${window.location.protocol}//www.neoaipro.com`;
+  }
+
+  return window.location.origin;
+};
 
 const MarqueeColumn = ({
   images,
@@ -69,7 +75,12 @@ const MarqueeColumn = ({
             className="relative rounded-2xl overflow-hidden flex-shrink-0 border border-white/10 shadow-xl"
             style={{ aspectRatio: '4/3', minHeight: 120 }}
           >
-            <img src={src} alt="marquee-item" className="w-full h-full object-cover" loading="lazy" />
+            <img
+              src={src}
+              alt="huy"
+              className="w-full h-full object-cover"
+              loading="lazy"
+            />
             <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/30 to-black/60" />
           </div>
         ))}
@@ -107,7 +118,12 @@ const MessengerCard = ({
       )}
       onClick={onClick}
     >
-      <div className={cn('w-11 h-11 rounded-[14px] flex items-center justify-center shrink-0', accentColor)}>
+      <div
+        className={cn(
+          'w-11 h-11 rounded-[14px] flex items-center justify-center shrink-0',
+          accentColor
+        )}
+      >
         {typeof icon === 'string' ? (
           <Image src={icon} width={24} height={24} alt={label} />
         ) : (
@@ -116,13 +132,16 @@ const MessengerCard = ({
       </div>
 
       <div className="flex flex-col min-w-0 flex-1 text-left">
-        <span className="text-[15px] font-bold text-white/90 leading-none mb-[5px]">{label}</span>
-        <span className="text-[13px] font-medium text-white/40 leading-[1.35] truncate">{sublabel}</span>
+        <span className="text-[15px] font-bold text-white/90 leading-none mb-[5px]">
+          {label}
+        </span>
+        <span className="text-[13px] font-medium text-white/40 leading-[1.35] truncate">
+          {sublabel}
+        </span>
       </div>
     </Wrapper>
   );
 };
-
 
 /* ─── Main Component ─── */
 export const Login = () => {
@@ -131,7 +150,6 @@ export const Login = () => {
   const { bot } = useBot();
   const haptic = useHaptic();
   const t = useTranslations('Login');
-  const locale = useLocale();
 
   const [source, setSource] = useState<string | null>(null);
   const [autoLogging, setAutoLogging] = useState(false);
@@ -161,15 +179,22 @@ export const Login = () => {
     if (typeof window === 'undefined') return;
 
     const initCaptcha = () => {
-      if ((window as any).smartCaptcha && captchaContainerRef.current && captchaWidgetId.current === null) {
-        captchaWidgetId.current = (window as any).smartCaptcha.render(captchaContainerRef.current, {
-          sitekey: process.env.NEXT_PUBLIC_YANDEX_TOKEN,
-          invisible: true,
-          shieldPosition: 'bottom-right',
-          callback: (token: string) => {
-            (window as any)._yandexCaptchaResolve?.(token);
-          },
-        });
+      if (
+        (window as any).smartCaptcha &&
+        captchaContainerRef.current &&
+        captchaWidgetId.current === null
+      ) {
+        captchaWidgetId.current = (window as any).smartCaptcha.render(
+          captchaContainerRef.current,
+          {
+            sitekey: process.env.NEXT_PUBLIC_YANDEX_TOKEN,
+            invisible: true,
+            shieldPosition: 'bottom-right',
+            callback: (token: string) => {
+              (window as any)._yandexCaptchaResolve?.(token);
+            },
+          }
+        );
       }
     };
 
@@ -212,31 +237,26 @@ export const Login = () => {
     });
   };
 
-  /* Открытие виджета авторизации Telegram */
   const openTelegramLogin = () => {
-    if (!(window as any).Telegram?.Login) {
-      toast.error('Telegram ещё загружается, подождите секунду');
-      return;
-    }
+    if (!(window as any).Telegram?.Login) return;
 
-    // Новая библиотека telegram-login.js сама управляет popup/redirect_uri через origin страницы.
-    // Передаём ТОЛЬКО документированные опции (client_id, request_access, lang).
-    // Лишний redirect_uri ломал post_message-флоу → ошибка "redirect_uri required".
     (window as any).Telegram.Login.auth(
       {
-        client_id: Number(bot?.bot_id),
-        request_access: ['write', 'phone'],
-        lang: locale,
+        client_id: bot?.bot_id || '8782963451',
+        redirect_uri: getTelegramOAuthOrigin() + '/login',
+        scope: 'openid profile telegram:bot_access phone',
+        response_type: 'post_message',
       },
       async (result: any) => {
-        if (!result) {
-          toast.error('Авторизация отменена пользователем или произошла ошибка.');
-          return;
-        }
+        // TODO(tg-oauth): убрать после того, как увидим форму payload в консоли
+        console.log('[tg-oauth] auth result:', result);
+
+        // popup_closed заглушаем — реальный результат ловит слушатель message выше
         if (result?.error) {
-          toast.error(result.error);
+          if (result.error !== 'popup_closed') toast.error(result.error);
           return;
         }
+
         await handleTelegramSuccess(result);
       }
     );
@@ -250,11 +270,17 @@ export const Login = () => {
   /* Detect source */
   useEffect(() => {
     const syncSource = getAppSource();
-    if (syncSource) { setSource(syncSource); return; }
+    if (syncSource) {
+      setSource(syncSource);
+      return;
+    }
 
     const timer = setInterval(() => {
       const s = getAppSource();
-      if (s) { clearInterval(timer); setSource(s); }
+      if (s) {
+        clearInterval(timer);
+        setSource(s);
+      }
     }, 100);
 
     return () => clearInterval(timer);
@@ -262,7 +288,15 @@ export const Login = () => {
 
   /* TMA Auto Login */
   const attemptTMALogin = useCallback(async () => {
-    if (!source || source === 'browser' || authLoading || user || !bot?.bot_id || attempted.current) return;
+    if (
+      !source ||
+      source === 'browser' ||
+      authLoading ||
+      user ||
+      !bot?.bot_id ||
+      attempted.current
+    )
+      return;
     attempted.current = true;
     setAutoLogging(true);
 
@@ -283,7 +317,8 @@ export const Login = () => {
       });
 
       localStorage.setItem('auth_token', data.token);
-      if (data.user?.id) localStorage.setItem('auth_user_id', String(data.user.id));
+      if (data.user?.id)
+        localStorage.setItem('auth_user_id', String(data.user.id));
       localStorage.removeItem('pending_referrer_id');
       login(data.user);
       router.replace('/');
@@ -293,12 +328,29 @@ export const Login = () => {
     }
   }, [source, authLoading, user, bot, login, router]);
 
-  useEffect(() => { attemptTMALogin(); }, [attemptTMALogin]);
+  useEffect(() => {
+    attemptTMALogin();
+  }, [attemptTMALogin]);
 
   /* Telegram Widget Success */
   const handleTelegramSuccess = async (tgData: any) => {
     try {
-      const { data } = await api.post(`/api/auth/telegram?bot_id=${bot?.bot_id}`, tgData);
+      // post_message отдаёт { id_token, user }; иногда — строку id_token.
+      const id_token =
+        typeof tgData === 'string' ? tgData : tgData?.id_token;
+
+      // TODO(tg-oauth): убрать после подтверждения
+      console.log('[tg-oauth] payload → /auth/telegram:', { id_token, tgData });
+
+      if (!id_token) {
+        console.warn('[tg-oauth] нет id_token, запрос в бэк не шлём', tgData);
+        return;
+      }
+
+      const { data } = await api.post('/api/auth/telegram', {
+        id_token,
+        bot_id: bot?.bot_id,
+      });
       localStorage.setItem('auth_token', data.token);
       login(data.user);
       haptic.success();
@@ -308,13 +360,49 @@ export const Login = () => {
     }
   };
 
+  /* Ловим postMessage от Telegram напрямую — легаси-мост telegram-login.js
+     не распознаёт ответ нового OAuth и отдаёт popup_closed. Слушаем сами. */
+  const handleSuccessRef = useRef(handleTelegramSuccess);
+  handleSuccessRef.current = handleTelegramSuccess;
+
+  useEffect(() => {
+    const onMessage = (event: MessageEvent) => {
+      if (event.origin !== 'https://oauth.telegram.org') return;
+
+      let data: any = event.data;
+      if (typeof data === 'string') {
+        try {
+          data = JSON.parse(data);
+        } catch {
+          /* не JSON — оставляем строкой */
+        }
+      }
+      console.log('[tg-oauth] postMessage from telegram:', data);
+
+      // Достаём результат из любой формы: {event:'auth_result', result},
+      // либо объект сразу с id_token / id / user.
+      const result =
+        data?.result ??
+        (data?.id_token || data?.id || data?.user ? data : null);
+
+      if (result && !result.error) {
+        handleSuccessRef.current(result);
+      }
+    };
+
+    window.addEventListener('message', onMessage);
+    return () => window.removeEventListener('message', onMessage);
+  }, []);
+
   /* Email Handlers */
   const handleEmailLogin = async () => {
-    if (!email.trim() || !password.trim()) return toast.error(t('emailRequired'));
+    if (!email.trim() || !password.trim())
+      return toast.error(t('emailRequired'));
     setEmailLoading(true);
     try {
       const captchaToken = await executeCaptcha();
-      const { data } = await api.post(`/api/auth/login/email?bot_id=${bot?.bot_id}`,
+      const { data } = await api.post(
+        `/api/auth/login/email?bot_id=${bot?.bot_id}`,
         { email: email.trim(), password },
         { headers: { 'x-captcha-token': captchaToken } }
       );
@@ -331,13 +419,17 @@ export const Login = () => {
   };
 
   const handleEmailRegister = async () => {
-    if (!email.trim() || !password.trim() || !name.trim()) return toast.error(t('emailEmpty'));
+    if (!email.trim() || !password.trim() || !name.trim())
+      return toast.error(t('emailEmpty'));
     setEmailLoading(true);
     try {
       const captchaToken = await executeCaptcha();
       const referrerId = localStorage.getItem('pending_referrer_id');
-      const query = referrerId ? `&referrer_id=${referrerId}&ref=${referrerId}` : '';
-      const { data } = await api.post(`/api/auth/register/email?bot_id=${bot?.bot_id}${query}`,
+      const query = referrerId
+        ? `&referrer_id=${referrerId}&ref=${referrerId}`
+        : '';
+      const { data } = await api.post(
+        `/api/auth/register/email?bot_id=${bot?.bot_id}${query}`,
         { name: name.trim(), email: email.trim(), password },
         { headers: { 'x-captcha-token': captchaToken } }
       );
@@ -359,7 +451,9 @@ export const Login = () => {
         <div className="w-20 h-20 rounded-[32px] bg-zinc-900 border border-white/10 flex items-center justify-center mb-8 animate-pulse shadow-2xl">
           <Loader2 size={32} className="animate-spin text-cyan-400" />
         </div>
-        <h2 className="text-2xl font-black text-white mb-2">{t('autoLoginLoading')}</h2>
+        <h2 className="text-2xl font-black text-white mb-2">
+          {t('autoLoginLoading')}
+        </h2>
         <p className="text-white/30 font-medium">{t('tagline')}</p>
       </div>
     );
@@ -374,17 +468,24 @@ export const Login = () => {
         {/* Left Side */}
         <div className="flex-1 flex items-center justify-center px-5 sm:px-8 lg:px-12 overflow-hidden">
           <div className="w-full max-w-[360px]">
-
             {view === 'main' ? (
               <div className="flex flex-col animate-in fade-in slide-in-from-bottom-6 duration-700">
                 <div className="flex flex-col items-center text-center mb-8">
                   <div className="relative mb-5">
                     <div className="absolute -inset-4 bg-cyan-400/20 blur-[40px] rounded-full mix-blend-screen" />
-                    <h1 className="text-[42px] sm:text-[48px] font-black tracking-tighter leading-none mb-2 text-white">
-                      Sib<span className="text-cyan-400">neuro</span>
-                    </h1>
+                    <div className="w-16 h-16 rounded-2xl bg-black border border-white/10 flex items-center justify-center relative z-10 shadow-[inset_0_1px_0_rgba(255,255,255,0.2)]">
+                      <Image
+                        src="/logo.jpg"
+                        width={120}
+                        height={120}
+                        alt="Logo"
+                        className="rounded-2xl"
+                      />
+                    </div>
                   </div>
-
+                  <h1 className="text-[42px] sm:text-[48px] font-black tracking-tighter leading-none mb-2 text-white">
+                    Sib<span className="text-cyan-400">neuro</span>
+                  </h1>
                   <p className="text-[15px] font-medium text-white/40 leading-relaxed max-w-[260px]">
                     {t('tagline')}
                   </p>
@@ -413,7 +514,9 @@ export const Login = () => {
                     onClick={() => setView('telegram-login')}
                     icon="/telegram.png"
                     label={t('continueWithTelegram')}
-                    sublabel={t('telegramWidgetSubtitle') || 'Через официальный виджет'}
+                    sublabel={
+                      t('telegramWidgetSubtitle') || 'Через официальный виджет'
+                    }
                     accentColor="bg-[#229ED9]/20"
                   />
                 </div>
@@ -430,14 +533,22 @@ export const Login = () => {
                 <h2 className="text-[34px] font-black tracking-tighter mb-6">
                   {t('continueWithTelegram')}
                 </h2>
-                <p className="text-white/50 mb-8">{t('telegramLoginDescription') || 'Нажмите кнопку ниже для входа через Telegram'}</p>
-                <div className='w-full flex items-center justify-center'>
+                <p className="text-white/50 mb-8">
+                  {t('telegramLoginDescription') ||
+                    'Нажмите кнопку ниже для входа через Telegram'}
+                </p>
+                <div className="w-full flex items-center justify-center">
                   {bot?.bot_id ? (
-                    <button onClick={openTelegramLogin} className='tg-auth-button shadow-xl shadow-blue-500/40 px-6 py-4 bg-[#229ED9] rounded-xl text-white font-bold transition-transform active:scale-95'>
+                    <button
+                      onClick={openTelegramLogin}
+                      className="tg-auth-button shadow-xl shadow-blue-500/40"
+                    >
                       {t('continueWithTelegram')}
                     </button>
                   ) : (
-                    <div className="text-center py-10 text-white/40">{t("botIdNotConfigured")}</div>
+                    <div className="text-center py-10 text-white/40">
+                      {t('botIdNotConfigured')}
+                    </div>
                   )}
                 </div>
               </div>
@@ -452,7 +563,9 @@ export const Login = () => {
                 </button>
 
                 <h2 className="text-[34px] font-black tracking-tighter mb-8 leading-tight">
-                  {view === 'email-login' ? t('emailLoginTitle') : t('registerTitle')}
+                  {view === 'email-login'
+                    ? t('emailLoginTitle')
+                    : t('registerTitle')}
                 </h2>
 
                 <div className="flex flex-col gap-4">
@@ -491,7 +604,11 @@ export const Login = () => {
                   </div>
 
                   <button
-                    onClick={view === 'email-login' ? handleEmailLogin : handleEmailRegister}
+                    onClick={
+                      view === 'email-login'
+                        ? handleEmailLogin
+                        : handleEmailRegister
+                    }
                     disabled={emailLoading}
                     className="w-full py-5 rounded-[24px] bg-cyan-400 hover:bg-[#0066CC] text-white font-black text-[17px] shadow-[0_20px_40px_rgba(0,122,255,0.3)] mt-2 active:scale-95 transition-all flex items-center justify-center disabled:opacity-60"
                   >
@@ -505,10 +622,18 @@ export const Login = () => {
                   </button>
 
                   <button
-                    onClick={() => setView(view === 'email-login' ? 'email-register' : 'email-login')}
+                    onClick={() =>
+                      setView(
+                        view === 'email-login'
+                          ? 'email-register'
+                          : 'email-login'
+                      )
+                    }
                     className="mt-2 text-center text-white/30 font-bold text-[14px] hover:text-white transition-colors"
                   >
-                    {view === 'email-login' ? t('noAccount') : t('alreadyHaveAccount')}{' '}
+                    {view === 'email-login'
+                      ? t('noAccount')
+                      : t('alreadyHaveAccount')}{' '}
                     <span className="text-cyan-400">
                       {view === 'email-login' ? t('register') : t('signIn')}
                     </span>

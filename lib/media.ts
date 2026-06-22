@@ -11,6 +11,21 @@ export const isVideoMedia = (
   return typeof url === 'string' && VIDEO_EXT_RE.test(url);
 };
 
+/**
+ * Оборачивает удалённый медиа-URL в наш same-origin прокси (/api/media).
+ *
+ * Используется как fallback, когда прямой запрос к CDN/S3 не проходит из-за
+ * сетевых ограничений (РФ): прокси ходит за файлом с сервера и отдаёт его
+ * с того же origin, что обходит часть блокировок. Локальные/относительные
+ * и data/blob ссылки не трогаем.
+ */
+export const proxiedMediaUrl = (url?: string | null): string => {
+  if (!url) return '';
+  if (/^(data:|blob:|\/)/i.test(url)) return url;
+  if (!/^https?:\/\//i.test(url)) return url;
+  return `/api/media?url=${encodeURIComponent(url)}`;
+};
+
 /** Достаёт превью-URL поста и признак видео из result. */
 export function resolvePostMedia(post: Pick<Post, 'result'> | null | undefined): {
   url: string | null;

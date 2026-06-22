@@ -105,7 +105,7 @@ api.interceptors.request.use((config) => {
   // 👇 NEW: bypass flag
   const skipUserId = config.params.skipUserId;
 
-  // 8560085473
+  // 8560085473 - botid only for devmode trend fetching
 
   if (botId && !config.params.bot_id) {
     config.params.bot_id = botId;

@@ -27,6 +27,20 @@ const glassBase: React.CSSProperties = {
   position: 'relative',
   overflow: 'hidden',
 
+  // Дефолтный радиус — на случай если вызывающий его не задал (страховка от
+  // «квадратных» баров).
+  borderRadius: 9999,
+
+  // КРИТИЧНО для iOS/Safari: backdrop-filter + border-radius + overflow:hidden
+  // на одном элементе НЕ обрезается по скруглению (известный баг WebKit) —
+  // бар рисуется квадратом. Принудительный собственный композит-слой через
+  // translateZ заставляет WebKit клипать содержимое (включая backdrop-filter
+  // дочерних слоёв) по border-radius. Не трогает внешнюю тень.
+  transform: 'translateZ(0)',
+  WebkitTransform: 'translateZ(0)',
+  WebkitBackfaceVisibility: 'hidden',
+  backfaceVisibility: 'hidden',
+
   // More transparent → more of the page shows through the glass
   background: 'rgba(16,16,18,0.20)',
 

@@ -6,6 +6,8 @@ import { useUser } from '@/hooks/useUser';
 import { GenerationRequest, MediaItem, useRequests } from '@/hooks/useRequests';
 import { useInfiniteUserPosts, type Post } from '@/hooks/usePosts';
 import { resolvePostMedia } from '@/lib/media';
+import { SmartImage } from '@/components/shared/SmartImage';
+import { SmartVideo } from '@/components/shared/SmartVideo';
 import { useAuth } from '@/hooks/useAuth';
 import {
   useReferrals,
@@ -375,18 +377,18 @@ function PublicationsGrid({
             >
               {url ? (
                 isVideo ? (
-                  <video
+                  <SmartVideo
                     src={url}
-                    className="absolute inset-0 h-full w-full object-cover"
-                    muted
-                    loop
-                    playsInline
+                    active
+                    autoPlay={false}
+                    className="absolute inset-0 h-full w-full"
+                    ctx={{ surface: 'profile-grid', postId: post.id }}
                   />
                 ) : (
-                  <img
+                  <SmartImage
                     src={url}
-                    alt=""
-                    className="absolute inset-0 h-full w-full object-cover"
+                    className="absolute inset-0 h-full w-full"
+                    ctx={{ surface: 'profile-grid', postId: post.id }}
                   />
                 )
               ) : (

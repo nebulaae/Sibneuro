@@ -33,6 +33,7 @@ import { cn, localize } from '@/lib/utils';
 import { useLocale, useTranslations } from 'next-intl';
 import { getParamLabel, getParamValueLabel } from '@/lib/paramHelpers';
 import { describeModel, getModelKind, type ModelKind } from '@/lib/modelMeta';
+import { useDragScroll } from '@/hooks/useDragScroll';
 
 function useGenerationStatus(dialogueId: string | null, enabled: boolean) {
   return useQuery({
@@ -87,6 +88,8 @@ export const Generate = () => {
   const [search, setSearch] = useState('');
   const [favOnly, setFavOnly] = useState(false);
   const [favorites, setFavorites] = useState<string[]>([]);
+  // Драг/колесо-скролл табов каталога на ПК (на тач — нативный скролл).
+  const segScrollRef = useDragScroll<HTMLDivElement>();
 
   useEffect(() => {
     try {
@@ -614,7 +617,10 @@ export const Generate = () => {
       </div>
 
       {/* Segmented control */}
-      <div className="px-5 pt-4 flex items-center gap-2 overflow-x-auto [&::-webkit-scrollbar]:hidden">
+      <div
+        ref={segScrollRef}
+        className="px-5 pt-4 flex items-center gap-2 overflow-x-auto select-none cursor-grab active:cursor-grabbing [&::-webkit-scrollbar]:hidden"
+      >
         {SEGMENTS.map((s) => {
           const Icon = s.icon;
           const active = segment === s.key;

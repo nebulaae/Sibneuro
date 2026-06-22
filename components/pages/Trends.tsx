@@ -31,6 +31,8 @@ import {
 import { useHaptic } from '@/hooks/useHaptic';
 import { cn, sanitizeMediaUrl } from '@/lib/utils';
 import { SmartImage } from '@/components/shared/SmartImage';
+import { SmartVideo } from '@/components/shared/SmartVideo';
+import { useInView } from '@/hooks/useInView';
 import { convertMediaToInputs, useGenerateAI } from '@/hooks/useGenerations';
 import { toast } from 'sonner';
 import { useUpload } from '@/hooks/useApiExtras';
@@ -274,6 +276,9 @@ const FeedItem = memo(({ post }: { post: Post }) => {
   const [burst, setBurst] = useState(false);
   const lastTap = useRef(0);
 
+  // Проигрываем только видимый ролик ленты — остальные на паузе (перф + сеть).
+  const [viewRef, inView] = useInView<HTMLElement>(0.5);
+
   // Модалка «Повторить» — подстановка фото перед генерацией
   const upload = useUpload();
   const [repeatOpen, setRepeatOpen] = useState(false);
@@ -420,7 +425,10 @@ const FeedItem = memo(({ post }: { post: Post }) => {
   };
 
   return (
-    <section className="relative h-full w-full overflow-hidden bg-zinc-950">
+    <section
+      ref={viewRef}
+      className="relative h-full w-full overflow-hidden bg-zinc-950"
+    >
       {/* Media */}
       <div
         className="absolute inset-0"
@@ -429,13 +437,11 @@ const FeedItem = memo(({ post }: { post: Post }) => {
       >
         {mediaUrl ? (
           isVideo ? (
-            <video
+            <SmartVideo
               src={mediaUrl}
-              className="absolute inset-0 w-full h-full object-cover"
-              autoPlay
-              muted
-              loop
-              playsInline
+              active={inView}
+              className="absolute inset-0 w-full h-full"
+              ctx={{ surface: 'feed', postId: post.id }}
             />
           ) : (
             <SmartImage
@@ -727,14 +733,15 @@ export const TrendCard = memo(({ post }: { post: Post }) => {
         {/* Media */}
         {mediaUrl ? (
           isVideo ? (
-            <video
+            <SmartVideo
               src={mediaUrl}
-              className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-              muted
-              loop
-              playsInline
-              onMouseEnter={(e) => e.currentTarget.play()}
-              onMouseLeave={(e) => e.currentTarget.pause()}
+              // В гриде показываем статичный первый кадр (active=true грузит
+              // кадр), но не проигрываем — без лишней нагрузки и чёрных плиток.
+              active
+              autoPlay={false}
+              className="absolute inset-0 w-full h-full"
+              videoClassName="transition-transform duration-700 group-hover:scale-110"
+              ctx={{ surface: 'grid', postId: post.id }}
             />
           ) : (
             <SmartImage
@@ -1071,19 +1078,18 @@ export const TrendDetail = ({
         <div className="relative aspect-3/4 rounded-[40px] overflow-hidden border border-white/10 shadow-[0_32px_64px_rgba(0,0,0,0.6)]">
           {mediaUrl ? (
             mediaIsVideo ? (
-              <video
+              <SmartVideo
                 src={mediaUrl}
-                className="w-full h-full object-cover"
-                autoPlay
-                loop
-                muted
-                playsInline
+                active
+                className="absolute inset-0 w-full h-full"
+                ctx={{ surface: 'detail', postId: post.id }}
               />
             ) : (
-              <img
+              <SmartImage
                 src={mediaUrl}
-                alt=""
-                className="w-full h-full object-cover"
+                loading="eager"
+                className="absolute inset-0 w-full h-full"
+                ctx={{ surface: 'detail', postId: post.id }}
               />
             )
           ) : (

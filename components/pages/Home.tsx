@@ -20,6 +20,8 @@ import { useInfinitePosts, useLikePost } from '@/hooks/usePosts';
 import { resolvePostMedia } from '@/lib/media';
 import { cn } from '@/lib/utils';
 import { useHaptic } from '@/hooks/useHaptic';
+import { SmartImage } from '@/components/shared/SmartImage';
+import { SmartVideo } from '@/components/shared/SmartVideo';
 
 type NamedPost = {
   name?: string;
@@ -102,19 +104,20 @@ function CategoryBackground({
 }) {
   if (catKey === 'video' && videoUrl) {
     return (
-      <video
+      <SmartVideo
         src={videoUrl}
-        autoPlay
-        muted
-        loop
-        playsInline
-        className="absolute inset-0 h-full w-full object-cover opacity-45"
+        active
+        className="absolute inset-0 h-full w-full opacity-45"
+        ctx={{ surface: 'home-category' }}
       />
     );
   }
 
   if (catKey === 'image' && photos.length > 0) {
-    const strip = [...photos, ...photos, ...photos];
+    // Ограничиваем число уникальных картинок (меньше декодов = меньше лага),
+    // ×3 копии нужны для бесшовного marquee (-33.333%).
+    const base = photos.slice(0, 5);
+    const strip = [...base, ...base, ...base];
     return (
       <div className="pointer-events-none absolute inset-0 flex flex-col justify-center gap-1.5 opacity-50">
         <div className="flex w-max gap-1.5 animate-[marquee_26s_linear_infinite]">
@@ -123,6 +126,9 @@ function CategoryBackground({
               key={i}
               src={src}
               alt=""
+              loading="lazy"
+              decoding="async"
+              referrerPolicy="no-referrer"
               className="size-14 rounded-xl object-cover"
             />
           ))}
@@ -136,6 +142,9 @@ function CategoryBackground({
               key={i}
               src={src}
               alt=""
+              loading="lazy"
+              decoding="async"
+              referrerPolicy="no-referrer"
               className="size-14 rounded-xl object-cover"
             />
           ))}
@@ -207,8 +216,8 @@ function CategoryCard({
     <button
       onClick={onSelect}
       className={cn(
-        'group relative min-h-[160px] overflow-hidden rounded-[26px] border border-white/[0.10] bg-white/[0.055] p-4 text-left',
-        'shadow-[inset_0_1px_0_rgba(255,255,255,0.18)] backdrop-blur-3xl',
+        'group relative min-h-[160px] overflow-hidden rounded-[26px] border border-white/[0.10] bg-white/[0.06] p-4 text-left',
+        'shadow-[inset_0_1px_0_rgba(255,255,255,0.18)]',
         'transition-all duration-300 active:scale-[0.97]',
         'hover:border-white/20'
       )}
@@ -330,11 +339,14 @@ export const Home = () => {
 
   return (
     <div className="min-h-svh overflow-x-hidden text-white pb-[calc(92px+max(16px,env(safe-area-inset-bottom)))]">
-      {/* Aurora background */}
+      {/* Aurora background — статичные блюр-орбы.
+          Раньше анимировались (transform/scale) бесконечно: перерисовка
+          гигантских размытых поверхностей каждый кадр давала жёсткий лаг на
+          мобильных. Статичные орбы рисуются один раз и просто композитятся. */}
       <div className="fixed inset-0 -z-10 overflow-hidden">
-        <div className="absolute -top-40 -left-20 w-[600px] h-[600px] rounded-full bg-cyan-500/4 blur-[120px] animate-[aurora1_18s_ease-in-out_infinite]" />
-        <div className="absolute top-20 right-0 w-[500px] h-[500px] rounded-full bg-emerald-500/6 blur-[120px] animate-[aurora2_22s_ease-in-out_infinite]" />
-        <div className="absolute bottom-0 left-1/3 w-[400px] h-[400px] rounded-full bg-sky-500/6 blur-[100px] animate-[aurora3_28s_ease-in-out_infinite]" />
+        <div className="absolute -top-40 -left-20 w-[600px] h-[600px] rounded-full bg-cyan-500/4 blur-[120px]" />
+        <div className="absolute top-20 right-0 w-[500px] h-[500px] rounded-full bg-emerald-500/6 blur-[120px]" />
+        <div className="absolute bottom-0 left-1/3 w-[400px] h-[400px] rounded-full bg-sky-500/6 blur-[100px]" />
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_20%_0%,rgba(34,211,238,0.12),transparent_55%)]" />
         <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(5,7,11,0.2),#05070b_70%)]" />
       </div>
@@ -378,7 +390,7 @@ export const Home = () => {
         {/* Hero + Category cards */}
         <section className="grid gap-5 lg:grid-cols-[1.1fr_0.9fr] lg:items-start">
           {/* Hero card */}
-          <div className="min-h-full rounded-[32px] border border-white/[0.10] bg-white/[0.055] p-6  backdrop-blur-3xl sm:p-8">
+          <div className="min-h-full rounded-[32px] border border-white/[0.10] bg-white/[0.06] p-6 sm:p-8">
             <div className="mb-7 inline-flex items-center gap-2 rounded-full border border-cyan-400/20 bg-cyan-400/8 px-3 py-1.5 text-[12px] font-bold text-cyan-200 backdrop-blur-xl">
               <span className="size-1.5 rounded-full bg-cyan-300 shadow-[0_0_10px_rgba(34,211,238,0.9)]" />
               {t('heroKicker')}
@@ -431,7 +443,7 @@ export const Home = () => {
         </section>
 
         {/* Marquee */}
-        <section className="-mx-5 overflow-hidden  py-4 backdrop-blur-xl">
+        <section className="-mx-5 overflow-hidden py-4">
           <div className="flex w-max animate-[marquee_30s_linear_infinite] gap-3 px-5">
             {[...marqueeItems, ...marqueeItems, ...marqueeItems].map(
               (key, index) => (
@@ -498,19 +510,19 @@ export const Home = () => {
                         {/* Media */}
                         {mediaUrl ? (
                           isVideo ? (
-                            <video
+                            <SmartVideo
                               src={mediaUrl}
-                              className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-                              autoPlay
-                              muted
-                              loop
-                              playsInline
+                              active
+                              className="absolute inset-0 w-full h-full"
+                              videoClassName="transition-transform duration-700 group-hover:scale-110"
+                              ctx={{ surface: 'home-grid', postId: post.id }}
                             />
                           ) : (
-                            <img
+                            <SmartImage
                               src={mediaUrl}
-                              alt=""
-                              className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                              className="absolute inset-0 w-full h-full"
+                              imgClassName="transition-transform duration-700 group-hover:scale-110"
+                              ctx={{ surface: 'home-grid', postId: post.id }}
                             />
                           )
                         ) : (
@@ -585,20 +597,9 @@ export const Home = () => {
           0%, 100% { transform: scaleY(0.3); }
           50% { transform: scaleY(1); }
         }
-        @keyframes aurora1 {
-          0%, 100% { transform: translate(0, 0) scale(1); }
-          33% { transform: translate(60px, -40px) scale(1.1); }
-          66% { transform: translate(-30px, 30px) scale(0.95); }
-        }
-        @keyframes aurora2 {
-          0%, 100% { transform: translate(0, 0) scale(1); }
-          40% { transform: translate(-50px, 60px) scale(1.08); }
-          70% { transform: translate(40px, -30px) scale(0.92); }
-        }
-        @keyframes aurora3 {
-          0%, 100% { transform: translate(0, 0) scale(1); }
-          30% { transform: translate(30px, -50px) scale(1.06); }
-          65% { transform: translate(-40px, 20px) scale(0.96); }
+        @media (prefers-reduced-motion: reduce) {
+          .animate-\[marquee_30s_linear_infinite\],
+          [class*='animate-[marquee'] { animation: none !important; }
         }
       `}</style>
     </div>

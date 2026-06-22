@@ -312,7 +312,24 @@ body {
 .page-content {
   flex: 1;
   min-height: 100svh;
-  will-change: transform;
+  /*
+    Раньше тут был `will-change: transform`. Это превращало контейнер в
+    containing-block для `position: fixed` потомков (известное поведение
+    WebKit/iOS), из-за чего полноэкранные `fixed inset-0` фоны и лента трендов
+    позиционировались относительно него, а не вьюпорта — блоки «наезжали» друг
+    на друга на iPhone. Контейнер не анимируется, подсказка не нужна — убрана.
+  */
+}
+
+/* ── iOS-safe media ── медиа не должно вылезать за контейнер и ломать раскладку */
+img,
+video {
+  max-width: 100%;
+}
+
+/* Плавный инерционный скролл в WebView iOS */
+* {
+  -webkit-overflow-scrolling: touch;
 }
 
 [data-slot='sidebar'] {

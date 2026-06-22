@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback, memo } from 'react';
 import { ImageOff, RotateCw, Loader2 } from 'lucide-react';
 import { cn, sanitizeMediaUrl } from '@/lib/utils';
+import { proxiedMediaUrl } from '@/lib/media';
 import { track } from '@/lib/logger';
 
 interface SmartImageProps {
@@ -50,6 +51,10 @@ export const SmartImage = memo(function SmartImage({
     clean ? 'loading' : 'error'
   );
   const [attempt, setAttempt] = useState(0);
+  // После исчерпания прямых ретраев пробуем same-origin прокси (обход
+  // сетевых ограничений РФ) перед тем как сдаться.
+  const [proxied, setProxied] = useState(false);
+  const canProxy = !!clean && /^https?:\/\//i.test(clean);
   const startRef = useRef<number>(0);
 
   // Логируем, если URL был фактически починен — это сигнал о порче ссылок выше по стеку.
@@ -60,6 +65,7 @@ export const SmartImage = memo(function SmartImage({
   // Сброс при смене источника.
   useEffect(() => {
     setAttempt(0);
+    setProxied(false);
     setStatus(clean ? 'loading' : 'error');
     startRef.current = clean ? Date.now() : 0;
     if (clean) track.media.start(clean, ctx);
@@ -79,34 +85,48 @@ export const SmartImage = memo(function SmartImage({
   const handleError = useCallback(() => {
     track.media.error(clean, attempt, ctx);
     if (attempt < maxRetries) {
-      // Небольшая задержка + cache-bust на следующем рендере.
+      // Экспоненциальная задержка + cache-bust на следующем рендере.
       const next = attempt + 1;
       const t = setTimeout(() => {
         startRef.current = Date.now();
         setAttempt(next);
         setStatus('loading');
-      }, 400 * next);
+      }, 400 * Math.pow(2, attempt));
+      return () => clearTimeout(t);
+    }
+    // Прямые ретраи исчерпаны — пробуем через прокси (другой сетевой путь).
+    if (!proxied && canProxy) {
+      const t = setTimeout(() => {
+        startRef.current = Date.now();
+        setProxied(true);
+        setAttempt(0);
+        setStatus('loading');
+      }, 300);
       return () => clearTimeout(t);
     }
     track.media.gaveUp(clean, attempt + 1, ctx);
     setStatus('error');
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [clean, attempt, maxRetries]);
+  }, [clean, attempt, maxRetries, proxied, canProxy]);
 
   const retryManually = useCallback(() => {
     if (!clean) return;
     startRef.current = Date.now();
+    // Ручной повтор сразу идёт через прокси, если прямой путь уже не сработал.
+    if (canProxy) setProxied(true);
     setAttempt((a) => a + 1);
     setStatus('loading');
     track.media.start(clean, { manual: true, ...ctx });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [clean]);
+  }, [clean, canProxy]);
 
-  // cache-bust только на ретраях, чтобы не ломать кэш первой загрузки.
+  const base = proxied ? proxiedMediaUrl(clean) : clean;
+  // cache-bust только на прямых ретраях, чтобы не ломать кэш первой загрузки
+  // (для прокси не нужен — это уже свежий same-origin путь).
   const finalSrc =
-    clean && attempt > 0
-      ? `${clean}${clean.includes('?') ? '&' : '?'}_r=${attempt}`
-      : clean;
+    base && attempt > 0 && !proxied
+      ? `${base}${base.includes('?') ? '&' : '?'}_r=${attempt}`
+      : base;
 
   const objectFit = fit === 'contain' ? 'object-contain' : 'object-cover';
 
@@ -148,6 +168,10 @@ export const SmartImage = memo(function SmartImage({
           alt={alt}
           loading={loading}
           decoding="async"
+          // Часть CDN/S3 отдаёт 403 при наличии Referer (hotlink-protection);
+          // без него ссылка грузится стабильнее.
+          referrerPolicy="no-referrer"
+          fetchPriority={loading === 'eager' ? 'high' : 'auto'}
           onLoad={handleLoad}
           onError={handleError}
           className={cn(
