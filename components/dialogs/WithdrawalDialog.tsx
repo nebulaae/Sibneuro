@@ -26,6 +26,7 @@ import {
   useCreateWithdrawal,
   useCancelWithdrawal,
   type WithdrawalStatus,
+  type WithdrawalType,
 } from '@/hooks/useWithdrawal';
 
 const STATUS_META: Record<
@@ -47,7 +48,7 @@ export function WithdrawalDialog({
 }) {
   const haptic = useHaptic();
   const { data: userData } = useUser();
-  const { data: minAmount } = useWithdrawalMinAmount();
+  const { data: minAmountData } = useWithdrawalMinAmount();
   const { data: withdrawals, isLoading: listLoading } = useWithdrawals();
   const createWithdrawal = useCreateWithdrawal();
   const cancelWithdrawal = useCancelWithdrawal();
@@ -55,13 +56,20 @@ export function WithdrawalDialog({
   const balance = Number(userData?.user?.balance ?? 0);
   const totalRewards = Number(userData?.user?.total_rewards ?? 0);
   const totalWithdrawals = Number(userData?.user?.total_withdrawals ?? 0);
-  const min = minAmount ?? 0;
+  const min = minAmountData?.min_withdraw_amount ?? 0;
+  const withdrawalTypes = minAmountData?.withdrawal_types ?? [];
 
   const [amount, setAmount] = useState('');
   const [requisites, setRequisites] = useState('');
   const [notes, setNotes] = useState('');
+  const [selectedType, setSelectedType] = useState<WithdrawalType>('rub');
 
   const numAmount = Number(amount) || 0;
+  const selectedTypeOption = withdrawalTypes.find((t) => t.type === selectedType);
+  const feePercent = selectedTypeOption?.fee_percent ?? 0;
+  const feeAmount = Math.round(numAmount * feePercent / 100);
+  const amountAfterFee = numAmount - feeAmount;
+
   const canSubmit =
     numAmount >= min && numAmount <= balance && !createWithdrawal.isPending;
 
@@ -83,6 +91,7 @@ export function WithdrawalDialog({
     createWithdrawal.mutate(
       {
         amount: numAmount,
+        type: selectedType,
         requisites: requisites.trim() || undefined,
         notes: notes.trim() || undefined,
       },
@@ -136,6 +145,27 @@ export function WithdrawalDialog({
 
         {/* Форма */}
         <div className="flex flex-col gap-2.5 mb-5">
+          {/* Type selector */}
+          {withdrawalTypes.length > 0 && (
+            <div className="flex gap-2">
+              {withdrawalTypes.map((opt) => (
+                <button
+                  key={opt.type}
+                  onClick={() => setSelectedType(opt.type)}
+                  className={cn(
+                    'flex-1 h-11 rounded-2xl border text-[13px] font-black transition-all active:scale-95',
+                    selectedType === opt.type
+                      ? 'bg-cyan-400/15 border-cyan-400/40 text-cyan-300'
+                      : 'bg-white/5 border-white/10 text-white/40 hover:text-white/70'
+                  )}
+                >
+                  {opt.type === 'rub' ? '🏦 Рубли' : '₿ Крипто'}
+                  <span className="ml-1 text-[11px] opacity-60">−{opt.fee_percent}%</span>
+                </button>
+              ))}
+            </div>
+          )}
+
           <input
             type="number"
             inputMode="numeric"
@@ -144,10 +174,19 @@ export function WithdrawalDialog({
             placeholder={`Сумма, ₽ (от ${min})`}
             className="w-full h-12 px-4 rounded-2xl bg-zinc-900/60 border border-white/10 text-[15px] text-white placeholder:text-white/25 outline-none focus:border-cyan-400/50 transition-colors"
           />
+
+          {/* Fee breakdown */}
+          {numAmount > 0 && feePercent > 0 && (
+            <div className="flex items-center justify-between px-1 text-[12px] font-medium text-white/40">
+              <span>Комиссия {feePercent}%</span>
+              <span>−{feeAmount.toLocaleString('ru-RU')} ₽ → получите {amountAfterFee.toLocaleString('ru-RU')} ₽</span>
+            </div>
+          )}
+
           <input
             value={requisites}
             onChange={(e) => setRequisites(e.target.value)}
-            placeholder="Реквизиты (карта / счёт)"
+            placeholder="Реквизиты (карта / счёт / адрес)"
             className="w-full h-12 px-4 rounded-2xl bg-zinc-900/60 border border-white/10 text-[15px] text-white placeholder:text-white/25 outline-none focus:border-cyan-400/50 transition-colors"
           />
           <input
@@ -197,11 +236,30 @@ export function WithdrawalDialog({
                   className="flex items-center gap-3 rounded-2xl bg-zinc-900/50 border border-white/8 p-3"
                 >
                   <div className="min-w-0 flex-1">
-                    <p className="text-[15px] font-black text-white">
-                      {Number(w.amount).toLocaleString('ru-RU')} ₽
-                    </p>
+                    <div className="flex items-baseline gap-1.5">
+                      <p className="text-[15px] font-black text-white">
+                        {Number(w.amount).toLocaleString('ru-RU')} ₽
+                      </p>
+                      {w.amount_without_fee && w.amount_without_fee !== w.amount && (
+                        <p className="text-[11px] text-white/30 font-medium line-through">
+                          {Number(w.amount_without_fee).toLocaleString('ru-RU')}
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      {w.type && (
+                        <span className="text-[10px] font-bold text-white/30 uppercase">
+                          {w.type === 'rub' ? '🏦 Рубли' : '₿ Крипто'}
+                        </span>
+                      )}
+                      {w.fee > 0 && (
+                        <span className="text-[10px] text-white/25">
+                          комис. {Number(w.fee).toLocaleString('ru-RU')} ₽
+                        </span>
+                      )}
+                    </div>
                     {w.requisites && (
-                      <p className="text-[11px] text-white/35 font-medium truncate">
+                      <p className="text-[11px] text-white/35 font-medium truncate mt-0.5">
                         {w.requisites}
                       </p>
                     )}

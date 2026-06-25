@@ -536,24 +536,33 @@ export const Home = () => {
                         {/* Gradient overlay */}
                         <div className="absolute inset-0 bg-linear-to-t from-neutral-950/90 via-neutral-950/20 to-transparent opacity-80 group-hover:opacity-100 transition-opacity" />
 
-                        {/* Bottom info */}
-                        <div className="absolute inset-x-0 bottom-0 p-4 transform transition-transform duration-500">
-                          <div className="flex items-center justify-between gap-2">
-                            <h3 className="text-base text-start font-black text-white line-clamp-2 leading-tight group-hover:text-cyan-400 transition-colors">
-                              {trendName}
-                            </h3>
+                        {/* Like badge — top right */}
+                        <div
+                          className="absolute top-3 right-3"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <LikeButton
+                            postId={post.id}
+                            botId={post.bot_id}
+                            userId={userId}
+                            liked={post.liked}
+                            likes={post.likes}
+                          />
+                        </div>
 
-                            {/* Like button — bottom left */}
-                            <div onClick={(e) => e.stopPropagation()}>
-                              <LikeButton
-                                postId={post.id}
-                                botId={post.bot_id}
-                                userId={userId}
-                                liked={post.liked}
-                                likes={post.likes}
-                              />
+                        {/* Bottom info */}
+                        <div className="absolute inset-x-0 bottom-0 p-4 flex flex-col gap-1.5">
+                          {isVideo && (
+                            <div className="inline-flex items-center gap-1.5 self-start bg-black/20 backdrop-blur-md border border-white/15 rounded-full px-2 py-1 pointer-events-none">
+                              <span className="text-[11px] shrink-0">👈🏻</span>
+                              <span className="text-[10px] font-black text-white tracking-wide uppercase leading-none">
+                                Сначала фото
+                              </span>
                             </div>
-                          </div>
+                          )}
+                          <h3 className="text-base text-start font-black text-white line-clamp-2 leading-tight group-hover:text-cyan-400 transition-colors w-full">
+                            {trendName}
+                          </h3>
                         </div>
 
                         {/* Cost badge — top right */}

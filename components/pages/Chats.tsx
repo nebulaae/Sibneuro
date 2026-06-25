@@ -55,6 +55,22 @@ export const Chats = () => {
 
   const chats = data?.pages.flatMap((p) => p) ?? [];
   const startedRef = useRef(false);
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasNextPage && !isFetchingNextPage) {
+          fetchNextPage();
+        }
+      },
+      { rootMargin: '200px' }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   // ==================== Логика открытия чата по параметрам ====================
   useEffect(() => {
@@ -259,21 +275,12 @@ export const Chats = () => {
               );
             })}
 
-            {hasNextPage && (
-              <button
-                onClick={() => {
-                  haptic.light();
-                  fetchNextPage();
-                }}
-                disabled={isFetchingNextPage}
-                className="w-full py-5 rounded-[28px] bg-white/5 border border-white/5 text-[14px] font-black text-white/30 hover:bg-white/10 hover:text-white transition-all active:scale-[0.98] mt-4"
-              >
-                {isFetchingNextPage ? (
-                  <Loader2 className="size-5 animate-spin mx-auto" />
-                ) : (
-                  t('loadMore')
-                )}
-              </button>
+            {/* Infinite scroll sentinel */}
+            <div ref={sentinelRef} className="h-4" />
+            {isFetchingNextPage && (
+              <div className="flex justify-center py-4">
+                <Loader2 className="size-5 animate-spin text-white/40" />
+              </div>
             )}
           </div>
         )}
