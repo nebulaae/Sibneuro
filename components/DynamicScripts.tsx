@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Script from 'next/script';
-
+// xyecoc
 export const DynamicScripts = () => {
   const [source, setSource] = useState<string | null>(null);
 
