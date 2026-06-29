@@ -281,10 +281,9 @@ function LikeButton({
       onClick={handleClick}
       className={`
         flex items-center gap-1.5 px-2.5 py-1.5 rounded-full backdrop-blur-md border transition-all duration-200 active:scale-90
-        ${
-          liked
-            ? 'bg-red-500/20 border-red-500/40 text-red-400'
-            : 'bg-black/40 border-white/10 text-white/50 hover:text-white/80 hover:bg-black/60'
+        ${liked
+          ? 'bg-red-500/20 border-red-500/40 text-red-400'
+          : 'bg-black/40 border-white/10 text-white/50 hover:text-white/80 hover:bg-black/60'
         }
       `}
     >
@@ -478,104 +477,104 @@ export const Home = () => {
           <div className="grid grid-cols-2 gap-4">
             {isLoading
               ? Array.from({ length: 6 }).map((_, i) => (
-                  <div
-                    key={i}
-                    className="aspect-3/4 rounded-3xl animate-pulse bg-white/5 border border-white/10"
-                  />
-                ))
+                <div
+                  key={i}
+                  className="aspect-3/4 rounded-3xl animate-pulse bg-white/5 border border-white/10"
+                />
+              ))
               : posts.map((post, index) => {
-                  const result = post.result as any;
-                  const media = result?.media?.[0] || result;
-                  const isVideo =
-                    media?.type === 'video' ||
-                    (typeof media?.input === 'string' &&
-                      media.input.includes('.mp4'));
-                  const mediaUrl = media?.url || media?.input || result?.url;
-                  const trendName =
-                    (post as any).name || post.inputs?.text || t('trend');
-                  const isLast = index === posts.length - 1;
+                const result = post.result as any;
+                const media = result?.media?.[0] || result;
+                const isVideo =
+                  media?.type === 'video' ||
+                  (typeof media?.input === 'string' &&
+                    media.input.includes('.mp4'));
+                const mediaUrl = media?.url || media?.input || result?.url;
+                const trendName =
+                  (post as any).name || post.inputs?.text || t('trend');
+                const isLast = index === posts.length - 1;
 
-                  return (
-                    <div key={post.id} ref={isLast ? lastPostRef : null}>
-                      <div
-                        onClick={() => {
-                          sessionStorage.setItem(
-                            `trend_post_${post.id}`,
-                            JSON.stringify(post)
-                          );
-                          router.push(`/trend/${post.id}`);
-                        }}
-                        className="group relative aspect-3/4 rounded-3xl overflow-hidden bg-zinc-900 border border-white/10 transition-all duration-500 hover:scale-[1.02] active:scale-[0.98] hover:border-white/20 hover:shadow-[0_20px_50px_rgba(0,0,0,0.5)] w-full cursor-pointer"
-                      >
-                        {/* Media */}
-                        {mediaUrl ? (
-                          isVideo ? (
-                            <SmartVideo
-                              src={mediaUrl}
-                              active
-                              className="absolute inset-0 w-full h-full"
-                              videoClassName="transition-transform duration-700 group-hover:scale-110"
-                              ctx={{ surface: 'home-grid', postId: post.id }}
-                            />
-                          ) : (
-                            <SmartImage
-                              src={mediaUrl}
-                              className="absolute inset-0 w-full h-full"
-                              imgClassName="transition-transform duration-700 group-hover:scale-110"
-                              ctx={{ surface: 'home-grid', postId: post.id }}
-                            />
-                          )
-                        ) : (
-                          <div className="absolute inset-0 flex items-center justify-center bg-white/5">
-                            <span className="text-[40px] animate-pulse">
-                              ✨
-                            </span>
-                          </div>
-                        )}
-
-                        {/* Gradient overlay */}
-                        <div className="absolute inset-0 bg-linear-to-t from-neutral-950/90 via-neutral-950/20 to-transparent opacity-80 group-hover:opacity-100 transition-opacity" />
-
-                        {/* Like badge — top right */}
-                        <div
-                          className="absolute top-3 right-3"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <LikeButton
-                            postId={post.id}
-                            botId={post.bot_id}
-                            userId={userId}
-                            liked={post.liked}
-                            likes={post.likes}
+                return (
+                  <div key={post.id} ref={isLast ? lastPostRef : null}>
+                    <div
+                      onClick={() => {
+                        sessionStorage.setItem(
+                          `trend_post_${post.id}`,
+                          JSON.stringify(post)
+                        );
+                        router.push(`/trend/${post.id}`);
+                      }}
+                      className="group relative aspect-3/4 rounded-3xl overflow-hidden bg-zinc-900 border border-white/10 transition-all duration-500 hover:scale-[1.02] active:scale-[0.98] hover:border-white/20 hover:shadow-[0_20px_50px_rgba(0,0,0,0.5)] w-full cursor-pointer"
+                    >
+                      {/* Media */}
+                      {mediaUrl ? (
+                        isVideo ? (
+                          <SmartVideo
+                            src={mediaUrl}
+                            active
+                            className="absolute inset-0 w-full h-full"
+                            videoClassName="transition-transform duration-700 group-hover:scale-110"
+                            ctx={{ surface: 'home-grid', postId: post.id }}
                           />
+                        ) : (
+                          <SmartImage
+                            src={mediaUrl}
+                            className="absolute inset-0 w-full h-full"
+                            imgClassName="transition-transform duration-700 group-hover:scale-110"
+                            ctx={{ surface: 'home-grid', postId: post.id }}
+                          />
+                        )
+                      ) : (
+                        <div className="absolute inset-0 flex items-center justify-center bg-white/5">
+                          <span className="text-[40px] animate-pulse">
+                            ✨
+                          </span>
                         </div>
+                      )}
 
-                        {/* Bottom info */}
-                        <div className="absolute inset-x-0 bottom-0 p-4 flex flex-col gap-1.5">
-                          {isVideo && (
-                            <div className="inline-flex items-center gap-1.5 self-start bg-black/20 backdrop-blur-md border border-white/15 rounded-full px-2 py-1 pointer-events-none">
-                              <span className="text-[11px] shrink-0">👈🏻</span>
-                              <span className="text-[10px] font-black text-white tracking-wide uppercase leading-none">
-                                Сначала фото
-                              </span>
-                            </div>
-                          )}
-                          <h3 className="text-base text-start font-black text-white line-clamp-2 leading-tight group-hover:text-cyan-400 transition-colors w-full">
+                      {/* Gradient overlay */}
+                      <div className="absolute inset-0 bg-linear-to-t from-neutral-950/90 via-neutral-950/20 to-transparent opacity-80 group-hover:opacity-100 transition-opacity" />
+
+                      {/* Tag + Like — top right */}
+                      <div
+                        className="absolute top-3 right-3 flex flex-col items-end gap-1.5"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <LikeButton
+                          postId={post.id}
+                          botId={post.bot_id}
+                          userId={userId}
+                          liked={post.liked}
+                          likes={post.likes}
+                        />
+                      </div>
+
+                      {/* Bottom info */}
+                      <div className="absolute inset-x-0 bottom-0 p-4 transform transition-transform duration-500">
+                        <div className="flex flex-col items-start justify-between gap-2">
+                          <span
+                            key={post.tag}
+                            className="backdrop-blur-md bg-black/50 border border-white/15 px-2 py-0.5 rounded-full text-[9px] font-black text-white/95 shadow-md uppercase tracking-wider"
+                          >
+                            {post.tag}
+                          </span>
+                          <h3 className="text-base text-start font-black text-white line-clamp-2 leading-tight group-hover:text-[#007AFF] transition-colors">
                             {trendName}
                           </h3>
                         </div>
+                      </div>
 
-                        {/* Cost badge — top right */}
-                        {/* <div className="absolute top-4 right-4">
+                      {/* Cost badge — top right */}
+                      {/* <div className="absolute top-4 right-4">
                       <div className="backdrop-blur-xl border border-white/10 px-3 py-1 rounded-full text-[12px] font-bold text-white shadow-lg">
                         ◈ {post.cost || 15}
                       </div>
                     </div> */}
 
-                      </div>
                     </div>
-                  );
-                })}
+                  </div>
+                );
+              })}
           </div>
 
           {isFetchingNextPage && (

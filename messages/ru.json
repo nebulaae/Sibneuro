@@ -39,7 +39,8 @@
     "role": "Ассистент",
     "close": "Закрыть",
     "download": "Скачать",
-    "selectRole": "Выбрать роль"
+    "selectRole": "Выбрать роль",
+    "changeRole": "Сменить роль"
   },
   "Chats": {
     "title": "Чаты",

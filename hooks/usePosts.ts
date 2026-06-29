@@ -42,6 +42,8 @@ export interface Post {
   };
   model_name?: string;
   name?: string | null;
+  tag?: string | null;
+  variables?: string[];
   cost?: number;
   priority: number;
   likes: number;

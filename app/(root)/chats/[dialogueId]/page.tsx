@@ -50,7 +50,7 @@ import { useHaptic } from '@/hooks/useHaptic';
 import { cn, localize, sanitizeMediaUrl } from '@/lib/utils';
 import { SmartImage } from '@/components/shared/SmartImage';
 import { SmartVideo } from '@/components/shared/SmartVideo';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
 import ReactMarkdown from 'react-markdown';
 import remarkMath from 'remark-math';
 import remarkGfm from 'remark-gfm';
@@ -265,6 +265,7 @@ function AudioPlayer({ src }: { src: string }) {
 
 export default function ChatPage() {
   const t = useTranslations('ChatPage');
+  const locale = useLocale();
   const router = useRouter();
   const queryClient = useQueryClient();
   const params = useParams();
@@ -601,7 +602,7 @@ export default function ChatPage() {
           >
             <Sparkles size={13} />
             <span className="max-w-[110px] truncate">
-              {selectedRole ? localize(selectedRole.label) : t('selectRole')}
+              {selectedRole ? localize(selectedRole.label, locale) : t('selectRole')}
             </span>
           </button>
         )}
@@ -620,29 +621,63 @@ export default function ChatPage() {
                 <p className="text-sm font-medium">{t('loadingPlaceholder')}</p>
               </div>
             ) : msgs.length === 0 && optimisticMessages.length === 0 ? (
-              <div className="flex flex-col items-center justify-center flex-1 gap-6 text-center px-10">
-                <div className="w-20 h-20 rounded-[32px] bg-zinc-900 border border-white/10 flex items-center justify-center shadow-2xl">
-                  <span className="text-3xl">💬</span>
-                </div>
-                <p className="text-[16px] font-medium text-white/40 leading-relaxed">
-                  {t('startDialogue')}
-                </p>
-                {showRoles && (
-                  <div className="w-full max-w-sm mt-4">
-                    <h3 className="text-[11px] font-bold uppercase tracking-widest text-white/25 mb-4">
-                      {t('chooseAssistant')}
-                    </h3>
-                    <button
-                      onClick={() => {
-                        haptic.light();
-                        setIsRolePickerOpen(true);
-                      }}
-                      className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-cyan-400/10 border border-cyan-400/25 text-cyan-300 font-bold active:scale-[0.98] transition-all"
-                    >
-                      <Sparkles size={16} />
-                      {selectedRole ? localize(selectedRole.label) : t('selectRole')}
-                    </button>
+              <div className="flex flex-col items-center gap-5 text-center px-6 pt-10 pb-4">
+                {/* Avatar or fallback icon */}
+                {selectedRole?.image ? (
+                  <div className="w-24 h-24 rounded-[28px] overflow-hidden border-2 border-cyan-400/20 shadow-[0_0_32px_rgba(34,211,238,0.15)]">
+                    <img
+                      src={selectedRole.image}
+                      alt=""
+                      className="w-full h-full object-cover"
+                    />
                   </div>
+                ) : (
+                  <div className="w-20 h-20 rounded-[32px] bg-zinc-900 border border-white/10 flex items-center justify-center shadow-2xl">
+                    <span className="text-3xl">💬</span>
+                  </div>
+                )}
+
+                {selectedRole ? (
+                  <>
+                    <div className="flex flex-col gap-2 max-w-[280px]">
+                      <h2 className="text-[22px] font-black tracking-tight text-white leading-tight">
+                        {localize(selectedRole.label, locale)}
+                      </h2>
+                      <p className="text-[13px] text-white/45 leading-relaxed">
+                        {localize(selectedRole.description, locale)}
+                      </p>
+                    </div>
+                    {hasRoles && (
+                      <button
+                        onClick={() => {
+                          haptic.light();
+                          setIsRolePickerOpen(true);
+                        }}
+                        className="flex items-center gap-2 px-5 py-2.5 rounded-full border border-white/10 bg-white/5 text-[13px] font-semibold text-white/50 hover:border-white/20 hover:text-white/70 transition-all active:scale-95"
+                      >
+                        <Sparkles size={13} className="text-cyan-400" />
+                        {t('changeRole')}
+                      </button>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <p className="text-[16px] font-medium text-white/40 leading-relaxed">
+                      {t('startDialogue')}
+                    </p>
+                    {showRoles && hasRoles && (
+                      <button
+                        onClick={() => {
+                          haptic.light();
+                          setIsRolePickerOpen(true);
+                        }}
+                        className="flex items-center gap-2 py-3 px-5 rounded-2xl bg-cyan-400/10 border border-cyan-400/25 text-[14px] text-cyan-300 font-bold active:scale-[0.98] transition-all"
+                      >
+                        <Sparkles size={16} />
+                        {t('selectRole')}
+                      </button>
+                    )}
+                  </>
                 )}
               </div>
             ) : (
@@ -1101,10 +1136,10 @@ export default function ChatPage() {
                         active ? 'text-cyan-300' : 'text-white'
                       )}
                     >
-                      {localize(role.label)}
+                      {localize(role.label, locale)}
                     </p>
                     <p className="text-[12px] text-white/40 line-clamp-2 mt-0.5">
-                      {localize(role.description)}
+                      {localize(role.description, locale)}
                     </p>
                   </div>
                   {active && (

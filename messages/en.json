@@ -38,7 +38,8 @@
     "role": "Assistant",
     "close": "Close",
     "download": "Download",
-    "selectRole": "Select role"
+    "selectRole": "Select role",
+    "changeRole": "Change role"
   },
   "Chats": {
     "title": "Chats",
