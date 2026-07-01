@@ -20,10 +20,20 @@ export function useDragScroll<T extends HTMLElement = HTMLDivElement>() {
     const scrollable = () => el.scrollWidth > el.clientWidth;
 
     const onWheel = (e: WheelEvent) => {
-      if (e.deltaY === 0 || !scrollable()) return;
-      // Колесо обычно даёт deltaY — превращаем его в горизонтальный сдвиг.
+      if (!scrollable()) return;
+      // Берём ось с бОльшим смещением: вертикальное колесо мыши (deltaY)
+      // или горизонтальный трекпад (deltaX).
+      const raw = Math.abs(e.deltaY) >= Math.abs(e.deltaX) ? e.deltaY : e.deltaX;
+      if (raw === 0) return;
+      // Нормализуем единицы в пиксели. Вебвью (в т.ч. Telegram Desktop) часто
+      // шлёт deltaMode=LINE с крошечным deltaY (±1..3) — без пересчёта скролл
+      // сдвигался на 1px за щелчок и выглядел «застывшим».
+      let delta = raw;
+      if (e.deltaMode === 1)
+        delta *= 16; // DOM_DELTA_LINE → ~строка
+      else if (e.deltaMode === 2) delta *= el.clientWidth; // DOM_DELTA_PAGE
       e.preventDefault();
-      el.scrollLeft += e.deltaY;
+      el.scrollLeft += delta;
     };
 
     let isDown = false;

@@ -55,6 +55,7 @@ export const Generate = () => {
   const locale = useLocale();
   const searchParams = useSearchParams();
   const modelParam = searchParams.get('model');
+  const catParam = searchParams.get('cat');
   const haptic = useHaptic();
   const t = useTranslations('Generate');
 
@@ -84,7 +85,20 @@ export const Generate = () => {
   const { data: roles } = useRoles();
 
   // Сегментированный каталог: чат/фото/видео/аудио/роли + поиск + избранное.
-  const [segment, setSegment] = useState<ModelKind | 'roles'>('image');
+  // Начальную вкладку берём из ?cat= (кнопки с главной ведут сюда:
+  // text/image/video/audio), иначе по умолчанию «фото».
+  const [segment, setSegment] = useState<ModelKind | 'roles'>(() => {
+    const valid: (ModelKind | 'roles')[] = [
+      'text',
+      'image',
+      'video',
+      'audio',
+      'roles',
+    ];
+    return valid.includes(catParam as any)
+      ? (catParam as ModelKind | 'roles')
+      : 'image';
+  });
   const [search, setSearch] = useState('');
   const [favOnly, setFavOnly] = useState(false);
   const [favorites, setFavorites] = useState<string[]>([]);
@@ -114,6 +128,20 @@ export const Generate = () => {
   useEffect(() => {
     if (modelParam) setSelectedTech(modelParam);
   }, [modelParam]);
+  // Смена ?cat= без размонтирования (напр. переход с главной по другой кнопке)
+  // должна переключать активную вкладку каталога.
+  useEffect(() => {
+    const valid: (ModelKind | 'roles')[] = [
+      'text',
+      'image',
+      'video',
+      'audio',
+      'roles',
+    ];
+    if (valid.includes(catParam as any)) {
+      setSegment(catParam as ModelKind | 'roles');
+    }
+  }, [catParam]);
   useEffect(() => {
     if (selected) {
       const def =
