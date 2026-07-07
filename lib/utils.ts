@@ -59,3 +59,14 @@ export function cleanModelName(name: string | null | undefined): string {
   if (!name) return '';
   return name.replace(/^sosana\//i, '');
 }
+
+/**
+ * Форматирует банковские реквизиты (номер карты / счёта / телефона),
+ * разбивая цифры на группы по 4: "4444555566667777" → "4444 5555 6666 7777".
+ * Если в строке есть буквы (крипто-адрес и т.п.) — оставляем как есть.
+ */
+export function formatBankRequisites(value: string): string {
+  if (/[a-zA-Zа-яА-Я]/.test(value)) return value;
+  const digits = value.replace(/\D/g, '');
+  return digits.replace(/(\d{4})(?=\d)/g, '$1 ');
+}

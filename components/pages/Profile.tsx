@@ -62,7 +62,6 @@ import { useHaptic } from '@/hooks/useHaptic';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import { AlbumsTab } from '../shared/profile/AlbumsTab';
-import { WithdrawalDialog } from '@/components/dialogs/WithdrawalDialog';
 
 type Tab = 'profile' | 'account' | 'partnership';
 type PartnershipSubTab = 'overview' | 'finance' | 'audience' | 'lists';
@@ -581,10 +580,9 @@ export const Profile = () => {
     router.push(`/chats/${dialogueId}`);
   };
 
-  const [withdrawOpen, setWithdrawOpen] = useState(false);
   const handleWithdraw = () => {
     haptic.medium();
-    setWithdrawOpen(true);
+    router.push('/profile/withdrawal');
   };
 
   const TABS: { key: Tab; label: string }[] = [
@@ -1103,11 +1101,6 @@ export const Profile = () => {
                 </div>
               </div>
             </div>
-
-            <WithdrawalDialog
-              open={withdrawOpen}
-              onClose={() => setWithdrawOpen(false)}
-            />
 
             {/* Referral Link */}
             {referralLink && (
