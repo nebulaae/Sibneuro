@@ -120,6 +120,32 @@ function StatCard({
   );
 }
 
+function InfoRow({
+  label,
+  value,
+  mono,
+}: {
+  label: string;
+  value: React.ReactNode;
+  mono?: boolean;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-3 py-2">
+      <span className="shrink-0 text-[12px] font-medium text-white/35">
+        {label}
+      </span>
+      <span
+        className={cn(
+          'min-w-0 truncate text-right text-[13px] font-bold text-white/80',
+          mono && 'font-mono tracking-tight'
+        )}
+      >
+        {value}
+      </span>
+    </div>
+  );
+}
+
 export const Withdrawal = () => {
   const router = useRouter();
   const haptic = useHaptic();
@@ -476,69 +502,74 @@ export const Withdrawal = () => {
           ) : (
             sorted.map((w) => {
               const meta = STATUS_META[w.status];
+              const m = w.type ? TYPE_META[w.type] : null;
+              const RowIcon = m?.icon ?? Banknote;
+              const gross = w.amount_without_fee ?? w.amount;
+              const net = w.amount;
+              const dateStr = new Date(w.created_at).toLocaleDateString('ru-RU', {
+                day: 'numeric',
+                month: 'short',
+                hour: '2-digit',
+                minute: '2-digit',
+              });
               return (
                 <div
                   key={w.id}
-                  className={cn('flex items-center gap-3 p-4 rounded-[20px]', glass)}
+                  className={cn('flex flex-col gap-3 p-4 rounded-[20px]', glass)}
                 >
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="text-[18px] font-black text-white">
-                        {Number(w.amount).toLocaleString('ru-RU')} ₽
+                  {/* Шапка: тип + статус */}
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-cyan-400/12 text-cyan-300 shrink-0">
+                        <RowIcon size={15} />
                       </span>
-                      {w.amount_without_fee != null &&
-                        w.amount_without_fee !== w.amount && (
-                          <span className="text-[12px] text-white/30 font-medium line-through">
-                            {Number(w.amount_without_fee).toLocaleString('ru-RU')}
-                          </span>
-                        )}
+                      <span className="text-[13px] font-black text-white/70 truncate">
+                        {m?.label ?? 'Вывод'}
+                      </span>
                     </div>
-                    {(w.type || w.fee > 0) && (
-                      <div className="flex items-center gap-2 mt-0.5">
-                        {w.type && (
-                          <span className="text-[10px] font-bold uppercase text-white/30">
-                            {w.type === 'rub' ? '🏦 Рубли' : '₿ Крипто'}
-                          </span>
-                        )}
-                        {w.fee > 0 && (
-                          <span className="text-[10px] text-white/25">
-                            комис. {Number(w.fee).toLocaleString('ru-RU')} ₽
-                          </span>
-                        )}
-                      </div>
-                    )}
-                    {w.requisites && (
-                      <p className="text-[12px] font-medium text-white/40 truncate mt-1">
-                        {w.requisites}
-                      </p>
-                    )}
-                    <p className="text-[11px] font-medium text-white/25 mt-0.5">
-                      {new Date(w.created_at).toLocaleDateString('ru-RU', {
-                        day: 'numeric',
-                        month: 'short',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })}
-                    </p>
+                    <span
+                      className={cn(
+                        'shrink-0 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase border',
+                        meta?.cls
+                      )}
+                    >
+                      {meta?.label ?? w.status}
+                    </span>
                   </div>
 
-                  <span
-                    className={cn(
-                      'shrink-0 px-2.5 py-1 rounded-full text-[11px] font-bold border',
-                      meta?.cls
+                  {/* Сумма: к зачислению выделена, запрошенная зачёркнута */}
+                  <div className="flex items-end gap-2 flex-wrap">
+                    <span className="text-[26px] font-black text-white leading-none">
+                      {Number(gross).toLocaleString('ru-RU')} ₽
+                    </span>
+                    {net != null && net !== gross && (
+                      <span className="text-[14px] font-medium text-white/30 line-through leading-none mb-[3px]">
+                        {Number(net).toLocaleString('ru-RU')} ₽
+                      </span>
                     )}
-                  >
-                    {meta?.label ?? w.status}
-                  </span>
+                  </div>
+
+                  {/* Детали */}
+                  <div className="flex flex-col divide-y divide-white/5 rounded-xl bg-black/20 border border-white/5 px-3">
+                    {w.fee > 0 && (
+                      <InfoRow
+                        label="Комиссия"
+                        value={`−${Number(w.fee).toLocaleString('ru-RU')} ₽`}
+                      />
+                    )}
+                    {w.requisites && (
+                      <InfoRow label="Реквизиты" value={w.requisites} mono />
+                    )}
+                    <InfoRow label="Дата" value={dateStr} />
+                  </div>
 
                   {w.status === 'pending' && (
                     <button
                       onClick={() => handleCancel(w.id)}
                       disabled={cancelWithdrawal.isPending}
-                      className="shrink-0 w-8 h-8 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/50 active:scale-90 transition-all disabled:opacity-50"
-                      aria-label="Отменить"
+                      className="w-full flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 text-[13px] font-bold text-white/60 hover:bg-red-500/15 hover:text-red-400 hover:border-red-500/20 active:scale-[0.98] transition-all disabled:opacity-50"
                     >
-                      <X size={14} />
+                      <X size={14} /> Отменить заявку
                     </button>
                   )}
                 </div>

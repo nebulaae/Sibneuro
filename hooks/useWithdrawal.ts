@@ -15,6 +15,15 @@ import { queryKeys } from '@/lib/queryKeys';
  *   POST /api/withdrawal/cancel?id=...     → { success, id, status, balance }
  */
 
+/**
+ * Бекенд оборачивает успешные ответы в конверт { success, data: {...} }.
+ * Ошибки приходят плоскими ({ success:false, error }). Разворачиваем оба вида:
+ * если есть вложенный data — берём его, иначе исходный объект.
+ */
+function unwrap<T = any>(raw: any): T {
+  return (raw && typeof raw === 'object' && 'data' in raw ? raw.data : raw) as T;
+}
+
 export type WithdrawalStatus = 'pending' | 'canceled' | 'completed' | 'declined';
 export type WithdrawalType = 'rub' | 'crypto';
 
@@ -70,10 +79,11 @@ export const useWithdrawalMinAmount = () => {
     queryKey: queryKeys.withdrawalMinAmount,
     queryFn: async () => {
       const { data } = await api.get('/api/withdrawal/min-amount');
-      if (!data.success) throw new Error(data.error || 'Failed to load min amount');
+      const body = unwrap(data);
+      if (!body.success) throw new Error(body.error || 'Failed to load min amount');
       return {
-        min_withdraw_amount: data.min_withdraw_amount as number,
-        withdrawal_types: (data.withdrawal_types || []) as WithdrawalTypeOption[],
+        min_withdraw_amount: body.min_withdraw_amount as number,
+        withdrawal_types: (body.withdrawal_types || []) as WithdrawalTypeOption[],
       } as WithdrawalMinAmountData;
     },
     staleTime: 5 * 60_000,
@@ -89,8 +99,9 @@ export const useWithdrawals = (status?: WithdrawalStatus | WithdrawalStatus[]) =
       const { data } = await api.get('/api/withdrawal', {
         params: statusParam ? { status: statusParam } : {},
       });
-      if (!data.success) throw new Error(data.error || 'Failed to load withdrawals');
-      return (data.items || []) as Withdrawal[];
+      const body = unwrap(data);
+      if (!body.success) throw new Error(body.error || 'Failed to load withdrawals');
+      return (body.items || []) as Withdrawal[];
     },
   });
 };
@@ -100,20 +111,18 @@ export const useCreateWithdrawal = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (payload: CreateWithdrawalPayload) => {
-      const { data } = await api.post<CreateWithdrawalResponse>(
-        '/api/withdrawal',
-        payload
-      );
+      const { data } = await api.post('/api/withdrawal', payload);
+      const body = unwrap<CreateWithdrawalResponse>(data);
       // Бекенд отдаёт 200 c { success:false, error } для бизнес-ошибок
       // (недостаточно средств / меньше минимума) — пробрасываем как ошибку.
-      if (!data.success) {
-        const err = new Error(data.error || 'Withdrawal failed') as Error & {
+      if (!body.success) {
+        const err = new Error(body.error || 'Withdrawal failed') as Error & {
           apiError?: string;
         };
-        err.apiError = data.error;
+        err.apiError = body.error;
         throw err;
       }
-      return data;
+      return body;
     },
     onSuccess: () => {
       // Баланс изменился — обновляем профиль и список выводов.
@@ -131,14 +140,15 @@ export const useCancelWithdrawal = () => {
       const { data } = await api.post('/api/withdrawal/cancel', null, {
         params: { id },
       });
-      if (!data.success) {
-        const err = new Error(data.error || 'Cancel failed') as Error & {
+      const body = unwrap(data);
+      if (!body.success) {
+        const err = new Error(body.error || 'Cancel failed') as Error & {
           apiError?: string;
         };
-        err.apiError = data.error;
+        err.apiError = body.error;
         throw err;
       }
-      return data as {
+      return body as {
         success: true;
         id: number;
         status: WithdrawalStatus;
