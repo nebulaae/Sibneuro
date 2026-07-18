@@ -6,7 +6,10 @@ import api from '@/lib/api';
 import { useAuth } from '@/hooks/useAuth';
 import { useBot } from '@/app/providers/BotProvider';
 import { getAppSource } from '@/lib/source';
-import { waitForPlatformInitData } from '@/lib/platform';
+import {
+  waitForPlatformInitData,
+  configureMiniAppViewport,
+} from '@/lib/platform';
 import { setInviterId } from '@/lib/analytics';
 import { setAuthInProgress, clearAuthInProgress } from '@/lib/authState';
 import { track } from '@/lib/logger';
@@ -119,6 +122,14 @@ export const TelegramProvider = ({
     },
     [login]
   );
+
+  // Разворот на весь экран и запрет свайпов — независимо от авторизации,
+  // чтобы у вернувшихся пользователей (токен уже есть) окно тоже не
+  // сворачивалось при скролле и открывалось на всю высоту.
+  useEffect(() => {
+    if (getAppSource() !== 'tg') return;
+    return configureMiniAppViewport();
+  }, []);
 
   useEffect(() => {
     const source = getAppSource();

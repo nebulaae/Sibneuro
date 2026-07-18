@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, ReactNode } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { AuthContext, TelegramUser } from '@/hooks/useAuth';
 
 // Универсальный тип авторизованного пользователя
@@ -17,6 +18,7 @@ export interface AuthUser {
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const queryClient = useQueryClient();
   const [user, setUser] = useState<TelegramUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -94,6 +96,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Сохраняем user_id для interceptor
     localStorage.setItem('auth_user_id', String(u.id));
     setUser(u);
+    // Тихий вход (initData) завершается ПОСЛЕ того, как useUser и другие
+    // хуки уже сходили в API без токена и закэшировали пустой ответ.
+    // Без инвалидации баланс/токены не появятся до перелогина.
+    // Токен уже записан в localStorage вызывающей стороной, поэтому
+    // рефетч уйдёт уже авторизованным.
+    queryClient.invalidateQueries();
   };
 
   const logout = () => {

@@ -1,4 +1,58 @@
 /**
+ * Разворачивает мини-апп на весь экран и запрещает вертикальные свайпы,
+ * из-за которых окно Telegram/Max сворачивается или закрывается при скролле.
+ *
+ * Вызывать можно на любой платформе и многократно — отсутствующие методы
+ * (старые версии клиента) молча игнорируются. SDK может подгрузиться позже
+ * монтирования, поэтому вызов повторяется короткое время, пока WebApp не
+ * появится, после чего интервал останавливается.
+ *
+ * Возвращает функцию очистки (останавливает polling).
+ */
+export function configureMiniAppViewport(): () => void {
+  if (typeof window === 'undefined') return () => {};
+
+  const apply = (wa: any): boolean => {
+    if (!wa) return false;
+    try {
+      wa.ready?.();
+    } catch {}
+    try {
+      // expand() растягивает окно на всю доступную высоту (а не «на половину»)
+      wa.expand?.();
+    } catch {}
+    try {
+      // Bot API 7.7+: не даёт свернуть/закрыть мини-апп вертикальным свайпом
+      wa.disableVerticalSwipes?.();
+    } catch {}
+    return true;
+  };
+
+  const tryApply = (): boolean => {
+    const tg = (window as any)?.Telegram?.WebApp;
+    const maxWA = (window as any)?.WebApp;
+    let ok = false;
+    if (apply(tg)) ok = true;
+    if (apply(maxWA)) ok = true;
+    return ok;
+  };
+
+  // Немедленная попытка + короткий polling на случай позднего SDK
+  let count = 0;
+  const done = tryApply();
+  if (done) return () => {};
+
+  const timer = setInterval(() => {
+    count++;
+    if (tryApply() || count > 40) {
+      clearInterval(timer);
+    }
+  }, 100);
+
+  return () => clearInterval(timer);
+}
+
+/**
  * Синхронная версия — используется там, где await невозможен (interceptors и т.п.)
  */
 export function getPlatformInitData(): string | null {
