@@ -39,7 +39,11 @@
     "close": "Close",
     "download": "Download",
     "selectRole": "Select role",
-    "changeRole": "Change role"
+    "changeRole": "Change role",
+    "copy": "Copy",
+    "copied": "Copied",
+    "forward": "Forward",
+    "nothingToCopy": "Nothing to copy"
   },
   "Chats": {
     "title": "Chats",
@@ -361,7 +365,8 @@
     "noData": "No data",
     "participants": "Participants",
     "levelN": "Level {n}",
-    "partnershipDesc": "Join the Sibneuro partnership program and earn income: from users you invite, and those they invite.",
+    "partnershipDesc": "Join the Sibneuro partnership program and earn income from every payment made by users you invite.",
+    "rewardBadge": "50% of every payment",
     "rewardDesc": "50% from payments of users you invite. The reward is credited without time limits as long as users pay for their subscription.",
     "sharePrompt": "Send your unique link to friends/colleagues to earn together with Sibneuro",
     "information": "Information",
@@ -490,6 +495,8 @@
     "uploadHint": "JPEG, PNG, WebP up to 20 MB",
     "model": "Model",
     "prompt": "Prompt",
+    "copyPrompt": "Copy prompt",
+    "promptCopied": "Prompt copied",
     "back": "Back",
     "done": "Done",
     "community": "Community feed",

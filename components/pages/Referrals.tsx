@@ -49,7 +49,6 @@ export const Referrals = () => {
 
   const stats = (refData as any)?.stats || {};
   const referrals = (refData as any)?.referrals || [];
-  const levelStats = (refData as any)?.levelStats || [];
 
   const userId = tgUser?.id;
   const referralLink =
@@ -211,22 +210,11 @@ export const Referrals = () => {
             </div>
           </div>
 
-          {/* Counts Row */}
-          <div className="grid grid-cols-4 gap-4">
+          {/* Counts Row — простая 1-уровневая программа: без разбивки по уровням */}
+          <div className="grid grid-cols-2 gap-4">
             {[
               { label: tp('participants'), value: stats.total_referrals || 0 },
-              {
-                label: tp('levelN', { n: 1 }),
-                value: levelStats.find((l: any) => l.level === 1)?.count || 0,
-              },
-              {
-                label: tp('levelN', { n: 2 }),
-                value: levelStats.find((l: any) => l.level === 2)?.count || 0,
-              },
-              {
-                label: tp('levelN', { n: 3 }),
-                value: levelStats.find((l: any) => l.level === 3)?.count || 0,
-              },
+              { label: t('unique'), value: stats.unique_referrals || 0 },
             ].map((item, i) => (
               <div key={i} className="flex flex-col gap-1">
                 <span className="text-[11px] font-medium text-white/30 uppercase tracking-wider">
@@ -243,7 +231,7 @@ export const Referrals = () => {
 
           {/* Table Header */}
           <div className="grid grid-cols-3 px-2 text-[12px] font-bold text-white/30 uppercase tracking-wider">
-            <span>{tp('level')}</span>
+            <span>{tp('user')}</span>
             <span className="text-center">{tp('payments')}</span>
             <span className="text-right">{tp('regDate')}</span>
           </div>
@@ -261,8 +249,12 @@ export const Referrals = () => {
                     className="grid grid-cols-3 px-2 py-3.5 items-center border-b border-white/[0.03] hover:bg-white/[0.02] transition-colors rounded-lg"
                   >
                     <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-[11px] font-bold text-white/60">
-                        {ref.level}
+                      <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-[11px] font-bold text-white/60 uppercase">
+                        {(
+                          ref.first_name ||
+                          ref.username ||
+                          'U'
+                        ).charAt(0)}
                       </div>
                       <span className="text-[13px] font-medium truncate">
                         {ref.first_name ||

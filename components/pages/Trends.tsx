@@ -52,6 +52,37 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Input } from '../ui/input';
 import { isVideoMedia } from '@/lib/media';
 
+const CopyPromptButton = ({ text }: { text: string }) => {
+  const t = useTranslations('Trends');
+  const haptic = useHaptic();
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = () => {
+    if (!text) return;
+    navigator.clipboard.writeText(text).then(() => {
+      haptic.success();
+      setCopied(true);
+      toast.success(t('promptCopied'));
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
+
+  return (
+    <button
+      onClick={handleCopy}
+      className={cn(
+        'w-full h-12 rounded-2xl flex items-center justify-center gap-2 text-[14px] font-bold transition-all active:scale-[0.98]',
+        copied
+          ? 'bg-emerald-500/15 border border-emerald-500/30 text-emerald-400'
+          : 'bg-cyan-400/10 border border-cyan-400/25 text-cyan-400 hover:bg-cyan-400/15'
+      )}
+    >
+      {copied ? <CheckCircle2 size={16} /> : <Copy size={16} />}
+      {copied ? t('promptCopied') : t('copyPrompt')}
+    </button>
+  );
+};
+
 export const Trends = () => {
   const t = useTranslations('Trends');
   const haptic = useHaptic();
@@ -1234,7 +1265,7 @@ export const TrendDetail = ({
             </h3>
             {post.inputs?.hide_text ? (
               <div className="p-6 rounded-[32px] bg-cyan-400/5 border border-cyan-400/20 flex items-center gap-4">
-                <div className="w-12 h-12 rounded-2xl bg-cyan-400/20 flex items-center justify-center">
+                <div className="w-12 h-12 rounded-2xl flex items-center justify-center">
                   <Lock size={20} className="text-cyan-400" />
                 </div>
                 <p className="text-[15px] font-bold text-cyan-400/70 leading-tight">
@@ -1247,6 +1278,9 @@ export const TrendDetail = ({
                   "{post.inputs?.text || t('noPrompt')}"
                 </p>
               </div>
+            )}
+            {!post.inputs?.hide_text && post.inputs?.text && (
+              <CopyPromptButton text={post.inputs.text} />
             )}
           </div>
         </div>

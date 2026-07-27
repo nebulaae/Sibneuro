@@ -13,13 +13,12 @@ import { useRoles } from '@/hooks/useRoles';
 import { useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '@/lib/queryKeys';
 import {
-  ContextMenu,
-  ContextMenuContent,
-  ContextMenuItem,
-  ContextMenuTrigger,
-} from '@/components/ui/context-menu';
+  MessageActionMenu,
+  MessageAction,
+} from '@/components/shared/MessageActionMenu';
+import { forwardTextToTelegram } from '@/lib/telegramShare';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Copy } from 'lucide-react';
+import { Copy, Forward } from 'lucide-react';
 import {
   ChevronLeft,
   Send,
@@ -539,6 +538,38 @@ export default function ChatPage() {
     window.location.href = proxyUrl;
   };
 
+  // Экшены контекстного меню для конкретного текста сообщения
+  // (отдельно для сообщения пользователя и для ответа ИИ — чтобы копировалось
+  // именно то, на чём сделали long-press, а не всегда вопрос).
+  const buildTextActions = useCallback(
+    (rawText?: string | null): MessageAction[] => {
+      const text = (rawText || '').trim();
+      if (!text) return [];
+      return [
+        {
+          key: 'copy',
+          label: t('copy'),
+          icon: <Copy size={18} />,
+          onSelect: () => {
+            navigator.clipboard.writeText(text).then(() => {
+              haptic.success();
+              toast.success(t('copied'));
+            });
+          },
+        },
+        {
+          key: 'forward',
+          label: t('forward'),
+          icon: <Forward size={18} />,
+          onSelect: () => {
+            forwardTextToTelegram(text);
+          },
+        },
+      ];
+    },
+    [t, haptic]
+  );
+
   const acceptTypes = 'image/*,.heic,video/*,audio/*';
   const isSendDisabled =
     isHistoryLoading ||
@@ -614,7 +645,14 @@ export default function ChatPage() {
           className="h-full pr-4"
           onContextMenu={(e) => e.preventDefault()}
         >
-          <div className="flex flex-col gap-6 pb-6">
+          <div
+            className="flex flex-col gap-6 pb-6 select-none"
+            style={{
+              WebkitTouchCallout: 'none',
+              WebkitUserSelect: 'none',
+              userSelect: 'none',
+            }}
+          >
             {isHistoryLoading ? (
               <div className="flex flex-col items-center justify-center h-full gap-4 opacity-40">
                 <Loader2 size={32} className="animate-spin" />
@@ -684,15 +722,15 @@ export default function ChatPage() {
               [...msgs, ...optimisticMessages].map((msg, idx) => {
                 const userMedia = extractDisplayMedia(msg.inputs);
                 const resultMedia = extractResultMedia(msg.result);
-                const content = msg.inputs?.text || msg.result?.text || '';
 
                 return (
-                  <ContextMenu key={msg.id || idx}>
-                    <ContextMenuTrigger asChild>
-                      <div className="flex flex-col gap-3">
-                        {/* User Message */}
-                        {(msg.inputs?.text || userMedia.length > 0) && (
-                          <div className="flex justify-end pl-12">
+                  <div key={msg.id || idx} className="flex flex-col gap-3">
+                    {/* User Message */}
+                    {(msg.inputs?.text || userMedia.length > 0) && (
+                      <MessageActionMenu
+                        actions={buildTextActions(msg.inputs?.text)}
+                      >
+                        <div className="flex justify-end pl-12">
                             <div className="flex flex-col items-end gap-2">
                               <div className="px-5 py-3.5 rounded-[24px_24px_4px_24px] bg-zinc-900/60 border border-white/10 shadow-xl text-[15px] leading-relaxed">
                                 {msg.inputs?.text && (
@@ -746,11 +784,15 @@ export default function ChatPage() {
                               </div>
                             </div>
                           </div>
-                        )}
+                        </MessageActionMenu>
+                    )}
 
-                        {/* AI Message */}
-                        <div className="flex justify-start pr-12">
-                          <div className="flex flex-col items-start gap-2 w-full">
+                    {/* AI Message */}
+                    <MessageActionMenu
+                      actions={buildTextActions(msg.result?.text)}
+                    >
+                      <div className="flex justify-start pr-12">
+                        <div className="flex flex-col items-start gap-2 w-full">
                             {msg.status === 'processing' ||
                             msg.status === 'pending' ? (
                               <div className="px-6 py-4 rounded-[24px_24px_24px_4px] bg-cyan-400/5 border border-cyan-400/10 flex gap-1.5">
@@ -883,22 +925,8 @@ export default function ChatPage() {
                             )}
                           </div>
                         </div>
-                      </div>
-                    </ContextMenuTrigger>
-
-                    <ContextMenuContent className="bg-neutral-900 border-white/10">
-                      <ContextMenuItem
-                        onClick={() => {
-                          navigator.clipboard.writeText(content);
-                          toast.success('Скопировано');
-                        }}
-                        className="flex items-center gap-2 cursor-pointer"
-                      >
-                        <Copy size={16} />
-                        Копировать сообщение
-                      </ContextMenuItem>
-                    </ContextMenuContent>
-                  </ContextMenu>
+                      </MessageActionMenu>
+                    </div>
                 );
               })
             )}

@@ -496,7 +496,6 @@ export const Profile = () => {
   const requests = reqData?.pages.flatMap((p) => p) ?? [];
   const refStats = (refData as ReferralsData | undefined)?.stats;
   const referralsList = (refData as ReferralsData | undefined)?.referrals ?? [];
-  const levelStats = (refData as ReferralsData | undefined)?.levelStats ?? [];
 
   const name = tgUser
     ? `${tgUser.first_name} ${tgUser.last_name || ''}`.trim()
@@ -1135,27 +1134,25 @@ export const Profile = () => {
               </div>
             )}
 
-            {/* Level breakdown from referral page */}
-            {levelStats.length > 0 && (
-              <div className="grid grid-cols-3 gap-2">
-                {[1, 2, 3].map((lvl) => {
-                  const found = levelStats.find((l: any) => l.level === lvl);
-                  return (
-                    <div
-                      key={lvl}
-                      className={cn(glass.tile, 'flex flex-col gap-1.5 p-4')}
-                    >
-                      <span className="text-[10px] font-medium uppercase tracking-[0.5px] text-white/30">
-                        {t('levelN', { n: lvl })}
-                      </span>
-                      <span className="text-[22px] font-black tracking-tight leading-none">
-                        {found?.count ?? 0}
-                      </span>
-                    </div>
-                  );
-                })}
+            {/* Простая 1-уровневая программа: 50% с каждой оплаты */}
+            <div
+              className={cn(
+                glass.tile,
+                'flex items-center gap-3 p-4 border-cyan-400/20'
+              )}
+            >
+              <div className="shrink-0 size-11 rounded-2xl bg-cyan-400/15 border border-cyan-400/25 flex items-center justify-center">
+                <Coins size={20} className="text-cyan-300" />
               </div>
-            )}
+              <div className="min-w-0">
+                <p className="text-[13px] font-black tracking-tight text-cyan-100">
+                  {t('rewardBadge')}
+                </p>
+                <p className="mt-0.5 text-[12px] text-white/45 leading-snug">
+                  {t('rewardDesc')}
+                </p>
+              </div>
+            </div>
 
             {/* Dashboard Controls */}
             <div className="flex flex-col gap-3 pt-2">
@@ -1800,7 +1797,7 @@ export const Profile = () => {
 
                       {/* Header */}
                       <div className="grid grid-cols-3 px-2 mb-2 text-[11px] font-medium text-white/25 uppercase tracking-[0.5px]">
-                        <span>{t('level')}</span>
+                        <span>{t('user')}</span>
                         <span className="text-center">{t('payments')}</span>
                         <span className="text-right">{t('regDate')}</span>
                       </div>
@@ -1813,8 +1810,12 @@ export const Profile = () => {
                               className="grid grid-cols-3 py-3.5 items-center border-b border-white/[0.05]"
                             >
                               <div className="flex items-center gap-3">
-                                <div className="size-8 rounded-xl bg-white/[0.05] flex items-center justify-center text-[11px] font-bold text-white/50">
-                                  {ref.level}
+                                <div className="size-8 rounded-xl bg-white/[0.05] flex items-center justify-center text-[11px] font-bold text-white/50 uppercase">
+                                  {(
+                                    ref.first_name ||
+                                    ref.username ||
+                                    'U'
+                                  ).charAt(0)}
                                 </div>
                                 <span className="text-[13px] font-medium truncate text-white/80">
                                   {ref.first_name ||
