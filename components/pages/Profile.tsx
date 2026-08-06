@@ -23,7 +23,7 @@ import {
 import { useBot } from '@/app/providers/BotProvider';
 import { useTranslations } from 'next-intl';
 import { LanguageSwitcher } from '@/components/layout/LocaleSwitcher';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'; 
 import {
   LogOut,
   Users,
