@@ -44,6 +44,7 @@ import {
   BarChart2,
   Languages,
   Coins,
+  Percent,
   Repeat,
   Sparkles,
   UserPlus,
@@ -57,6 +58,7 @@ import {
   MessageSquare,
 } from 'lucide-react';
 import { timeAgo } from '@/lib/utils';
+import { SUPPORT_LINK } from '@/lib/partnership';
 import { toast } from 'sonner';
 import { useHaptic } from '@/hooks/useHaptic';
 import { cn } from '@/lib/utils';
@@ -754,7 +756,7 @@ export const Profile = () => {
 
             {/* Support */}
             <Link
-              href="https://t.me/SibNeuroSupport"
+              href={SUPPORT_LINK}
               className={cn(
                 glass.tile,
                 'flex items-center gap-4 px-5 py-4 active:scale-[0.98]',
@@ -1036,15 +1038,39 @@ export const Profile = () => {
                 <div className="size-12 rounded-2xl bg-cyan-400/10 border border-cyan-400/20 flex items-center justify-center shrink-0">
                   <Users size={22} className="text-cyan-300" />
                 </div>
-                <div className="flex flex-col gap-2">
+                <div className="flex flex-col gap-1.5">
                   <p className="text-[14px] text-white/75 leading-relaxed">
                     {t('partnershipDesc')}
                   </p>
-                  <p className="text-[12px] text-white/40 leading-relaxed">
+                  <p className="text-[12.5px] text-white/40 leading-relaxed">
                     {t('rewardDesc')}
                   </p>
                 </div>
               </div>
+
+              {/* Персональный процент — обсуждается в поддержке */}
+              <Link
+                href={SUPPORT_LINK}
+                onClick={() => haptic.light()}
+                className={cn(
+                  'relative mt-4 flex items-center gap-3 rounded-[20px] p-3.5',
+                  'bg-white/[0.05] border border-cyan-400/20 active:scale-[0.98]',
+                  spring
+                )}
+              >
+                <div className="shrink-0 size-9 rounded-xl bg-cyan-400/12 border border-cyan-400/20 flex items-center justify-center">
+                  <Percent size={16} className="text-cyan-200" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[13px] font-bold tracking-tight text-white">
+                    {t('customRateTitle')}
+                  </p>
+                  <p className="text-[11.5px] text-white/40 leading-snug truncate">
+                    {t('customRateDesc')}
+                  </p>
+                </div>
+                <ChevronRight size={16} className="shrink-0 text-cyan-200" />
+              </Link>
             </div>
 
             {/* Партнёрский баланс (balance из /user) + вывод средств */}
@@ -1133,26 +1159,6 @@ export const Profile = () => {
                 </p>
               </div>
             )}
-
-            {/* Простая 1-уровневая программа: 50% с каждой оплаты */}
-            <div
-              className={cn(
-                glass.tile,
-                'flex items-center gap-3 p-4 border-cyan-400/20'
-              )}
-            >
-              <div className="shrink-0 size-11 rounded-2xl bg-cyan-400/15 border border-cyan-400/25 flex items-center justify-center">
-                <Coins size={20} className="text-cyan-300" />
-              </div>
-              <div className="min-w-0">
-                <p className="text-[13px] font-black tracking-tight text-cyan-100">
-                  {t('rewardBadge')}
-                </p>
-                <p className="mt-0.5 text-[12px] text-white/45 leading-snug">
-                  {t('rewardDesc')}
-                </p>
-              </div>
-            </div>
 
             {/* Dashboard Controls */}
             <div className="flex flex-col gap-3 pt-2">

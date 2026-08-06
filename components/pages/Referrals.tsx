@@ -15,11 +15,14 @@ import {
   Calendar,
   Link as LinkIcon,
   Zap,
+  Percent,
+  ChevronRight,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useState, useMemo } from 'react';
 import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils';
+import { SUPPORT_LINK } from '@/lib/partnership';
 
 /* ── Redesigned Glass Styles (Syntx Inspired) ── */
 const glassCard = cn(
@@ -108,15 +111,40 @@ export const Referrals = () => {
             <div className="w-12 h-12 rounded-2xl bg-[#007AFF]/10 border border-[#007AFF]/20 flex items-center justify-center shrink-0">
               <Users size={22} className="text-[#007AFF]" />
             </div>
-            <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-1.5">
               <p className="text-[14px] text-white/80 leading-[1.6]">
                 {tp('partnershipDesc')}
               </p>
-              <p className="text-[13px] font-medium text-white/50 leading-[1.5]">
+              <p className="text-[13px] font-medium text-white/45 leading-[1.5]">
                 {tp('rewardDesc')}
               </p>
             </div>
           </div>
+
+          {/* Персональный процент — обсуждается в поддержке */}
+          <a
+            href={SUPPORT_LINK}
+            target="_blank"
+            rel="noreferrer"
+            className={cn(
+              'mt-5 flex items-center gap-3 rounded-[20px] p-4',
+              'bg-white/[0.04] border border-[#007AFF]/25 active:scale-[0.98]',
+              spring
+            )}
+          >
+            <div className="shrink-0 size-9 rounded-xl bg-[#007AFF]/15 border border-[#007AFF]/25 flex items-center justify-center">
+              <Percent size={16} className="text-[#4DA3FF]" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-[13.5px] font-bold tracking-tight text-white">
+                {tp('customRateTitle')}
+              </p>
+              <p className="text-[12px] text-white/40 leading-snug truncate">
+                {tp('customRateDesc')}
+              </p>
+            </div>
+            <ChevronRight size={16} className="shrink-0 text-[#4DA3FF]" />
+          </a>
         </div>
 
         {/* ── Stats & Link Row ── */}

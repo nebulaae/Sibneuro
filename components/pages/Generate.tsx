@@ -17,6 +17,7 @@ import {
   Sparkles,
   Zap,
   CheckCircle2,
+  Check,
   Search,
   Star,
   MessageSquare,
@@ -33,6 +34,12 @@ import { cn, localize } from '@/lib/utils';
 import { useLocale, useTranslations } from 'next-intl';
 import { getParamLabel, getParamValueLabel } from '@/lib/paramHelpers';
 import { describeModel, getModelKind, type ModelKind } from '@/lib/modelMeta';
+import {
+  buildMediaSlots,
+  isMotionVersion,
+  slotAcceptAttr,
+  type MediaSlot,
+} from '@/lib/mediaSlots';
 import { useDragScroll } from '@/hooks/useDragScroll';
 
 function useGenerationStatus(dialogueId: string | null, enabled: boolean) {
@@ -71,6 +78,14 @@ export const Generate = () => {
   const [isWaiting, setIsWaiting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Именованные слоты (напр. у Kling Motion: своё фото + видео-референс).
+  const [slotMedia, setSlotMedia] = useState<
+    Record<string, { url: string } | null>
+  >({});
+  const [uploadingSlot, setUploadingSlot] = useState<string | null>(null);
+  // У каждого слота свой input: accept зависит от типа файла слота.
+  const slotInputs = useRef<Record<string, HTMLInputElement | null>>({});
+
   const { data: allModels, isLoading } = useAIModels();
   const generate = useGenerateAI();
   const upload = useUpload();
@@ -80,7 +95,17 @@ export const Generate = () => {
     selectedVersion ||
     selected?.versions?.find((v) => v.default)?.label ||
     selected?.versions?.[0]?.label;
-  const { data: params } = useModelParams(selectedTech, currentVersion);
+  const { data: paramsData } = useModelParams(selectedTech, currentVersion);
+  const params = paramsData?.params;
+  // Лимиты медиа приходят по версии (/api/params), в списке моделей их может не быть.
+  const limitMedia =
+    paramsData?.limit_media ||
+    selected?.versions?.find((v) => v.label === currentVersion)?.limit_media;
+  const mediaSlots = buildMediaSlots(selected, currentVersion, limitMedia);
+  const hasSlots = mediaSlots.length > 0;
+  const missingRequiredSlots = mediaSlots.filter(
+    (s) => s.required && !slotMedia[s.key]
+  );
   const { data: lastMessage } = useGenerationStatus(pendingId, isWaiting);
   const { data: roles } = useRoles();
 
@@ -149,6 +174,10 @@ export const Generate = () => {
       setSelectedVersion(def?.label || null);
     }
   }, [selected?.tech_name]);
+  // Раскладка слотов зависит от версии (у Motion она своя) — при смене чистим.
+  useEffect(() => {
+    setSlotMedia({});
+  }, [selected?.tech_name, currentVersion]);
   useEffect(() => {
     if (!params) return;
     const defaults: Record<string, any> = {};
@@ -173,6 +202,33 @@ export const Generate = () => {
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
+  const pickSlotFile = (slot: MediaSlot) => {
+    haptic.light();
+    slotInputs.current[slot.key]?.click();
+  };
+
+  const handleSlotUpload = async (
+    slot: MediaSlot,
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingSlot(slot.key);
+    try {
+      const uploaded = await upload.mutateAsync(file);
+      setSlotMedia((prev) => ({ ...prev, [slot.key]: { url: uploaded.url } }));
+    } catch {
+      toast.error(t('uploadError'));
+    } finally {
+      setUploadingSlot(null);
+      const input = slotInputs.current[slot.key];
+      if (input) input.value = '';
+    }
+  };
+
+  const slotLabel = (slot: MediaSlot) =>
+    t(slot.labelKey as never, slot.labelValues as never);
+
   const handleGenerate = () => {
     if (!selected) return;
     const isTextModel =
@@ -184,16 +240,37 @@ export const Generate = () => {
       );
       return;
     }
-    if (!prompt.trim() && media.length === 0) {
+    // Слоты уходят строго в своём порядке — бекенд различает файлы по нему.
+    const slotFiles = mediaSlots
+      .map((slot) => ({ slot, item: slotMedia[slot.key] }))
+      .filter((x) => !!x.item)
+      .map((x) => ({
+        type: x.slot.accept,
+        format: 'url',
+        input: x.item!.url,
+      }));
+
+    if (hasSlots && missingRequiredSlots.length > 0) {
+      toast.error(
+        t('slotsRequired', {
+          list: missingRequiredSlots.map(slotLabel).join(', '),
+        })
+      );
+      return;
+    }
+    const hasAnyMedia = hasSlots ? slotFiles.length > 0 : media.length > 0;
+    if (!prompt.trim() && !hasAnyMedia) {
       toast.error(t('enterDescription'));
       return;
     }
     haptic.medium();
-    const oldFormatMedia = media.map((m) => ({
-      type: m.type,
-      format: 'url',
-      input: m.url,
-    }));
+    const oldFormatMedia = hasSlots
+      ? slotFiles
+      : media.map((m) => ({
+          type: m.type,
+          format: 'url',
+          input: m.url,
+        }));
     const inputs = convertMediaToInputs(prompt.trim() || ' ', oldFormatMedia);
     generate.mutate(
       {
@@ -365,7 +442,9 @@ export const Generate = () => {
           {!isTextModel && (
             <div className="flex flex-col gap-4">
               <h3 className="text-[13px] font-black uppercase tracking-widest text-white/30 px-2">
-                {t('prompt')}
+                {isMotionVersion(currentVersion)
+                  ? t('promptOptionalMotion')
+                  : t('prompt')}
               </h3>
               <textarea
                 value={prompt}
@@ -503,7 +582,177 @@ export const Generate = () => {
               );
             })}
 
-          {canAttach && !isTextModel && (
+          {/* Именованные слоты: у каждого файла своё место и подпись,
+              чтобы фото не улетело туда, где ждут референс. */}
+          {hasSlots && !isTextModel && (
+            <div className="flex flex-col gap-4">
+              <div className="flex flex-col gap-1.5 px-2">
+                <h3 className="text-[13px] font-black uppercase tracking-widest text-white/30">
+                  {isMotionVersion(currentVersion)
+                    ? t('klingMotionTitle')
+                    : t('media')}
+                </h3>
+                <p className="text-[13px] font-medium text-white/35 leading-snug">
+                  {isMotionVersion(currentVersion)
+                    ? t('klingMotionDesc')
+                    : t('slotsDesc')}
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                {mediaSlots.map((slot, idx) => {
+                  const item = slotMedia[slot.key];
+                  const busy = uploadingSlot === slot.key;
+                  const label = slotLabel(slot);
+                  const SlotIcon =
+                    slot.accept === 'video'
+                      ? Film
+                      : slot.accept === 'audio'
+                        ? Music
+                        : ImageIcon;
+                  return (
+                    <div
+                      key={slot.key}
+                      className={cn(
+                        'flex flex-col rounded-[28px] p-2.5 border transition-all',
+                        item
+                          ? 'bg-cyan-500/[0.06] border-cyan-500/25 shadow-[0_0_24px_rgba(34,211,238,0.07)]'
+                          : 'bg-white/[0.02] border-white/[0.07]'
+                      )}
+                    >
+                      <div className="relative">
+                        <button
+                          onClick={() => pickSlotFile(slot)}
+                          disabled={busy}
+                          className={cn(
+                            'w-full aspect-square rounded-[22px] overflow-hidden flex flex-col items-center justify-center gap-2.5 transition-all active:scale-[0.98]',
+                            item
+                              ? ''
+                              : cn(
+                                  'bg-gradient-to-b from-white/[0.05] to-transparent',
+                                  'border-2 border-dashed text-white/25',
+                                  slot.required
+                                    ? 'border-cyan-500/25 hover:border-cyan-500/45'
+                                    : 'border-white/10 hover:border-white/20',
+                                  'hover:text-cyan-400'
+                                )
+                          )}
+                        >
+                          {item ? (
+                            slot.accept === 'video' ? (
+                              <video
+                                src={item.url}
+                                muted
+                                playsInline
+                                preload="metadata"
+                                className="size-full object-cover"
+                              />
+                            ) : slot.accept === 'audio' ? (
+                              <div className="size-full bg-gradient-to-br from-cyan-500/20 to-zinc-900 flex items-center justify-center">
+                                <Music size={30} className="text-cyan-300" />
+                              </div>
+                            ) : (
+                              <img
+                                src={item.url}
+                                alt={label}
+                                className="size-full object-cover"
+                              />
+                            )
+                          ) : busy ? (
+                            <Loader2
+                              size={24}
+                              className="animate-spin text-cyan-500"
+                            />
+                          ) : (
+                            <>
+                              <span className="size-11 rounded-2xl bg-white/[0.06] border border-white/10 flex items-center justify-center">
+                                <SlotIcon size={20} />
+                              </span>
+                              <span className="text-[11.5px] font-black">
+                                {slot.accept === 'video'
+                                  ? t('addVideo')
+                                  : slot.accept === 'audio'
+                                    ? t('addAudio')
+                                    : t('addPhoto')}
+                              </span>
+                            </>
+                          )}
+                        </button>
+
+                        <span
+                          className={cn(
+                            'absolute top-2 left-2 h-6 min-w-6 px-1.5 rounded-full backdrop-blur flex items-center justify-center gap-1 text-[11px] font-black pointer-events-none border',
+                            item
+                              ? 'bg-cyan-500 border-cyan-300 text-black'
+                              : 'bg-black/60 border-white/15 text-white'
+                          )}
+                        >
+                          {item ? <Check size={12} strokeWidth={3.5} /> : idx + 1}
+                        </span>
+
+                        {item && (
+                          <button
+                            onClick={() =>
+                              setSlotMedia((prev) => ({
+                                ...prev,
+                                [slot.key]: null,
+                              }))
+                            }
+                            className="absolute top-2 right-2 size-7 rounded-full bg-black/65 border border-white/20 backdrop-blur flex items-center justify-center text-white active:scale-90 transition-transform"
+                          >
+                            <X size={13} />
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="px-1.5 pt-2.5 pb-1 flex flex-col gap-1">
+                        <div className="flex items-baseline gap-1.5 flex-wrap">
+                          <p className="text-[13px] font-black text-white leading-tight">
+                            {label}
+                          </p>
+                          <span
+                            className={cn(
+                              'text-[9px] font-black uppercase tracking-[0.4px] px-1.5 py-0.5 rounded-md',
+                              slot.required
+                                ? 'bg-cyan-500/15 text-cyan-300'
+                                : 'bg-white/[0.06] text-white/30'
+                            )}
+                          >
+                            {slot.required ? t('slotRequired') : t('slotOptional')}
+                          </span>
+                        </div>
+                        {slot.hintKey && (
+                          <p className="text-[11px] font-medium text-white/35 leading-snug">
+                            {t(slot.hintKey as never)}
+                          </p>
+                        )}
+                        {item && (
+                          <button
+                            onClick={() => pickSlotFile(slot)}
+                            className="mt-0.5 self-start text-[11px] font-black text-cyan-500 active:scale-95 transition-transform"
+                          >
+                            {t('slotReplace')}
+                          </button>
+                        )}
+                      </div>
+
+                      <input
+                        type="file"
+                        ref={(el) => {
+                          slotInputs.current[slot.key] = el;
+                        }}
+                        accept={slotAcceptAttr(slot.accept)}
+                        onChange={(e) => handleSlotUpload(slot, e)}
+                        className="hidden"
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {canAttach && !isTextModel && !hasSlots && (
             <div className="flex flex-col gap-4">
               <div className="flex justify-between items-center px-2">
                 <h3 className="text-[13px] font-black uppercase tracking-widest text-white/30">
@@ -566,7 +815,11 @@ export const Generate = () => {
             disabled={
               generate.isPending ||
               upload.isPending ||
-              (!isTextModel && !prompt.trim() && media.length === 0)
+              (hasSlots && missingRequiredSlots.length > 0) ||
+              (!isTextModel &&
+                !hasSlots &&
+                !prompt.trim() &&
+                media.length === 0)
             }
             className={cn(
               'w-full h-16 rounded-[24px] flex items-center justify-center gap-3 font-black text-[17px] transition-all active:scale-[0.98] shadow-2xl',

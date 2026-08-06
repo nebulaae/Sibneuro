@@ -42,14 +42,27 @@ export const useAIModels = () => {
   });
 };
 
+export interface ModelParamsResponse {
+  params: any[];
+  /** Сколько файлов какого типа принимает версия, напр. { image: 1, video: 1 }. */
+  limit_media: Record<string, number>;
+  cost?: number;
+  version?: string;
+}
+
 export const useModelParams = (techName: string | null, version?: string) => {
   return useQuery({
     queryKey: queryKeys.params(techName!, version),
-    queryFn: async () => {
+    queryFn: async (): Promise<ModelParamsResponse> => {
       const { data } = await api.get('/api/params', {
         params: { tech_name: techName, version },
       });
-      return data.params || [];
+      return {
+        params: data.params || [],
+        limit_media: data.limit_media || {},
+        cost: data.cost,
+        version: data.version,
+      };
     },
     enabled: !!techName,
   });
