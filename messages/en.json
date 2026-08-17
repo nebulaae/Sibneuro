@@ -106,7 +106,19 @@
         "title": "Music",
         "subtitle": "Tracks and sound"
       }
-    }
+    },
+    "balanceUnknown": "Refreshing balance",
+    "startTitle": "Where to start",
+    "startTemplate": "From a template",
+    "startTemplateHint": "Pick a trend and just upload a photo",
+    "startScratch": "From scratch",
+    "startScratchHint": "Your own prompt and model",
+    "partnerCta": "Start earning",
+    "modelsCount": "{count} models",
+    "groupPopular": "Popular",
+    "groupVideo": "Video",
+    "groupPhoto": "Use your photo",
+    "feedTitle": "Feed"
   },
   "Login": {
     "tagline": "Next-generation AI platform",
@@ -611,5 +623,19 @@
     "popularRoles": "Popular roles",
     "examples": "Examples",
     "footnote": "Sign up takes less than a minute"
+  },
+  "Promo": {
+    "webKicker": "Same account, same balance",
+    "webTitle": "Sibneuro is now in the browser",
+    "webCta": "Open web version",
+    "partnerTitle": "Affiliate program",
+    "partnerCta": "Start earning",
+    "feedKicker": "Publish your work and collect likes",
+    "feedTitle": "The feed is here",
+    "feedCta": "Open the feed",
+    "topUpKicker": "Enough for dozens of generations",
+    "topUpTitle": "Top up your balance",
+    "topUpCta": "Top up",
+    "allGroup": "All"
   }
 }

@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useMemo, useRef } from 'react';
 import { useTranslations } from 'next-intl';
 import {
   ArrowUpRight,
@@ -10,13 +10,21 @@ import {
   Loader2,
   Music,
   PenLine,
+  Plus,
+  RotateCw,
   Sparkles,
   Video,
   Zap,
 } from 'lucide-react';
 import { useUser } from '@/hooks/useUser';
+import { useBalance } from '@/hooks/useBalance';
+import { useAIModels } from '@/hooks/useModels';
 import { usePaymentLink } from '@/hooks/useApiExtras';
-import { useInfinitePosts, useLikePost } from '@/hooks/usePosts';
+import { useInfinitePosts, useLikePost, usePosts } from '@/hooks/usePosts';
+import type { Post } from '@/hooks/usePosts';
+import { buildPostGroups } from '@/lib/postGroups';
+import { PromoBanners } from '@/components/home/PromoBanners';
+import { TrendRail } from '@/components/home/TrendRail';
 import { resolvePostMedia } from '@/lib/media';
 import { cn } from '@/lib/utils';
 import { useHaptic } from '@/hooks/useHaptic';
@@ -202,12 +210,14 @@ function CategoryCard({
   cat,
   photos,
   videoUrl,
+  count,
   t,
   onSelect,
 }: {
   cat: CategoryItem;
   photos: string[];
   videoUrl?: string;
+  count: number;
   t: ReturnType<typeof useTranslations>;
   onSelect: () => void;
 }) {
@@ -239,8 +249,16 @@ function CategoryCard({
         style={{ background: cat.glow }}
       />
       <div className="relative z-10 flex h-full flex-col justify-between">
-        <div className="grid size-12 place-items-center rounded-2xl border border-white/[0.12] bg-black/30 backdrop-blur-2xl">
-          <Icon className="size-5 text-white" />
+        <div className="flex items-start justify-between gap-2">
+          <div className="grid size-12 place-items-center rounded-2xl border border-white/[0.12] bg-black/30 backdrop-blur-2xl">
+            <Icon className="size-5 text-white" />
+          </div>
+          {/* Сколько моделей внутри — видно до перехода в раздел */}
+          {count > 0 && (
+            <span className="rounded-full border border-white/[0.12] bg-black/40 px-2 py-0.5 text-[11px] font-black text-white/60 backdrop-blur-xl">
+              {count}
+            </span>
+          )}
         </div>
         <div>
           <p className="text-[17px] font-black tracking-tight">
@@ -251,6 +269,52 @@ function CategoryCard({
           </p>
         </div>
       </div>
+    </button>
+  );
+}
+
+/**
+ * Баланс в шапке.
+ *
+ * Пока баланс неизвестен — «···», а не «0»: раньше упавший или ещё не
+ * пришедший запрос выглядел как обнулённый счёт, и это была одна из самых
+ * частых жалоб. Если запрос упал совсем — чип превращается в кнопку повтора.
+ */
+function BalanceChip() {
+  const t = useTranslations('Home');
+  const router = useRouter();
+  const haptic = useHaptic();
+  const { tokens, known, isError, isFetching, refetch } = useBalance();
+
+  const base =
+    'flex items-center gap-2 rounded-full border px-4 py-2 text-[13px] font-bold backdrop-blur-2xl transition active:scale-95';
+
+  if (isError && !known) {
+    return (
+      <button
+        onClick={() => refetch()}
+        aria-label={t('balanceUnknown')}
+        className={cn(base, 'border-white/10 bg-white/[0.05] text-white/50')}
+      >
+        <RotateCw className={cn('size-3.5', isFetching && 'animate-spin')} />
+        <span>···</span>
+      </button>
+    );
+  }
+
+  return (
+    <button
+      onClick={() => {
+        haptic.light();
+        router.push('/pay');
+      }}
+      className={cn(
+        base,
+        'border-cyan-400/20 bg-cyan-400/8 text-cyan-200 shadow-[inset_0_1px_0_rgba(255,255,255,0.15),0_8px_28px_rgba(34,211,238,0.10)]'
+      )}
+    >
+      <span className="tabular-nums">{known ? tokens : '···'}</span>
+      <span>{t('topUp')}</span>
     </button>
   );
 }
@@ -317,8 +381,45 @@ export const Home = () => {
   const videoUrl = trendMedia.find((m) => m.url && m.isVideo)?.url ?? undefined;
 
   const userId = userData?.user?.user_id ?? 0;
-  const tokens = Math.trunc(Number(userData?.user?.tokens ?? 0));
   const observer = useRef<IntersectionObserver | null>(null);
+
+  // Отдельная выборка под полки: из 12 постов первой страницы ленты
+  // осмысленных групп не собрать, а грузить ради этого всю ленту нельзя.
+  //
+  // skipUserId обязателен — ровно как в ленте. Без него перехватчик подставляет
+  // в /api/posts текущий user_id, и авторизованному пользователю возвращаются
+  // только его собственные посты: у большинства их нет, выборка приходит
+  // пустой, и полки просто не отрисовываются (в браузере без входа при этом
+  // всё работало — оттого баг и не был виден сразу).
+  const { data: sample } = usePosts({ limit: 60, skipUserId: true });
+
+  const groups = useMemo(() => {
+    const source = (sample?.items as Post[]) || [];
+    // Если выборка ещё не пришла или упала — строим полки из того, что уже
+    // загружено лентой. Лучше меньше полок, чем пустая главная.
+    const input = source.length ? source : posts;
+    return buildPostGroups(input, {
+      popular: t('groupPopular'),
+      video: t('groupVideo'),
+      photo: t('groupPhoto'),
+    });
+  }, [sample, posts, t]);
+
+  // Число моделей в каждой категории — показываем на плитке, чтобы состав
+  // раздела был понятен до перехода. Ключ категории на главной («music»)
+  // не совпадает с категорией моделей на бекенде («audio»).
+  const { data: allModels } = useAIModels();
+  const modelCounts = useMemo(() => {
+    const models = allModels || [];
+    const counts: Record<string, number> = {};
+    for (const cat of categories) {
+      const modelCat = cat.key === 'music' ? 'audio' : cat.key;
+      counts[cat.key] = models.filter(
+        (m) => m.mainCategory === modelCat || m.categories?.includes(modelCat)
+      ).length;
+    }
+    return counts;
+  }, [allModels]);
 
   const lastPostRef = useCallback(
     (node: HTMLDivElement | null) => {
@@ -337,7 +438,7 @@ export const Home = () => {
   );
 
   return (
-    <div className="min-h-svh overflow-x-hidden text-white pb-[calc(92px+max(16px,env(safe-area-inset-bottom)))]">
+    <div className="min-h-svh overflow-x-hidden text-white pb-[calc(92px+max(16px,var(--sa-bottom)))]">
       {/* Aurora background — статичные блюр-орбы.
           Раньше анимировались (transform/scale) бесконечно: перерисовка
           гигантских размытых поверхностей каждый кадр давала жёсткий лаг на
@@ -351,14 +452,14 @@ export const Home = () => {
       </div>
 
       {/* Header */}
-      <header className="sticky top-0 z-40 px-5 py-3.5">
+      <header className="sticky top-0 z-40 px-5 pb-3.5 pt-[calc(0.875rem+var(--sa-top))]">
         <div className="mx-auto flex max-w-5xl items-center justify-between gap-3">
           <button
             onClick={() => router.push('/')}
             className="flex items-center gap-3 rounded-2xl text-left transition active:scale-95"
           >
             <div>
-              <p className="text-[18px] font-black tracking-tight">Sibneuro</p>
+              <p className="text-[18px] font-black tracking-tight font-mono">Sibneuro</p>
             </div>
           </button>
           <div className="flex  gap-2">
@@ -372,29 +473,29 @@ export const Home = () => {
               Vpn
             </button>
 
-            <button
-              onClick={() => {
-                router.push('/pay');
-              }}
-              className="flex items-center gap-2 rounded-full border border-cyan-400/20 bg-cyan-400/8 px-4 py-2 text-[13px] font-bold text-cyan-200 shadow-[inset_0_1px_0_rgba(255,255,255,0.15),0_8px_28px_rgba(34,211,238,0.10)] backdrop-blur-2xl transition active:scale-95"
-            >
-              <span>{tokens}</span>
-              <span className="">{t('topUp')}</span>
-            </button>
+            <BalanceChip />
           </div>
         </div>
       </header>
 
       <main className="mx-auto flex w-full max-w-5xl flex-col gap-10 px-5 pt-7">
         {/* Hero + Category cards */}
-        <section className="grid gap-5 lg:grid-cols-[1.1fr_0.9fr] lg:items-start">
-          {/* Hero card */}
-          <div className="min-h-full rounded-[32px] border border-white/[0.10] bg-white/[0.06] p-6 sm:p-8">
+        {/* 75/25 вместо прежних почти равных долей: при 50/50 герой-карточке
+            не хватало ширины и заголовок ломался по одному слову в строке.
+            minmax(160px,…) не даёт колонке категорий схлопнуться. */}
+        <section className="grid gap-5 lg:grid-cols-[minmax(0,3fr)_minmax(160px,1fr)] lg:items-start">
+          {/* Hero card.
+              min-w-0 обязателен: внутри лежит промо-скроллер, а у grid-детей
+              min-width по умолчанию auto — без этого широкий трек растягивает
+              колонку и весь экран уезжает вправо. */}
+          <div className="min-h-full min-w-0 overflow-hidden rounded-[32px] border border-white/[0.10] bg-white/[0.06] p-6 sm:p-8">
             <div className="mb-7 inline-flex items-center gap-2 rounded-full border border-cyan-400/20 bg-cyan-400/8 px-3 py-1.5 text-[12px] font-bold text-cyan-200 backdrop-blur-xl">
               <span className="size-1.5 rounded-full bg-cyan-300 shadow-[0_0_10px_rgba(34,211,238,0.9)]" />
               {t('heroKicker')}
             </div>
-            <h1 className="max-w-[560px] text-[42px] font-black leading-[0.96] tracking-tight sm:text-[58px]">
+            {/* Кегль тянется от ширины экрана: фиксированные 42px на узких
+                телефонах вылезали за карточку. */}
+            <h1 className="max-w-[560px] text-[clamp(30px,8.5vw,58px)] font-black leading-[0.96] tracking-tight">
               {t('heroTitle')}{' '}
               <span className="bg-gradient-to-r from-cyan-200 via-sky-300 to-emerald-300 bg-clip-text text-transparent">
                 {t('heroAccent')}
@@ -421,6 +522,13 @@ export const Home = () => {
                 {t('watchTrends')}
               </button>
             </div>
+
+            {/* Промо-скроллер прямо в герое: веб-версия, партнёрка, лента,
+                пополнение. Раньше об этих возможностях нельзя было узнать,
+                не полазив по меню. */}
+            <div className="mt-8">
+              <PromoBanners />
+            </div>
           </div>
 
           {/* Category 2×2 grid */}
@@ -431,6 +539,7 @@ export const Home = () => {
                 cat={cat}
                 photos={photoUrls}
                 videoUrl={videoUrl}
+                count={modelCounts[cat.key] ?? 0}
                 t={t}
                 onSelect={() => {
                   haptic.selection();
@@ -438,6 +547,61 @@ export const Home = () => {
                 }}
               />
             ))}
+          </div>
+        </section>
+
+        {/* ── С чего начать ────────────────────────────────────────────────
+            Ответ на «зашёл, а что делать»: два явных маршрута вместо одного
+            общего «начать создание». «По шаблону» ведёт в тренды, где нужно
+            лишь подставить своё фото — это самый короткий путь до первого
+            результата, и именно его не хватало новым пользователям. */}
+        <section className="flex flex-col gap-3">
+          <h2 className="px-1 text-[13px] font-black uppercase tracking-widest text-white/30">
+            {t('startTitle')}
+          </h2>
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            <button
+              onClick={() => {
+                haptic.light();
+                router.push('/trends');
+              }}
+              className="flex items-center gap-4 rounded-[26px] border border-cyan-400/25 bg-cyan-400/[0.08] p-4 text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.14)] backdrop-blur-2xl transition active:scale-[0.98] hover:border-cyan-400/40"
+            >
+              <div className="grid size-11 shrink-0 place-items-center rounded-2xl bg-cyan-400/15 border border-cyan-400/25">
+                <Sparkles className="size-5 text-cyan-200" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-[16px] font-black tracking-tight">
+                  {t('startTemplate')}
+                </p>
+                <p className="truncate text-[12.5px] font-medium text-white/45">
+                  {t('startTemplateHint')}
+                </p>
+              </div>
+              <ArrowUpRight className="size-4 shrink-0 text-cyan-200" />
+            </button>
+
+            <button
+              onClick={() => {
+                haptic.light();
+                router.push('/generate');
+              }}
+              className="flex items-center gap-4 rounded-[26px] border border-white/[0.10] bg-white/[0.055] p-4 text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.12)] backdrop-blur-2xl transition active:scale-[0.98] hover:border-white/20"
+            >
+              <div className="grid size-11 shrink-0 place-items-center rounded-2xl border border-white/[0.12] bg-white/[0.06]">
+                <Plus className="size-5 text-white/70" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-[16px] font-black tracking-tight">
+                  {t('startScratch')}
+                </p>
+                <p className="truncate text-[12.5px] font-medium text-white/45">
+                  {t('startScratchHint')}
+                </p>
+              </div>
+              <ArrowUpRight className="size-4 shrink-0 text-white/25" />
+            </button>
           </div>
         </section>
 
@@ -460,11 +624,34 @@ export const Home = () => {
           </div>
         </section>
 
-        {/* Trends section */}
+        {/* ── Полки по темам ───────────────────────────────────────────────
+            Раньше здесь сразу шёл сплошной грид из полутора тысяч постов, в
+            котором видео, фото-шаблоны и разные нейросети лежали вперемешку.
+            Теперь контент разложен по полкам — видно, что вообще есть, и в
+            каждую можно провалиться целиком. Общая лента осталась ниже. */}
+        {groups.length > 0 && (
+          <section className="flex flex-col gap-8">
+            <h2 className="px-1 text-[13px] font-black uppercase tracking-widest text-white/30">
+              {t('trending')}
+            </h2>
+            {groups.map((group) => (
+              <TrendRail
+                key={group.id}
+                groupId={group.id}
+                title={group.title}
+                posts={group.posts}
+                allLabel={t('all')}
+                fallbackTitle={t('trend')}
+              />
+            ))}
+          </section>
+        )}
+
+        {/* Лента — общий бесконечный грид, после всех полок */}
         <section className="pb-32">
           <div className="flex items-center justify-between mb-6 px-2">
             <h2 className="text-[24px] font-black text-cyan-400 tracking-tight">
-              {t('trending')}
+              {t('feedTitle')}
             </h2>
             <button
               onClick={() => router.push('/trends')}

@@ -8,6 +8,7 @@ import { BotProvider } from './providers/BotProvider';
 import { NextIntlClientProvider } from 'next-intl';
 import { getLocale, getMessages } from 'next-intl/server';
 import { PlatformScripts } from './providers/PlatformScripts';
+import { ViewportProvider } from './providers/ViewportProvider';
 
 import './globals.css';
 import { ThemeProviders } from './providers/ThemeProviders';
@@ -48,6 +49,9 @@ export default async function RootLayout({
         />
       </head>
       <body style={{ fontFamily: 'var(--font-sf)', margin: 0 }}>
+        {/* Fullscreen мини-аппа + CSS-переменные безопасных отступов --sa-*.
+            Вне провайдеров: не зависит ни от авторизации, ни от source. */}
+        <ViewportProvider />
         <QueryProvider>
           <BotProvider>
             <TelegramLoginScript />

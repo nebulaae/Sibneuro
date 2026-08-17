@@ -257,7 +257,7 @@ export const Withdrawal = () => {
   return (
     <div className="flex flex-col min-h-svh bg-[#050505] text-white selection:bg-cyan-400/30 pb-28">
       {/* ── Header ── */}
-      <header className="sticky top-0 z-50 flex items-center gap-3 px-5 py-4 bg-[#050505]/80 backdrop-blur-xl border-b border-white/5">
+      <header className="sticky top-0 z-50 flex items-center gap-3 px-5 pb-4 pt-[calc(1rem+var(--sa-top))] bg-[#050505]/80 backdrop-blur-xl border-b border-white/5">
         <button
           onClick={() => {
             haptic.light();

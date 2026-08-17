@@ -290,6 +290,30 @@ body {
   transition: background 0.3s var(--spring-slow);
 }
 
+/* ── Безопасные отступы (fullscreen мини-аппа) ──────────────────────────────
+   Вёрстка везде читает --sa-*, а не env() напрямую.
+
+   В браузере и PWA переменные равны системным env(). Внутри Telegram в
+   fullscreen env() отдаёт нули — webview формально занимает весь экран, —
+   но поверх контента остаются «чёлка» и кнопки клиента (закрыть, «⋮»).
+   Реальные значения приходят из WebApp.safeAreaInset и
+   contentSafeAreaInset: их подставляет ViewportProvider, перезаписывая
+   эти переменные на <html>. */
+:root {
+  --sa-top: env(safe-area-inset-top, 0px);
+  --sa-right: env(safe-area-inset-right, 0px);
+  --sa-bottom: env(safe-area-inset-bottom, 0px);
+  --sa-left: env(safe-area-inset-left, 0px);
+}
+
+/* Класс ставит ViewportProvider по событию fullscreenChanged. */
+html.is-fullscreen,
+html.is-fullscreen body {
+  /* Гасит «резинку» и pull-to-refresh: в fullscreen они обнажают пустую
+     полосу под системной шапкой. */
+  overscroll-behavior-y: none;
+}
+
 /* ── Scrollbar (Apple style) ── */
 ::-webkit-scrollbar {
   width: 6px;
@@ -338,6 +362,10 @@ video {
 }
 
 [data-slot='sidebar-container'] {
+  /* Десктопный Telegram в fullscreen отдаёт всё окно — сайдбар тоже
+     обходит системные отступы клиента. */
+  padding-top: var(--sa-top);
+  padding-bottom: var(--sa-bottom);
   background: transparent !important;
   border: none !important;
 }

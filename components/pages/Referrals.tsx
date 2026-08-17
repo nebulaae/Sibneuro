@@ -78,7 +78,7 @@ export const Referrals = () => {
   return (
     <div className="flex flex-col min-h-svh bg-[#050505] text-white selection:bg-[#007AFF]/30">
       {/* ── Header ── */}
-      <header className="sticky top-0 z-50 px-6 py-5 flex items-center gap-4 bg-[#050505]/80 backdrop-blur-xl border-b border-white/5">
+      <header className="sticky top-0 z-50 px-6 pb-5 pt-[calc(1.25rem+var(--sa-top))] flex items-center gap-4 bg-[#050505]/80 backdrop-blur-xl border-b border-white/5">
         <button
           onClick={() => {
             haptic.light();

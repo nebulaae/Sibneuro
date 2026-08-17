@@ -585,7 +585,7 @@ export default function ChatPage() {
   const hasContentToPin = text.trim().length > 0 || uploadedFiles.length > 0;
 
   return (
-    <div className="flex flex-col h-dvh max-w-2xl mx-auto w-full text-white overflow-hidden -mb-[calc(80px+max(16px,env(safe-area-inset-bottom)))] relative z-40">
+    <div className="flex flex-col h-dvh max-w-2xl mx-auto w-full text-white overflow-hidden -mb-[calc(80px+max(16px,var(--sa-bottom)))] relative z-40">
       {/* ── Aurora background ── */}
       <div className="fixed inset-0 -z-10 overflow-hidden pointer-events-none">
         <div className="absolute -top-40 -left-20 w-[500px] h-[500px] rounded-full bg-cyan-500/[.04] blur-[120px]" />
@@ -984,7 +984,7 @@ export default function ChatPage() {
       )}
 
       {/* ── Input Bar ── */}
-      <div className="px-4 pt-4 pb-[calc(16px+max(12px,env(safe-area-inset-bottom)))] lg:pb-4 lg:mb-6 lg:rounded-full bg-zinc-950/80 lg:bg-zinc-950/80 lg:backdrop-blur-none backdrop-blur-3xl border-t border-white/5 lg:border-transparent z-50">
+      <div className="px-4 pt-4 pb-[calc(16px+max(12px,var(--sa-bottom)))] lg:pb-4 lg:mb-6 lg:rounded-full bg-zinc-950/80 lg:bg-zinc-950/80 lg:backdrop-blur-none backdrop-blur-3xl border-t border-white/5 lg:border-transparent z-50">
         <div className="max-w-2xl mx-auto flex flex-col gap-3">
           {uploadedFiles.length > 0 && (
             <div className="flex gap-2 flex-wrap px-2">

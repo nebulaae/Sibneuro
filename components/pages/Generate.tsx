@@ -384,7 +384,7 @@ export const Generate = () => {
 
     return (
       <div className="flex flex-col min-h-svh pb-32">
-        <header className="sticky top-0 z-50 px-5 py-4 flex items-center justify-between">
+        <header className="sticky top-0 z-50 px-5 pb-4 pt-[calc(1rem+var(--sa-top))] flex items-center justify-between">
           <button
             onClick={() => {
               haptic.light();
@@ -1077,6 +1077,10 @@ export const Generate = () => {
 };
 
 // Звезда «избранное» — общий оверлей для карточек моделей и ролей.
+//
+// Внешний слой — прозрачная зона нажатия 44×44 (минимум по HIG): сам кружок
+// 32px слишком мелкий, промах по нему открывал карточку вместо переключения
+// избранного. Визуальный размер при этом не меняется.
 function FavStar({
   active,
   onClick,
@@ -1087,18 +1091,31 @@ function FavStar({
   return (
     <span
       role="button"
+      tabIndex={0}
+      aria-label={active ? 'Убрать из избранного' : 'В избранное'}
+      aria-pressed={active}
       onClick={onClick}
-      className={cn(
-        'absolute top-2 right-2 w-8 h-8 rounded-full flex items-center justify-center backdrop-blur border transition-all active:scale-90',
-        active
-          ? 'bg-amber-400/90 border-amber-300'
-          : 'bg-black/45 border-white/15'
-      )}
+      onKeyDown={(e) => {
+        if (e.key !== 'Enter' && e.key !== ' ') return;
+        e.preventDefault();
+        e.stopPropagation();
+        onClick(e as unknown as React.MouseEvent);
+      }}
+      className="absolute top-0 right-0 w-11 h-11 flex items-center justify-center"
     >
-      <Star
-        size={15}
-        className={active ? 'fill-black text-black' : 'text-white'}
-      />
+      <span
+        className={cn(
+          'w-8 h-8 rounded-full flex items-center justify-center backdrop-blur border transition-all active:scale-90',
+          active
+            ? 'bg-amber-400/90 border-amber-300'
+            : 'bg-black/45 border-white/15'
+        )}
+      >
+        <Star
+          size={15}
+          className={active ? 'fill-black text-black' : 'text-white'}
+        />
+      </span>
     </span>
   );
 }

@@ -88,11 +88,11 @@ export const Models = () => {
   };
 
   return (
-    <div className="flex flex-col min-h-svh pb-[calc(80px+max(16px,env(safe-area-inset-bottom)))] overflow-x-hidden text-white">
+    <div className="flex flex-col min-h-svh pb-[calc(80px+max(16px,var(--sa-bottom)))] overflow-x-hidden text-white">
       {/* Aurora bg */}
 
       {/* Header */}
-      <header className="sticky top-0 z-40 px-5 py-4">
+      <header className="sticky top-0 z-40 px-5 pb-4 pt-[calc(1rem+var(--sa-top))]">
         <div className="max-w-2xl mx-auto">
           <h1 className="text-[30px] font-black tracking-tight bg-gradient-to-r from-cyan-200 via-sky-300 to-emerald-200 bg-clip-text text-transparent leading-tight">
             {t('title')}

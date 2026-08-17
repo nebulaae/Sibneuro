@@ -1,30 +1,198 @@
+/* ────────────────────────────────────────────────────────────────────────────
+ * Fullscreen мини-аппа
+ * ──────────────────────────────────────────────────────────────────────────── */
+
 /**
- * Разворачивает мини-апп на весь экран и запрещает вертикальные свайпы,
- * из-за которых окно Telegram/Max сворачивается или закрывается при скролле.
+ * Минимальный контракт объекта WebApp — window.Telegram.WebApp у Telegram и
+ * window.WebApp у Max. Все поля необязательные: набор методов зависит от
+ * версии клиента, поэтому вызывать их можно только опционально.
+ */
+type MiniAppWebApp = {
+  ready?: () => void;
+  expand?: () => void;
+  disableVerticalSwipes?: () => void;
+  requestFullscreen?: () => void;
+  isFullscreen?: boolean;
+  isVersionAtLeast?: (version: string) => boolean;
+  setHeaderColor?: (color: string) => void;
+  setBackgroundColor?: (color: string) => void;
+  setBottomBarColor?: (color: string) => void;
+  safeAreaInset?: unknown;
+  contentSafeAreaInset?: unknown;
+  onEvent?: (event: string, handler: () => void) => void;
+  offEvent?: (event: string, handler: () => void) => void;
+};
+
+type Insets = { top: number; right: number; bottom: number; left: number };
+
+const ZERO_INSETS: Insets = { top: 0, right: 0, bottom: 0, left: 0 };
+
+function readInsets(raw: unknown): Insets {
+  if (!raw || typeof raw !== 'object') return ZERO_INSETS;
+  const src = raw as Record<string, unknown>;
+  const num = (v: unknown) =>
+    typeof v === 'number' && Number.isFinite(v) && v > 0 ? v : 0;
+  return {
+    top: num(src.top),
+    right: num(src.right),
+    bottom: num(src.bottom),
+    left: num(src.left),
+  };
+}
+
+/**
+ * Публикует безопасные отступы в CSS-переменные --sa-*.
  *
- * Вызывать можно на любой платформе и многократно — отсутствующие методы
- * (старые версии клиента) молча игнорируются. SDK может подгрузиться позже
- * монтирования, поэтому вызов повторяется короткое время, пока WebApp не
- * появится, после чего интервал останавливается.
+ * Почему нельзя обойтись env(safe-area-inset-*): в fullscreen-режиме Telegram
+ * webview формально занимает весь экран, поэтому env() отдаёт нули, а поверх
+ * контента висят системная «чёлка» и телеграмовские кнопки (закрыть / «⋮»).
+ * Реальные отступы клиент отдаёт только через safeAreaInset (железо) и
+ * contentSafeAreaInset (шапка самого Telegram) — их и складываем.
+ */
+function publishSafeArea(wa: MiniAppWebApp | undefined): void {
+  if (typeof document === 'undefined') return;
+
+  // Клиент до Bot API 8.0 (и Max) вообще не отдаёт отступы. Тогда ничего не
+  // трогаем: окно там не fullscreen, и системные env() из :root верны.
+  if (!wa?.safeAreaInset && !wa?.contentSafeAreaInset) return;
+
+  const hw = readInsets(wa.safeAreaInset);
+  const content = readInsets(wa.contentSafeAreaInset);
+
+  // max(env, значение клиента), а не просто значение: клиент может прислать
+  // нули (например, ещё не посчитал), и мы не должны затирать ими корректные
+  // системные отступы.
+  const set = (name: string, env: string, value: number) =>
+    document.documentElement.style.setProperty(
+      name,
+      `max(env(${env}, 0px), ${value}px)`
+    );
+
+  set('--sa-top', 'safe-area-inset-top', hw.top + content.top);
+  set('--sa-bottom', 'safe-area-inset-bottom', hw.bottom + content.bottom);
+  set('--sa-left', 'safe-area-inset-left', hw.left + content.left);
+  set('--sa-right', 'safe-area-inset-right', hw.right + content.right);
+}
+
+/** true, если клиент поддерживает запрошенную версию Bot API. */
+function supportsVersion(
+  wa: MiniAppWebApp | undefined,
+  version: string
+): boolean {
+  try {
+    if (typeof wa?.isVersionAtLeast === 'function') {
+      return !!wa.isVersionAtLeast(version);
+    }
+  } catch {}
+  return false;
+}
+
+/**
+ * Разворачивает мини-апп на весь экран (fullscreen, Bot API 8.0+), запрещает
+ * вертикальные свайпы и держит CSS-переменные --sa-* в актуальном состоянии.
  *
- * Возвращает функцию очистки (останавливает polling).
+ * Порядок деградации:
+ *   1. requestFullscreen() — контент занимает весь экран устройства;
+ *   2. expand() — на клиентах до Bot API 8.0 разворачивает на всю высоту шторки;
+ *   3. ничего — обычный браузер, работают env(safe-area-inset-*).
+ *
+ * Вызывать можно на любой платформе и многократно — отсутствующие методы молча
+ * игнорируются. SDK может подгрузиться позже монтирования, поэтому попытка
+ * повторяется короткое время, пока WebApp не появится.
+ *
+ * Возвращает функцию очистки (снимает подписки и останавливает polling).
  */
 export function configureMiniAppViewport(): () => void {
   if (typeof window === 'undefined') return () => {};
 
-  const apply = (wa: any): boolean => {
+  const cleanups: Array<() => void> = [];
+  const configured = new WeakSet<object>();
+
+  const goFullscreen = (wa: MiniAppWebApp) => {
+    // expand() зовём всегда: на клиентах без fullscreen это единственный способ
+    // раскрыть окно, а в fullscreen он безвреден.
+    try {
+      wa.expand?.();
+    } catch {}
+
+    if (typeof wa.requestFullscreen !== 'function') return;
+    // isVersionAtLeast есть только у Telegram; у Max проверку пропускаем.
+    if (typeof wa.isVersionAtLeast === 'function' && !supportsVersion(wa, '8.0'))
+      return;
+    if (wa.isFullscreen) return;
+
+    try {
+      wa.requestFullscreen();
+    } catch {}
+  };
+
+  const apply = (wa: MiniAppWebApp | undefined): boolean => {
     if (!wa) return false;
+
     try {
       wa.ready?.();
     } catch {}
-    try {
-      // expand() растягивает окно на всю доступную высоту (а не «на половину»)
-      wa.expand?.();
-    } catch {}
+
+    goFullscreen(wa);
+
     try {
       // Bot API 7.7+: не даёт свернуть/закрыть мини-апп вертикальным свайпом
       wa.disableVerticalSwipes?.();
     } catch {}
+
+    // Приложение полностью чёрное — красим системные полосы клиента в тон,
+    // иначе в fullscreen видна светлая рамка поверх контента.
+    try {
+      wa.setHeaderColor?.('#000000');
+      wa.setBackgroundColor?.('#000000');
+      wa.setBottomBarColor?.('#000000');
+    } catch {}
+
+    publishSafeArea(wa);
+
+    // Подписки вешаем один раз на каждый объект WebApp.
+    if (!configured.has(wa) && typeof wa.onEvent === 'function') {
+      configured.add(wa);
+
+      const sync = () => publishSafeArea(wa);
+      const onFullscreenChanged = () => {
+        document.documentElement.classList.toggle(
+          'is-fullscreen',
+          !!wa.isFullscreen
+        );
+        publishSafeArea(wa);
+      };
+      // Клиент может отказать (например, уже открыт в fullscreen другим
+      // приложением) — тогда остаёмся на expand(), но отступы всё равно нужны.
+      const onFullscreenFailed = () => {
+        try {
+          wa.expand?.();
+        } catch {}
+        publishSafeArea(wa);
+      };
+
+      const events: Array<[string, () => void]> = [
+        ['safeAreaChanged', sync],
+        ['contentSafeAreaChanged', sync],
+        ['viewportChanged', sync],
+        ['fullscreenChanged', onFullscreenChanged],
+        ['fullscreenFailed', onFullscreenFailed],
+      ];
+
+      for (const [name, handler] of events) {
+        try {
+          wa.onEvent(name, handler);
+          cleanups.push(() => {
+            try {
+              wa.offEvent?.(name, handler);
+            } catch {}
+          });
+        } catch {}
+      }
+
+      onFullscreenChanged();
+    }
+
     return true;
   };
 
@@ -38,18 +206,26 @@ export function configureMiniAppViewport(): () => void {
   };
 
   // Немедленная попытка + короткий polling на случай позднего SDK
-  let count = 0;
-  const done = tryApply();
-  if (done) return () => {};
+  if (!tryApply()) {
+    let count = 0;
+    const timer = setInterval(() => {
+      count++;
+      if (tryApply() || count > 40) clearInterval(timer);
+    }, 100);
+    cleanups.push(() => clearInterval(timer));
+  }
 
-  const timer = setInterval(() => {
-    count++;
-    if (tryApply() || count > 40) {
-      clearInterval(timer);
-    }
-  }, 100);
+  // Возврат в мини-апп из фонового режима иногда сбрасывает fullscreen —
+  // перезапрашиваем его при показе вкладки.
+  const onVisibility = () => {
+    if (document.visibilityState === 'visible') tryApply();
+  };
+  document.addEventListener('visibilitychange', onVisibility);
+  cleanups.push(() =>
+    document.removeEventListener('visibilitychange', onVisibility)
+  );
 
-  return () => clearInterval(timer);
+  return () => cleanups.forEach((fn) => fn());
 }
 
 /**
@@ -280,4 +456,33 @@ export function waitForPlatformSDK(timeoutMs = 8000): Promise<{
 
     timeout = setTimeout(() => done(null), timeoutMs);
   });
+}
+
+/**
+ * Открывает внешнюю ссылку так, как принято на текущей платформе.
+ *
+ * Внутри мини-аппа обычный window.open либо блокируется, либо открывает
+ * страницу в том же webview поверх приложения — из неё уже не вернуться.
+ * Telegram и Max для этого дают openLink(), который отдаёт ссылку системному
+ * браузеру. Вне мини-аппа — обычная новая вкладка.
+ */
+export function openExternalLink(url: string): void {
+  if (typeof window === 'undefined') return;
+
+  const wa =
+    ((window as { Telegram?: { WebApp?: MiniAppWebApp } }).Telegram?.WebApp as
+      | (MiniAppWebApp & { openLink?: (u: string) => void })
+      | undefined) ??
+    ((window as { WebApp?: MiniAppWebApp }).WebApp as
+      | (MiniAppWebApp & { openLink?: (u: string) => void })
+      | undefined);
+
+  try {
+    if (typeof wa?.openLink === 'function') {
+      wa.openLink(url);
+      return;
+    }
+  } catch {}
+
+  window.open(url, '_blank', 'noopener,noreferrer');
 }

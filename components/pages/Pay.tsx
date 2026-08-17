@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useLocale, useTranslations } from 'next-intl';
 import { useUser } from '@/hooks/useUser';
+import { useBalance } from '@/hooks/useBalance';
 import { usePackages, useCreatePaymentSession } from '@/hooks/usePackages';
 import type { Plan } from '@/hooks/usePackages';
 import { useHaptic } from '@/hooks/useHaptic';
@@ -59,7 +60,8 @@ export const Pay = () => {
   const [timeLeft, setTimeLeft] = useState<string>('');
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const tokens = Number(userData?.user?.tokens ?? 0);
+  // «···» вместо фальшивого нуля, пока баланс неизвестен.
+  const { tokens, known: balanceKnown } = useBalance();
   const activePromo = packagesData?.promo as PromoData | null;
 
   // Countdown for active promo
@@ -384,7 +386,7 @@ export const Pay = () => {
 
   return (
     <div className="min-h-screen text-white font-sans">
-      <header className="sticky top-0 pt-4 z-30">
+      <header className="sticky top-0 pt-[calc(1rem+var(--sa-top))] z-30">
         <div className="max-w-xl mx-auto px-4 h-14 flex items-center gap-3">
           <button
             onClick={() => {
@@ -400,7 +402,7 @@ export const Pay = () => {
           </h1>
           <div className="flex items-center gap-1 px-4 py-2 rounded-full bg-cyan-400/10 border border-cyan-400/30 text-cyan-400 text-[13px] font-bold transition-all hover:scale-105 active:scale-95 shadow-[0_0_15px_rgba(0,122,255,0.3)]">
             <span className="text-[16px]">◈</span>
-            <span>{Math.trunc(tokens)}</span>
+            <span className="tabular-nums">{balanceKnown ? tokens : '···'}</span>
           </div>
         </div>
         {!isLoading && availableMethods.length > 0 && (

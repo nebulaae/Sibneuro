@@ -32,7 +32,7 @@ export default function RootLayout({
           minHeight: '100svh',
         }}
       >
-        <div className="w-full max-w-2xl flex flex-col flex-1 pb-[calc(80px+max(16px,env(safe-area-inset-bottom)))]">
+        <div className="w-full max-w-2xl flex flex-col flex-1 pb-[calc(80px+max(16px,var(--sa-bottom)))]">
           <AuthGuard>{children}</AuthGuard>
         </div>
       </main>

@@ -4,7 +4,7 @@ import { useRef, useEffect, useCallback, useState, memo } from 'react';
 
 import { useTranslations } from 'next-intl';
 import { useInfinitePosts, useLikePost, Post } from '@/hooks/usePosts';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Sparkles,
@@ -37,6 +37,8 @@ import { convertMediaToInputs, useGenerateAI } from '@/hooks/useGenerations';
 import { toast } from 'sonner';
 import { useUpload } from '@/hooks/useApiExtras';
 import { useUser } from '@/hooks/useUser';
+import { useBalance } from '@/hooks/useBalance';
+import { matchesGroup, groupTitle } from '@/lib/postGroups';
 import { useAIModels } from '@/hooks/useModels';
 import { useBot } from '@/app/providers/BotProvider';
 import { useAuth } from '@/hooks/useAuth';
@@ -85,10 +87,16 @@ const CopyPromptButton = ({ text }: { text: string }) => {
 
 export const Trends = () => {
   const t = useTranslations('Trends');
+  const tHome = useTranslations('Home');
   const haptic = useHaptic();
+  const searchParams = useSearchParams();
+
+  // ?group= приходит с полки на главной («Все»). Такой переход — это запрос
+  // «покажи весь раздел целиком», поэтому открываем сразу грид, а не рилсы.
+  const group = searchParams.get('group');
 
   // Лента (полноэкранная) — основной вид; грид доступен по переключателю.
-  const [view, setView] = useState<'feed' | 'grid'>('feed');
+  const [view, setView] = useState<'feed' | 'grid'>(group ? 'grid' : 'feed');
 
   const {
     data,
@@ -99,7 +107,28 @@ export const Trends = () => {
     isFetchingNextPage,
   } = useInfinitePosts({ limit: 12 });
 
-  const posts = data?.pages.flatMap((page) => page.items) || [];
+  const allPosts = data?.pages.flatMap((page) => page.items) || [];
+  const posts = group
+    ? allPosts.filter((post) => matchesGroup(post, group))
+    : allPosts;
+
+  const groupHeading = group
+    ? groupTitle(group, {
+        popular: tHome('groupPopular'),
+        video: tHome('groupVideo'),
+        photo: tHome('groupPhoto'),
+      })
+    : '';
+
+  // Внутри группы совпадений на странице может не оказаться вовсе — тогда
+  // грид пуст, наблюдателю нечего отслеживать, и подгрузка встаёт. Тянем
+  // следующие страницы сами, пока не наберётся экран.
+  useEffect(() => {
+    if (!group) return;
+    if (posts.length >= 6) return;
+    if (!hasNextPage || isFetchingNextPage) return;
+    fetchNextPage();
+  }, [group, posts.length, hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   const observer = useRef<IntersectionObserver | null>(null);
   const lastPostRef = useCallback(
@@ -177,19 +206,19 @@ export const Trends = () => {
   if (view === 'grid') {
     return (
       <div className="flex flex-col min-h-screen pb-32 max-w-2xl mx-auto w-full">
-        <div className="px-6 pt-12">
+        <div className="px-6 pt-[calc(3rem+var(--sa-top))]">
           <div className="flex items-start justify-between mb-10">
             <div>
               <div className="flex items-center gap-3 mb-2">
                 <h1 className="text-[34px] font-black tracking-tight text-[#22d3ee] leading-none">
-                  {t('title')}
+                  {groupHeading || t('title')}
                 </h1>
                 <div className="w-8 h-8 rounded-xl bg-[#22d3ee]/20 flex items-center justify-center">
                   <Sparkles size={18} className="text-[#22d3ee]" />
                 </div>
               </div>
               <p className="text-white/40 text-[16px] font-medium leading-relaxed max-w-[320px]">
-                {t('subtitle')}
+                {groupHeading ? t('title') : t('subtitle')}
               </p>
             </div>
             <button
@@ -236,7 +265,7 @@ export const Trends = () => {
   return (
     <div className="fixed inset-0 z-30 bg-black">
       {/* Top controls */}
-      <div className="absolute top-0 inset-x-0 z-20 flex items-center justify-between px-4 pt-[calc(12px+env(safe-area-inset-top))] pb-6 bg-gradient-to-b from-black/70 to-transparent pointer-events-none">
+      <div className="absolute top-0 inset-x-0 z-20 flex items-center justify-between px-4 pt-[calc(12px+var(--sa-top))] pb-6 bg-gradient-to-b from-black/70 to-transparent pointer-events-none">
         <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-black/30 backdrop-blur-xl border border-white/10 pointer-events-auto">
           <Sparkles size={14} className="text-[#22d3ee]" />
           <span className="text-[13px] font-black text-white">{t('title')}</span>
@@ -508,7 +537,7 @@ const FeedItem = memo(({ post }: { post: Post }) => {
       </AnimatePresence>
 
       {/* Right action rail */}
-      <div className="absolute right-3 bottom-[calc(120px+env(safe-area-inset-bottom))] z-20 flex flex-col items-center gap-5">
+      <div className="absolute right-3 bottom-[calc(120px+var(--sa-bottom))] z-20 flex flex-col items-center gap-5">
         {/* Like */}
         <button
           onClick={toggleLike}
@@ -570,7 +599,7 @@ const FeedItem = memo(({ post }: { post: Post }) => {
       </div>
 
       {/* Bottom info */}
-      <div className="absolute left-4 right-20 bottom-[calc(96px+env(safe-area-inset-bottom))] z-10 flex flex-col gap-2.5">
+      <div className="absolute left-4 right-20 bottom-[calc(96px+var(--sa-bottom))] z-10 flex flex-col gap-2.5">
         <div className="flex items-center gap-2.5">
           <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-white/20 shrink-0">
             <Avatar className="size-full">
@@ -925,7 +954,7 @@ export const TrendDetail = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [activeMediaIndex, setActiveMediaIndex] = useState<number | null>(null);
 
-  const tokens = Number(userData?.user?.tokens ?? 0);
+  const { tokens, known: balanceKnown } = useBalance();
   const model = allModels?.find(
     (m: any) => m.tech_name === post.model_tech_name
   );
@@ -933,7 +962,11 @@ export const TrendDetail = ({
     (v: any) => v.label === post.version_label
   );
   const cost = post.cost ?? version?.cost ?? 15;
-  const canAfford = tokens >= cost;
+  // Пока баланс неизвестен (запрос ещё идёт или упал) — не блокируем кнопку.
+  // Раньше здесь было `tokens ?? 0`, и любой сбой запроса баланса намертво
+  // запирал генерацию сообщением «недостаточно токенов» у платящего
+  // пользователя. Не хватит на самом деле — откажет бекенд.
+  const canAfford = !balanceKnown || (tokens ?? 0) >= cost;
 
   const mediaSlots = post.inputs?.media || [];
 
@@ -1076,7 +1109,7 @@ export const TrendDetail = ({
       exit={{ opacity: 0, scale: 1.05 }}
       className="flex flex-col min-h-screen"
     >
-      <header className="sticky top-0 z-50 px-6 py-5 flex items-center gap-4">
+      <header className="sticky top-0 z-50 px-6 pb-5 pt-[calc(1.25rem+var(--sa-top))] flex items-center gap-4">
         <button
           onClick={onBack}
           className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center transition-all active:scale-90"
@@ -1286,7 +1319,7 @@ export const TrendDetail = ({
         </div>
       </div>
 
-      <div className="sticky bottom-0 px-6 pt-6 pb-[calc(24px+max(12px,env(safe-area-inset-bottom)))] bg-black/80 backdrop-blur-3xl border-t border-white/5">
+      <div className="sticky bottom-0 px-6 pt-6 pb-[calc(24px+max(12px,var(--sa-bottom)))] bg-black/80 backdrop-blur-3xl border-t border-white/5">
         <button
           disabled={generate.isPending}
           onClick={handleGenerate}

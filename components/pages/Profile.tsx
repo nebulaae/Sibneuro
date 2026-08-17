@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useState, useMemo } from 'react';
 import { useUser } from '@/hooks/useUser';
+import { useBalance } from '@/hooks/useBalance';
 import { GenerationRequest, MediaItem, useRequests } from '@/hooks/useRequests';
 import { useInfiniteUserPosts, type Post } from '@/hooks/usePosts';
 import { resolvePostMedia } from '@/lib/media';
@@ -491,7 +492,9 @@ export const Profile = () => {
   const { data: trackingPaymentsStatsData } =
     useTrackingPaymentsStats(partnershipPeriod);
 
-  const tokens = Number(userData?.user?.tokens ?? 0);
+  // known=false — баланс ещё не получен или запрос упал. Скелетон вместо
+  // цифры: фальшивый ноль на весь экран читается как «списали все токены».
+  const { tokens, known: balanceKnown } = useBalance();
   const balance = Number(userData?.user?.balance ?? 0);
   const isPremium = userData?.user?.premium ?? false;
   const premiumEnd = userData?.user?.premium_end;
@@ -607,7 +610,7 @@ export const Profile = () => {
   ];
 
   return (
-    <div className="min-h-svh overflow-x-hidden text-white pb-[calc(92px+max(16px,env(safe-area-inset-bottom)))]">
+    <div className="min-h-svh overflow-x-hidden text-white pb-[calc(92px+max(16px,var(--sa-bottom)))]">
       {/* Background */}
       <div className="fixed inset-0 -z-10 overflow-hidden">
         <div className="absolute -top-36 -left-24 h-[520px] w-[520px] rounded-full bg-cyan-500/5 blur-[120px]" />
@@ -618,7 +621,7 @@ export const Profile = () => {
       </div>
 
       {/* Header */}
-      <header className="sticky top-0 z-40 px-5 py-4">
+      <header className="sticky top-0 z-40 px-5 pb-4 pt-[calc(1rem+var(--sa-top))]">
         <div className="mx-auto flex max-w-2xl items-center justify-between gap-3">
           <h1 className="text-[30px] font-black tracking-tight bg-gradient-to-r from-cyan-200 via-sky-300 to-emerald-200 bg-clip-text text-transparent leading-tight">
             {t('title')}
@@ -726,12 +729,12 @@ export const Profile = () => {
                   </span>
                   <Zap size={13} className="text-cyan-200/55" />
                 </div>
-                {userLoading ? (
-                  <div className="w-14 h-9 rounded-lg bg-white/[0.05] animate-pulse" />
-                ) : (
-                  <span className="text-[36px] font-black tracking-tight leading-none">
-                    {Math.trunc(tokens)}
+                {balanceKnown ? (
+                  <span className="text-[36px] font-black tracking-tight leading-none tabular-nums">
+                    {tokens}
                   </span>
+                ) : (
+                  <div className="w-14 h-9 rounded-lg bg-white/[0.05] animate-pulse" />
                 )}
               </button>
             </div>

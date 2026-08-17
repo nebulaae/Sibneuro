@@ -227,7 +227,7 @@ export const BottomBar = () => {
   ] as const;
 
   return (
-    <nav className="fixed bottom-3 left-0 right-0 z-50 flex justify-center px-3 md:hidden">
+    <nav className="fixed bottom-[calc(0.75rem+var(--sa-bottom))] left-0 right-0 z-50 flex justify-center px-3 md:hidden">
       <div className="flex w-full max-w-sm items-center gap-1">
         {/* HOME */}
         <Link

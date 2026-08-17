@@ -460,7 +460,7 @@ export const Login = () => {
   }
 
   return (
-    <div className="h-screen bg-black text-white overflow-hidden relative flex">
+    <div className="h-screen bg-black text-white overflow-hidden relative flex pt-[var(--sa-top)] pb-[var(--sa-bottom)]">
       <div className="absolute inset-0 bg-black" />
       <div ref={captchaContainerRef} className="hidden" />
 

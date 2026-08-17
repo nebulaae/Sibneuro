@@ -6,11 +6,12 @@ import api from '@/lib/api';
 import { useAuth } from '@/hooks/useAuth';
 import { useBot } from '@/app/providers/BotProvider';
 import { getAppSource } from '@/lib/source';
+import { waitForPlatformInitData } from '@/lib/platform';
 import {
-  waitForPlatformInitData,
-  configureMiniAppViewport,
-} from '@/lib/platform';
-import { setAuthInProgress, clearAuthInProgress } from '@/lib/authState';
+  setAuthInProgress,
+  clearAuthInProgress,
+  onAuthInvalidated,
+} from '@/lib/authState';
 import { track } from '@/lib/logger';
 
 export const MaxProvider = ({ children }: { children: React.ReactNode }) => {
@@ -21,7 +22,11 @@ export const MaxProvider = ({ children }: { children: React.ReactNode }) => {
   const attempted = useRef(false);
   const retryTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const retryCount = useRef(0);
+  const reauthCount = useRef(0);
   const MAX_RETRIES = 3;
+  // Потолок на случай, если бекенд отдаёт 401 даже на свежий токен —
+  // иначе получится бесконечный цикл «401 → вход → 401».
+  const MAX_REAUTHS = 2;
 
   const doAuth = useCallback(
     async (botId: number) => {
@@ -92,11 +97,26 @@ export const MaxProvider = ({ children }: { children: React.ReactNode }) => {
     [login]
   );
 
-  // Разворот на весь экран и запрет свайпов — независимо от авторизации.
+  // Разворот окна — в ViewportProvider (корневой layout), без гейта по source.
+
+  // Протухшая сессия: перехватчик axios поймал 401 и стёр токен.
+  // Эффект ниже к этому моменту уже отработал и повторно не запустится
+  // (он выходит, пока в сторадже есть токен), поэтому переавторизуемся здесь.
   useEffect(() => {
     if (getAppSource() !== 'max') return;
-    return configureMiniAppViewport();
-  }, []);
+
+    return onAuthInvalidated(() => {
+      if (reauthCount.current >= MAX_REAUTHS) return;
+      reauthCount.current++;
+
+      const botId = bot?.bot_id;
+      if (!botId) return;
+
+      attempted.current = false;
+      retryCount.current = 0;
+      doAuth(botId);
+    });
+  }, [bot, doAuth]);
 
   useEffect(() => {
     const source = getAppSource();

@@ -107,7 +107,19 @@
         "title": "Музыка",
         "subtitle": "Треки и звук"
       }
-    }
+    },
+    "balanceUnknown": "Обновляем баланс",
+    "startTitle": "С чего начать",
+    "startTemplate": "По шаблону",
+    "startTemplateHint": "Готовый тренд — просто загрузите фото",
+    "startScratch": "С нуля",
+    "startScratchHint": "Свой промпт и выбор нейросети",
+    "partnerCta": "Начать зарабатывать",
+    "modelsCount": "{count} моделей",
+    "groupPopular": "Популярное",
+    "groupVideo": "Видео",
+    "groupPhoto": "Под своё фото",
+    "feedTitle": "Лента"
   },
   "Login": {
     "tagline": "AI-платформа нового поколения",
@@ -612,5 +624,19 @@
     "popularRoles": "Популярные роли",
     "examples": "Примеры работ",
     "footnote": "Регистрация занимает меньше минуты"
+  },
+  "Promo": {
+    "webKicker": "Аккаунт и баланс — те же",
+    "webTitle": "Sibneuro теперь в браузере",
+    "webCta": "Открыть веб-версию",
+    "partnerTitle": "Партнёрская программа",
+    "partnerCta": "Начать зарабатывать",
+    "feedKicker": "Публикуй работы и собирай лайки",
+    "feedTitle": "Лента уже здесь",
+    "feedCta": "Перейти в ленту",
+    "topUpKicker": "Хватит на десятки генераций",
+    "topUpTitle": "Пополни баланс",
+    "topUpCta": "Пополнить",
+    "allGroup": "Все"
   }
 }
