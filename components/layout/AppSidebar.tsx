@@ -86,7 +86,7 @@ export function AppSidebar() {
                         onClick={() => {
                           if (isCreate) haptic.medium();
                           else haptic.selection();
-                        }}
+                        }} 
                         className={cn(
                           'rounded-xl font-medium',
                           'transition-all duration-220 ease-[cubic-bezier(0.32,0.72,0,1)]',
